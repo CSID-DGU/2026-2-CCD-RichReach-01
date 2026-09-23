@@ -1,0 +1,62 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Flutter 프로젝트가 올라오기 전에는 나머지 단계를 건너뜀
+      - name: Check Flutter project exists
+        id: detect
+        run: |
+          if [ -f pubspec.yaml ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "frontend/pubspec.yaml 없음 - 검사 생략"
+          fi
+
+      - uses: subosito/flutter-action@v2
+        if: steps.detect.outputs.exists == 'true'
+        with:
+          channel: stable
+          # flutter-version: '3.x.x'   # 팀 버전 확정되면 고정
+          cache: true
+
+      - name: Install dependencies
+        if: steps.detect.outputs.exists == 'true'
+        run: flutter pub get
+
+      - name: Analyze
+        if: steps.detect.outputs.exists == 'true'
+        run: flutter analyze
+
+      - name: Test
+        if: steps.detect.outputs.exists == 'true'
+        run: flutter test
+
+  # 플랫폼(웹/앱) 확정 후 필요한 빌드 job을 추가
+  # - 웹: flutter build web
+  # - 안드로이드: setup-java(17) 후 flutter build apk --debug

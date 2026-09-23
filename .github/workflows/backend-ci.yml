@@ -1,0 +1,63 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Spring Boot 프로젝트가 올라오기 전에는 나머지 단계를 건너뜀
+      - name: Check Gradle project exists
+        id: detect
+        run: |
+          if [ -f gradlew ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend/gradlew 없음 - 빌드 생략"
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.detect.outputs.exists == 'true'
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.detect.outputs.exists == 'true'
+
+      - name: Grant execute permission for gradlew
+        if: steps.detect.outputs.exists == 'true'
+        run: chmod +x gradlew
+
+      - name: Build and test
+        if: steps.detect.outputs.exists == 'true'
+        run: ./gradlew build
+
+      - name: Upload test reports
+        if: failure() && steps.detect.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: backend/build/reports/tests/

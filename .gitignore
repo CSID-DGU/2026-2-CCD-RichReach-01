@@ -1,0 +1,51 @@
+# ── 환경변수 / 시크릿 ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── Gradle / Java ──
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+*.class
+*.jar
+*.war
+hs_err_pid*
+
+# ── IDE ──
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+out/
+
+# ── Flutter / Dart (frontend/ 안의 .gitignore와 함께 적용) ──
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# ── Python (ai/) ──
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ── 로그 / OS / 임시 파일 ──
+*.log
+logs/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# ── Docker 로컬 데이터 ──
+docker-data/
