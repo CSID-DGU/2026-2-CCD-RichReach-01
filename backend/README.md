@@ -30,12 +30,55 @@ com.richreach
 
 ## 로컬 실행
 
-TODO: 백엔드 프로젝트 세팅 후 작성
+### 사전 준비
 
-1. 환경변수: `.env.example`을 복사해 `.env` 작성
-2. DB 실행: `docker compose up -d mysql`
-3. 앱 실행: `./gradlew bootRun --args='--spring.profiles.active=local'`
-4. Swagger: `http://localhost:8080/swagger-ui/index.html`
+- Docker Desktop 실행
+- JDK 21 (없어도 Gradle이 자동으로 내려받는다)
+- 저장소 **루트**에서 `.env` 만들기 (`.env`는 커밋되지 않는다)
+
+```bash
+cp .env.example .env          # PowerShell: Copy-Item .env.example .env
+```
+
+`.env`의 `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`를 원하는 값으로 바꾼다.
+
+### 방법 A: DB만 Docker, 앱은 로컬에서 실행 (평소 개발)
+
+```bash
+# 저장소 루트에서 DB 실행
+docker compose up -d mysql
+
+# backend 폴더에서 .env를 환경변수로 불러온 뒤 앱 실행 (Git Bash, Mac, Linux)
+cd backend
+set -a; . ../.env; set +a
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
+IntelliJ에서는 Run Configuration의 **Active profiles**에 `local`, **Environment variables**에 `.env` 값(`MYSQL_PASSWORD` 등)을 넣는다.
+
+### 방법 B: 전체를 Docker로 실행
+
+```bash
+docker compose up -d --build   # MySQL이 healthy가 된 뒤 backend가 기동된다
+```
+
+### 확인
+
+- 헬스체크: http://localhost:8080/actuator/health → `{"status":"UP"}`
+- Swagger UI: http://localhost:8080/swagger-ui.html
+
+### 종료
+
+```bash
+docker compose down        # 컨테이너 종료 (DB 데이터는 유지)
+docker compose down -v     # DB 데이터까지 삭제
+```
+
+### 참고
+
+- MySQL 호스트 포트 기본값은 **3307**이다. 로컬에 MySQL이 이미 설치되어 3306을 쓰고 있어도 겹치지 않는다. `.env`의 `DB_PORT`로 바꿀 수 있다.
+- 웹 클라이언트를 붙일 때는 `.env`의 `CORS_ALLOWED_ORIGINS`에 허용할 origin을 쉼표로 넣는다. 비워두면 CORS는 닫혀 있다.
+- 아직 Flyway 마이그레이션이 없어서 기동 시 `No migrations found` 경고가 나오는 것은 정상이다.
 
 ## 테스트
 
