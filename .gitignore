@@ -8,9 +8,9 @@
 # ── Gradle / Java ──
 .gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
 *.class
 *.jar
+!**/gradle/wrapper/gradle-wrapper.jar
 *.war
 hs_err_pid*
 

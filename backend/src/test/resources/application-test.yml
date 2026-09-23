@@ -1,0 +1,9 @@
+# 테스트용 DB는 Testcontainers(@ServiceConnection)가 자동으로 연결하므로
+# spring.datasource.* 설정은 두지 않는다. (TestcontainersConfiguration 참고)
+spring:
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    org.hibernate.SQL: warn
