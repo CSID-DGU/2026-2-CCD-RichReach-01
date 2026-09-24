@@ -80,6 +80,21 @@ docker compose down -v     # DB 데이터까지 삭제
 - 웹 클라이언트를 붙일 때는 `.env`의 `CORS_ALLOWED_ORIGINS`에 허용할 origin을 쉼표로 넣는다. 비워두면 CORS는 닫혀 있다.
 - 아직 Flyway 마이그레이션이 없어서 기동 시 `No migrations found` 경고가 나오는 것은 정상이다.
 
+### 문제 해결
+
+**MySQL은 `healthy`인데 앱이 `Access denied`로 DB에 접속하지 못할 때**
+
+MySQL의 계정과 비밀번호는 데이터 볼륨(`mysql-data`)을 **처음 만들 때 한 번만** 적용된다. 이후 `.env`의 `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`를 바꿔도 기존 볼륨에는 이전 값이 남아 있어서, MySQL은 정상으로 보이지만(healthcheck는 로그인 없이 서버 실행 여부만 확인한다) 앱의 로그인은 실패한다.
+
+기존 볼륨을 삭제하고 다시 만들면 해결된다.
+
+```bash
+docker compose down -v      # 컨테이너와 볼륨 삭제
+docker compose up -d mysql  # .env의 새 값으로 다시 생성
+```
+
+> ⚠️ `-v`는 **DB 데이터를 모두 삭제**한다. 지워도 되는 개발용 데이터일 때만 실행한다.
+
 ## 테스트
 
 ```bash
