@@ -9,7 +9,7 @@
 | 디렉터리 | 설명 | 기술 |
 |---|---|---|
 | [frontend/](frontend/) | 클라이언트 | Flutter |
-| [backend/](backend/) | API 서버 (DDD 4계층) | Spring Boot, MySQL, Flyway |
+| [backend/](backend/) | API 서버 (도메인별 controller/service/repository) | Spring Boot, MySQL, Flyway |
 | [ai/](ai/) | AI 파트 | 미정 |
 | [docs/](docs/) | API 명세, ERD, 회의록, 협업 규칙 | - |
 
