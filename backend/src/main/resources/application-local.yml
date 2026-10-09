@@ -11,6 +11,12 @@ richreach:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
+# CODEF 연동 (값은 .env에서 주입한다. 비어 있으면 CODEF 호출 시 안내 오류가 난다.)
+codef:
+  client-id: ${CODEF_CLIENT_ID:}
+  client-secret: ${CODEF_CLIENT_SECRET:}
+  public-key: ${CODEF_PUBLIC_KEY:}   # 카드사 비밀번호 암호화용 RSA 공개키
+
 logging:
   level:
     org.hibernate.SQL: debug
