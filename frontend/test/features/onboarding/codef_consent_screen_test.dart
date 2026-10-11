@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/core/widgets/app_checkbox.dart';
 import 'package:frontend/features/onboarding/domain/codef_consent.dart';
+import 'package:frontend/features/onboarding/presentation/card_company_select_screen.dart';
 
 import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
@@ -71,6 +72,6 @@ void main() {
     await tester.tap(findText('동의하고 카드사 선택하기'));
     await tester.pumpAndSettle();
 
-    expect(findText(AppRoute.cardCompanySelect.title), findsOneWidget);
+    expect(find.byType(CardCompanySelectScreen), findsOneWidget);
   });
 }
