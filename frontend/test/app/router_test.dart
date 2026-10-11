@@ -4,6 +4,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/app/router.dart';
+import 'package:frontend/features/auth/presentation/signup_screen.dart';
+
+Future<void> _pumpRouter(WidgetTester tester, AppRoute initial) async {
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routerConfig: createRouter(initialLocation: initial.path),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
 
 void main() {
   test('모든 화면에 다음 화면 정보가 있다', () {
@@ -15,11 +25,17 @@ void main() {
     expect(paths.length, AppRoute.values.length);
   });
 
-  testWidgets('회원가입에서 시작해 플랜 생성 완료까지 이동할 수 있다', (tester) async {
+  testWidgets('앱은 회원가입 화면에서 시작한다', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: RichReachApp()));
     await tester.pumpAndSettle();
 
-    var current = AppRoute.signup;
+    expect(find.byType(SignupScreen), findsOneWidget);
+  });
+
+  testWidgets('서비스 안내에서 시작해 플랜 생성 완료까지 이동할 수 있다', (tester) async {
+    await _pumpRouter(tester, AppRoute.serviceIntro);
+
+    var current = AppRoute.serviceIntro;
     expect(find.text(current.title), findsOneWidget);
 
     while (onboardingNextRoutes[current]!.isNotEmpty) {
@@ -35,11 +51,8 @@ void main() {
   });
 
   testWidgets('뒤로가기 버튼으로 이전 화면에 돌아간다', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: RichReachApp()));
-    await tester.pumpAndSettle();
+    await _pumpRouter(tester, AppRoute.serviceIntro);
 
-    await tester.tap(find.text('${AppRoute.serviceIntro.title}(으)로'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('${AppRoute.codefConsent.title}(으)로'));
     await tester.pumpAndSettle();
 

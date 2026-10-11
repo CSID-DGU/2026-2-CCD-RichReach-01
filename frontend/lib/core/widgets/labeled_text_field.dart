@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_text_styles.dart';
 
@@ -14,6 +15,8 @@ class LabeledTextField extends StatelessWidget {
     this.textInputAction,
     this.errorText,
     this.onChanged,
+    this.inputFormatters,
+    this.autofillHints,
   });
 
   final String label;
@@ -24,6 +27,8 @@ class LabeledTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final String? errorText;
   final ValueChanged<String>? onChanged;
+  final List<TextInputFormatter>? inputFormatters;
+  final Iterable<String>? autofillHints;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +43,8 @@ class LabeledTextField extends StatelessWidget {
           keyboardType: keyboardType,
           textInputAction: textInputAction,
           onChanged: onChanged,
+          inputFormatters: inputFormatters,
+          autofillHints: autofillHints,
           style: AppTextStyles.input,
           decoration: InputDecoration(hintText: hint, errorText: errorText),
         ),
