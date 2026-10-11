@@ -44,17 +44,20 @@ class FakeCardRepository implements CardRepository {
   @override
   Future<List<OwnedCard>> fetchCards(List<CardCompany> companies) async {
     await Future<void>.delayed(delay);
-    return [
-      for (final company in companies)
-        _wireframeCards[company] ??
-            OwnedCard(
-              id: '${company.code}-1234',
-              name: '${company.shortName} 기본 카드',
-              company: company,
-              maskedNumber: '1234',
-              type: CardType.credit,
-              analysisStatus: AnalysisStatus.available,
-            ),
-    ];
+    return sampleCards(companies);
   }
+
+  /// 카드사마다 카드 1장. 결과 화면을 바로 열었을 때의 예시로도 쓴다.
+  static List<OwnedCard> sampleCards(List<CardCompany> companies) => [
+    for (final company in companies)
+      _wireframeCards[company] ??
+          OwnedCard(
+            id: '${company.code}-1234',
+            name: '${company.shortName} 기본 카드',
+            company: company,
+            maskedNumber: '1234',
+            type: CardType.credit,
+            analysisStatus: AnalysisStatus.available,
+          ),
+  ];
 }

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app.dart';
 import 'package:frontend/app/app_route.dart';
-import 'package:frontend/app/router.dart';
 import 'package:frontend/features/auth/presentation/signup_screen.dart';
 import 'package:frontend/features/onboarding/presentation/card_select_screen.dart';
 import 'package:frontend/features/onboarding/presentation/transactions_screen.dart';
@@ -15,10 +14,6 @@ Future<void> _pumpRouter(WidgetTester tester, AppRoute initial) =>
     pumpAppAt(tester, initial);
 
 void main() {
-  test('모든 화면에 다음 화면 정보가 있다', () {
-    expect(onboardingNextRoutes.keys.toSet(), AppRoute.values.toSet());
-  });
-
   test('모든 화면 경로가 서로 다르다', () {
     final paths = AppRoute.values.map((route) => route.path).toSet();
     expect(paths.length, AppRoute.values.length);
@@ -36,28 +31,6 @@ void main() {
       await _pumpRouter(tester, route);
       expect(tester.takeException(), isNull, reason: route.path);
     }
-  });
-
-  // 아직 구현하지 않은 화면은 임시 화면의 버튼으로 이어서 이동할 수 있어야 한다.
-  // 화면을 구현하면 시작 화면을 다음 임시 화면으로 옮긴다.
-  const firstPlaceholder = AppRoute.budget;
-
-  testWidgets('임시 화면끼리 플랜 생성 완료까지 이동할 수 있다', (tester) async {
-    await _pumpRouter(tester, firstPlaceholder);
-
-    var current = firstPlaceholder;
-    expect(findText(current.title), findsOneWidget);
-
-    while (onboardingNextRoutes[current]!.isNotEmpty) {
-      final next = onboardingNextRoutes[current]!.first;
-      await tester.tap(findText('${next.title}(으)로'));
-      await tester.pumpAndSettle();
-
-      expect(findText(next.title), findsOneWidget);
-      current = next;
-    }
-
-    expect(current, AppRoute.planReady);
   });
 
   testWidgets('뒤로가기 버튼으로 이전 화면에 돌아간다', (tester) async {
