@@ -52,7 +52,7 @@ void main() {
     expect(findText('선택한 카드사 1개 연결하기'), findsOneWidget);
   });
 
-  testWidgets('선택한 카드사를 목록 순서대로 하나씩 인증하고 연결 진행 화면으로 이동한다', (tester) async {
+  testWidgets('선택한 카드사를 목록 순서대로 하나씩 인증하고 연결을 진행한다', (tester) async {
     await pumpAppAt(tester, AppRoute.cardCompanySelect);
 
     // 선택 순서와 상관없이 목록 순서(KB → 우리 → 신한)로 인증한다.
@@ -78,7 +78,8 @@ void main() {
     await tester.tap(findText('인증하고 연결하기'));
     await tester.pumpAndSettle();
 
-    expect(findText(AppRoute.connecting.title), findsOneWidget);
+    // 테스트용 가짜 연결은 바로 끝나므로 모두 성공한 연결 완료 화면이 보인다.
+    expect(findText('카드 3장이\n연결됐어요'), findsOneWidget);
   });
 
   testWidgets('아이디와 비밀번호를 모두 입력해야 인증 버튼이 활성화된다', (tester) async {

@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/presentation/signup_screen.dart';
 import '../features/onboarding/presentation/card_company_select_screen.dart';
 import '../features/onboarding/presentation/codef_consent_screen.dart';
+import '../features/onboarding/presentation/connect_complete_screen.dart';
+import '../features/onboarding/presentation/connect_partial_failure_screen.dart';
+import '../features/onboarding/presentation/connecting_screen.dart';
 import '../features/onboarding/presentation/placeholder_screen.dart';
 import '../features/onboarding/presentation/service_intro_screen.dart';
 import 'app_route.dart';
@@ -48,6 +51,9 @@ Widget _screenFor(AppRoute route) {
     AppRoute.serviceIntro => const ServiceIntroScreen(),
     AppRoute.codefConsent => const CodefConsentScreen(),
     AppRoute.cardCompanySelect => const CardCompanySelectScreen(),
+    AppRoute.connecting => const ConnectingScreen(),
+    AppRoute.connectComplete => const ConnectCompleteScreen(),
+    AppRoute.connectPartialFailure => const ConnectPartialFailureScreen(),
     _ => PlaceholderScreen(
       route: route,
       nextRoutes: onboardingNextRoutes[route] ?? const [],

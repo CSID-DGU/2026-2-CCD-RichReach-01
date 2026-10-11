@@ -65,6 +65,17 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 
 - ONB-02B 카드사 계정 인증은 화면이 아니라 ONB-02A에서 띄우는 팝업이라 경로가 없습니다. 카드사를 선택하고 연결하기를 누르면 나타납니다.
 
+## 카드 연결 실패 흉내 내기 (개발용)
+
+카드 연결 API가 나오기 전까지는 가짜 연결을 씁니다. 기본은 모든 카드사가 성공하고, 아래처럼 실행하면 지정한 카드사를 실패시켜 일부 실패 화면(ONB-03C)을 확인할 수 있습니다.
+
+```bash
+flutter run --dart-define=INITIAL_ROUTE=cardCompanySelect --dart-define=FAKE_FAIL_COMPANIES=WOORI
+```
+
+- 카드사 코드: `KB`, `HYUNDAI`, `NH`, `CITI`, `WOORI`, `BC`, `SHINHAN` (쉼표로 여러 개 지정)
+- 연결 결과 화면(`connectComplete`, `connectPartialFailure`)을 시작 화면으로 바로 열면 예시 결과(KB·우리·신한)를 보여줍니다.
+
 ## 검사
 
 CI와 같은 검사를 로컬에서 실행합니다.
