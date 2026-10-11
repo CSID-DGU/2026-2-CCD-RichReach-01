@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
@@ -132,5 +133,29 @@ void main() {
     test('마지막 카드사면 안내하지 않는다', () {
       expect(nextAuthNotice(three, 2), isNull);
     });
+  });
+
+  testWidgets('마지막 카드사의 버튼 문구 "인증하고 연결하기"가 한 줄로 보인다', (tester) async {
+    await pumpAppAt(tester, AppRoute.cardCompanySelect);
+    await _select(tester, CardCompany.kb);
+    await tester.tap(findText('선택한 카드사 1개 연결하기'));
+    await tester.pumpAndSettle();
+
+    final label = find.descendant(
+      of: find.widgetWithText(FilledButton, '인증하고 연결하기'),
+      matching: find.byType(RichText),
+    );
+    final paragraph = tester.renderObject<RenderParagraph>(label);
+    final lineTops = paragraph
+        .getBoxesForSelection(
+          TextSelection(
+            baseOffset: 0,
+            extentOffset: paragraph.text.toPlainText().length,
+          ),
+        )
+        .map((box) => box.top)
+        .toSet();
+
+    expect(lineTops, hasLength(1));
   });
 }

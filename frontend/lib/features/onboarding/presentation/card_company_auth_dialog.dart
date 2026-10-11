@@ -260,6 +260,9 @@ class _DialogButton extends StatelessWidget {
     );
     final textStyle = AppTextStyles.button.copyWith(fontSize: 14);
     const size = Size.fromHeight(48);
+    // 버튼 폭이 좁아 기본 좌우 여백(24)으로는 "인증하고 연결하기"가 두 줄이 되므로 줄인다.
+    const padding = EdgeInsets.symmetric(horizontal: 12);
+    final child = _SingleLineLabel(label);
 
     if (filled) {
       return FilledButton(
@@ -270,9 +273,10 @@ class _DialogButton extends StatelessWidget {
           disabledBackgroundColor: AppColors.border,
           disabledForegroundColor: AppColors.onPrimary,
           textStyle: textStyle,
+          padding: padding,
           shape: shape,
         ),
-        child: Text(label),
+        child: child,
       );
     }
     return OutlinedButton(
@@ -282,9 +286,25 @@ class _DialogButton extends StatelessWidget {
         foregroundColor: AppColors.textSecondary,
         side: const BorderSide(color: AppColors.border),
         textStyle: textStyle,
+        padding: padding,
         shape: shape,
       ),
-      child: Text(label),
+      child: child,
+    );
+  }
+}
+
+/// 버튼 문구를 항상 한 줄로 보여준다. 글꼴·기기에 따라 폭이 모자라면 줄바꿈 대신 조금 줄인다.
+class _SingleLineLabel extends StatelessWidget {
+  const _SingleLineLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(label, maxLines: 1, softWrap: false),
     );
   }
 }
