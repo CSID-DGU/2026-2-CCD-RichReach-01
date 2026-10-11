@@ -4,4 +4,8 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- 로컬 백엔드(http://)에 접속하기 위해 debug 빌드에서만 평문 HTTP를 허용한다.
+         release 빌드에는 적용되지 않는다. -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>
