@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_text_styles.dart';
+import 'app_button.dart';
 
 /// 화면 하단의 큰 주요 버튼. [onPressed]가 null이면 비활성화된다.
 class PrimaryButton extends StatelessWidget {
@@ -28,7 +29,7 @@ class PrimaryButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppDimens.radiusButton),
           ),
         ),
-        child: Text(label),
+        child: SingleLineLabel(label),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_button.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/step_header.dart';
@@ -69,53 +70,31 @@ class ConnectPartialFailureScreen extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: AppButton(
+                  label: '다시 연결하기',
+                  height: 52,
+                  radius: 14,
                   onPressed: failed.isEmpty
                       ? null
                       : () => _retry(context, ref, failed),
-                  style: _buttonStyle(filled: false),
-                  child: const Text('다시 연결하기'),
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: FilledButton(
+                child: AppButton(
+                  label: '연결된 카드만 확인',
+                  filled: true,
+                  height: 52,
+                  radius: 14,
                   onPressed: succeeded.isEmpty
                       ? null
                       : () => context.push(AppRoute.cardSelect.path),
-                  style: _buttonStyle(filled: true),
-                  child: const Text('연결된 카드만 확인'),
                 ),
               ),
             ],
           ),
         ],
       ),
-    );
-  }
-
-  ButtonStyle _buttonStyle({required bool filled}) {
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
-    );
-    final textStyle = AppTextStyles.button.copyWith(fontSize: 14);
-    const size = Size.fromHeight(52);
-    if (filled) {
-      return FilledButton.styleFrom(
-        minimumSize: size,
-        backgroundColor: AppColors.primary,
-        disabledBackgroundColor: AppColors.border,
-        disabledForegroundColor: AppColors.onPrimary,
-        textStyle: textStyle,
-        shape: shape,
-      );
-    }
-    return OutlinedButton.styleFrom(
-      minimumSize: size,
-      foregroundColor: AppColors.textSecondary,
-      side: const BorderSide(color: AppColors.border),
-      textStyle: textStyle,
-      shape: shape,
     );
   }
 }

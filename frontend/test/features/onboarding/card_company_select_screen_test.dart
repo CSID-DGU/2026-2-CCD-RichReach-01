@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
@@ -7,6 +6,7 @@ import 'package:frontend/features/onboarding/presentation/card_company_auth_dial
 
 import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
+import '../../helpers/text_lines.dart';
 
 FilledButton _connectButton(WidgetTester tester) => tester.widget<FilledButton>(
   find.descendant(
@@ -145,17 +145,6 @@ void main() {
       of: find.widgetWithText(FilledButton, '인증하고 연결하기'),
       matching: find.byType(RichText),
     );
-    final paragraph = tester.renderObject<RenderParagraph>(label);
-    final lineTops = paragraph
-        .getBoxesForSelection(
-          TextSelection(
-            baseOffset: 0,
-            extentOffset: paragraph.text.toPlainText().length,
-          ),
-        )
-        .map((box) => box.top)
-        .toSet();
-
-    expect(lineTops, hasLength(1));
+    expect(renderedLineCount(tester, label), 1);
   });
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
+import 'package:frontend/core/widgets/app_button.dart';
 import 'package:frontend/features/onboarding/application/card_connection_providers.dart';
 import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
@@ -11,6 +12,7 @@ import 'package:frontend/features/onboarding/presentation/connect_partial_failur
 
 import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
+import '../../helpers/text_lines.dart';
 
 /// 처음 연결할 때만 [failOnce]를 실패시키고, 다시 연결하면 성공시키는 테스트용 저장소.
 class _FailOnceRepository implements CardConnectionRepository {
@@ -196,5 +198,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(findText(AppRoute.cardSelect.title), findsOneWidget);
+  });
+
+  testWidgets('일부 실패 화면의 두 버튼 문구가 각각 한 줄로 보인다', (tester) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.connecting,
+      connection: const FakeCardConnectionRepository(
+        stepDelay: Duration.zero,
+        failingCompanies: {CardCompany.woori},
+      ),
+    );
+
+    for (final label in ['다시 연결하기', '연결된 카드만 확인']) {
+      final text = find.descendant(
+        of: find.widgetWithText(AppButton, label),
+        matching: find.byType(RichText),
+      );
+      expect(renderedLineCount(tester, text), 1, reason: label);
+    }
   });
 }
