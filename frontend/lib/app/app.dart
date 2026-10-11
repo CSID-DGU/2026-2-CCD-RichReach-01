@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_theme.dart';
+import 'dev_initial_route.dart';
 import 'router.dart';
 
 class RichReachApp extends StatefulWidget {
@@ -12,7 +13,7 @@ class RichReachApp extends StatefulWidget {
 }
 
 class _RichReachAppState extends State<RichReachApp> {
-  late final GoRouter _router = createRouter();
+  late final GoRouter _router = createRouter(initialLocation: devInitialRoute);
 
   @override
   void dispose() {
