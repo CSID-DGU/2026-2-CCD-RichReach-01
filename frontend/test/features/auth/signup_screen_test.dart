@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frontend/app/app_route.dart';
 import 'package:frontend/app/router.dart';
 import 'package:frontend/core/theme/app_theme.dart';
+import 'package:frontend/features/onboarding/presentation/service_intro_screen.dart';
 
 Future<void> _pumpSignup(WidgetTester tester) async {
   // 화면 전체가 보이도록 와이어프레임 크기(414×896)로 맞춘다.
@@ -77,7 +77,7 @@ void main() {
 
     expect(find.text('이메일 형식으로 입력해 주세요.'), findsOneWidget);
     expect(find.text('비밀번호가 일치하지 않아요.'), findsOneWidget);
-    expect(find.text(AppRoute.serviceIntro.title), findsNothing);
+    expect(find.byType(ServiceIntroScreen), findsNothing);
   });
 
   testWidgets('올바르게 입력하고 가입하면 서비스 안내 화면으로 이동한다', (tester) async {
@@ -87,7 +87,7 @@ void main() {
     await _agreeTerms(tester);
     await _submit(tester);
 
-    expect(find.text(AppRoute.serviceIntro.title), findsOneWidget);
+    expect(find.byType(ServiceIntroScreen), findsOneWidget);
   });
 
   testWidgets('로그인을 누르면 준비 중 안내를 보여준다', (tester) async {

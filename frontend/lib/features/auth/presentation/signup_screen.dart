@@ -89,6 +89,7 @@ class _SignupScreenState extends State<SignupScreen> {
               title: '회원가입',
               description: '카드 혜택을 더 똑똑하게 관리해 보세요.',
               large: true,
+              descriptionGap: 2,
             ),
             const SizedBox(height: 28),
             LabeledTextField(

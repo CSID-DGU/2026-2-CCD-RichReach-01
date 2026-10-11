@@ -32,10 +32,21 @@ void main() {
     expect(find.byType(SignupScreen), findsOneWidget);
   });
 
-  testWidgets('서비스 안내에서 시작해 플랜 생성 완료까지 이동할 수 있다', (tester) async {
-    await _pumpRouter(tester, AppRoute.serviceIntro);
+  testWidgets('모든 화면이 오류 없이 열린다', (tester) async {
+    for (final route in AppRoute.values) {
+      await _pumpRouter(tester, route);
+      expect(tester.takeException(), isNull, reason: route.path);
+    }
+  });
 
-    var current = AppRoute.serviceIntro;
+  // 아직 구현하지 않은 화면은 임시 화면의 버튼으로 이어서 이동할 수 있어야 한다.
+  // 화면을 구현하면 시작 화면을 다음 임시 화면으로 옮긴다.
+  const firstPlaceholder = AppRoute.cardCompanySelect;
+
+  testWidgets('임시 화면끼리 플랜 생성 완료까지 이동할 수 있다', (tester) async {
+    await _pumpRouter(tester, firstPlaceholder);
+
+    var current = firstPlaceholder;
     expect(find.text(current.title), findsOneWidget);
 
     while (onboardingNextRoutes[current]!.isNotEmpty) {
@@ -51,15 +62,16 @@ void main() {
   });
 
   testWidgets('뒤로가기 버튼으로 이전 화면에 돌아간다', (tester) async {
-    await _pumpRouter(tester, AppRoute.serviceIntro);
+    await _pumpRouter(tester, firstPlaceholder);
 
-    await tester.tap(find.text('${AppRoute.codefConsent.title}(으)로'));
+    final next = onboardingNextRoutes[firstPlaceholder]!.first;
+    await tester.tap(find.text('${next.title}(으)로'));
     await tester.pumpAndSettle();
+    expect(find.text(next.title), findsOneWidget);
 
-    expect(find.text('1 / 5'), findsOneWidget);
     await tester.tap(find.byIcon(Icons.chevron_left));
     await tester.pumpAndSettle();
 
-    expect(find.text(AppRoute.serviceIntro.title), findsOneWidget);
+    expect(find.text(firstPlaceholder.title), findsOneWidget);
   });
 }
