@@ -26,6 +26,23 @@ Future<bool> showCardCompanyAuthDialog(
   return result ?? false;
 }
 
+/// [companies]를 순서대로 하나씩 인증 팝업으로 인증한다. 모두 마치면 true, 중간에 취소하면 false.
+Future<bool> runCardCompanyAuthFlow(
+  BuildContext context,
+  List<CardCompany> companies,
+) async {
+  for (var i = 0; i < companies.length; i++) {
+    if (!context.mounted) return false;
+    final authenticated = await showCardCompanyAuthDialog(
+      context,
+      companies: companies,
+      index: i,
+    );
+    if (!authenticated) return false;
+  }
+  return context.mounted;
+}
+
 /// 다음에 인증할 카드사 안내 문구. 마지막 카드사면 null.
 /// (예: "KB 인증 후 우리카드와 신한카드 인증이 이어집니다.")
 String? nextAuthNotice(List<CardCompany> companies, int index) {

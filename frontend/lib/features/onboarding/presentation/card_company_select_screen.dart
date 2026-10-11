@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
@@ -9,6 +10,7 @@ import '../../../core/widgets/page_title.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
 import '../../../core/widgets/word_wrap_text.dart';
+import '../application/card_connection_providers.dart';
 import '../domain/card_company.dart';
 import 'card_company_auth_dialog.dart';
 
@@ -16,15 +18,16 @@ import 'card_company_auth_dialog.dart';
 ///
 /// 연결하기를 누르면 선택한 카드사마다 차례로 계정 인증 팝업(ONB-02B)을 띄우고,
 /// 모두 인증하면 카드 연결 진행 화면으로 이동한다.
-class CardCompanySelectScreen extends StatefulWidget {
+class CardCompanySelectScreen extends ConsumerStatefulWidget {
   const CardCompanySelectScreen({super.key});
 
   @override
-  State<CardCompanySelectScreen> createState() =>
+  ConsumerState<CardCompanySelectScreen> createState() =>
       _CardCompanySelectScreenState();
 }
 
-class _CardCompanySelectScreenState extends State<CardCompanySelectScreen> {
+class _CardCompanySelectScreenState
+    extends ConsumerState<CardCompanySelectScreen> {
   final _selected = <CardCompany>{};
 
   void _toggle(CardCompany company, bool value) {
@@ -35,16 +38,11 @@ class _CardCompanySelectScreenState extends State<CardCompanySelectScreen> {
     // 인증 순서는 목록에 보이는 순서를 따른다.
     final companies = CardCompany.values.where(_selected.contains).toList();
 
-    for (var i = 0; i < companies.length; i++) {
-      final authenticated = await showCardCompanyAuthDialog(
-        context,
-        companies: companies,
-        index: i,
-      );
-      if (!authenticated || !mounted) return;
-    }
+    final authenticated = await runCardCompanyAuthFlow(context, companies);
+    if (!authenticated || !mounted) return;
 
-    if (!mounted) return;
+    ref.read(cardConnectionResultsProvider.notifier).clear();
+    ref.read(connectingCompaniesProvider.notifier).set(companies);
     context.push(AppRoute.connecting.path);
   }
 

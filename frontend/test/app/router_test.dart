@@ -7,15 +7,10 @@ import 'package:frontend/app/router.dart';
 import 'package:frontend/features/auth/presentation/signup_screen.dart';
 
 import '../helpers/finders.dart';
+import '../helpers/pump_app.dart';
 
-Future<void> _pumpRouter(WidgetTester tester, AppRoute initial) async {
-  await tester.pumpWidget(
-    MaterialApp.router(
-      routerConfig: createRouter(initialLocation: initial.path),
-    ),
-  );
-  await tester.pumpAndSettle();
-}
+Future<void> _pumpRouter(WidgetTester tester, AppRoute initial) =>
+    pumpAppAt(tester, initial);
 
 void main() {
   test('모든 화면에 다음 화면 정보가 있다', () {
@@ -43,7 +38,7 @@ void main() {
 
   // 아직 구현하지 않은 화면은 임시 화면의 버튼으로 이어서 이동할 수 있어야 한다.
   // 화면을 구현하면 시작 화면을 다음 임시 화면으로 옮긴다.
-  const firstPlaceholder = AppRoute.connecting;
+  const firstPlaceholder = AppRoute.cardSelect;
 
   testWidgets('임시 화면끼리 플랜 생성 완료까지 이동할 수 있다', (tester) async {
     await _pumpRouter(tester, firstPlaceholder);
