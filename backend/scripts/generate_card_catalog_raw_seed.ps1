@@ -82,6 +82,14 @@ foreach ($row in $rows) {
     $okCount++
 }
 
+if ($missing.Count -gt 0) {
+    Write-Host "`n[경고] 파일을 찾지 못한 $($missing.Count)건:"
+    $missing | Select-Object -First 30 | ForEach-Object { Write-Host "  - $_" }
+    # Flyway는 한 번 적용된 마이그레이션을 다시 실행하지 않으므로, 누락된 상태로
+    # seed SQL을 저장하면 그 데이터는 조용히 영구 누락될 수 있다. 그래서 바로 중단한다.
+    throw "파일 누락으로 seed SQL을 생성하지 않았습니다. CrawlRoot 경로를 확인하세요."
+}
+
 $outDir = Split-Path -Path $OutPath -Parent
 if ($outDir -and -not (Test-Path -LiteralPath $outDir)) {
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
@@ -89,7 +97,3 @@ if ($outDir -and -not (Test-Path -LiteralPath $outDir)) {
 Set-Content -LiteralPath $OutPath -Value $sb.ToString() -Encoding UTF8
 
 Write-Host "완료: $okCount 건 -> $OutPath"
-if ($missing.Count -gt 0) {
-    Write-Host "`n[경고] 파일을 찾지 못한 $($missing.Count)건:"
-    $missing | Select-Object -First 30 | ForEach-Object { Write-Host "  - $_" }
-}
