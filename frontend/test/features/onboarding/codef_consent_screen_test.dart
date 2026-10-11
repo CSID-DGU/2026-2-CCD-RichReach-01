@@ -4,6 +4,7 @@ import 'package:frontend/app/app_route.dart';
 import 'package:frontend/core/widgets/app_checkbox.dart';
 import 'package:frontend/features/onboarding/domain/codef_consent.dart';
 
+import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
 
 FilledButton _nextButton(WidgetTester tester) => tester.widget<FilledButton>(
@@ -16,7 +17,7 @@ int _checkedCount(WidgetTester tester) => tester
     .length;
 
 Future<void> _tap(WidgetTester tester, String text) async {
-  await tester.tap(find.text(text));
+  await tester.tap(findText(text));
   await tester.pump();
 }
 
@@ -60,16 +61,16 @@ void main() {
     await tester.tap(find.byIcon(Icons.chevron_right).first);
     await tester.pump();
 
-    expect(find.text('약관 내용은 준비 중이에요.'), findsOneWidget);
+    expect(findText('약관 내용은 준비 중이에요.'), findsOneWidget);
   });
 
   testWidgets('동의 후 버튼을 누르면 카드사 선택 화면으로 이동한다', (tester) async {
     await pumpAppAt(tester, AppRoute.codefConsent);
 
     await _tap(tester, '전체 동의');
-    await tester.tap(find.text('동의하고 카드사 선택하기'));
+    await tester.tap(findText('동의하고 카드사 선택하기'));
     await tester.pumpAndSettle();
 
-    expect(find.text(AppRoute.cardCompanySelect.title), findsOneWidget);
+    expect(findText(AppRoute.cardCompanySelect.title), findsOneWidget);
   });
 }

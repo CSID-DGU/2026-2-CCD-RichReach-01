@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import 'app_checkbox.dart';
+import 'word_wrap_text.dart';
 
 /// 체크박스 + 동의 문구. [onDetail]이 있으면 오른쪽에 `›`를 보여 약관 본문으로 이동한다.
 class ConsentTile extends StatelessWidget {
@@ -41,7 +42,7 @@ class ConsentTile extends StatelessWidget {
                   AppCheckbox(checked: checked),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
+                    child: WordWrapText(
                       label,
                       style:
                           labelStyle ??

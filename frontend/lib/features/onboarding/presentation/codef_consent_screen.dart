@@ -12,6 +12,7 @@ import '../../../core/widgets/page_title.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
 import '../domain/codef_consent.dart';
+import '../../../core/widgets/word_wrap_text.dart';
 
 /// ONB-02 CODEF 연결 안내 · 동의 화면.
 ///
@@ -96,7 +97,7 @@ class _CodefConsentScreenState extends State<CodefConsentScreen> {
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(AppDimens.radiusBox),
             ),
-            child: const Text(
+            child: const WordWrapText(
               '카드 비밀번호와 인증정보는 리치리치가 직접 저장하지 않아요.\n'
               '카드 연결은 CODEF를 통해 진행됩니다.',
               style: AppTextStyles.caption,
