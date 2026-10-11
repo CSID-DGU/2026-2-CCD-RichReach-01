@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/signup_screen.dart';
+import '../features/onboarding/presentation/card_company_select_screen.dart';
 import '../features/onboarding/presentation/codef_consent_screen.dart';
 import '../features/onboarding/presentation/placeholder_screen.dart';
 import '../features/onboarding/presentation/service_intro_screen.dart';
@@ -12,8 +13,7 @@ const Map<AppRoute, List<AppRoute>> onboardingNextRoutes = {
   AppRoute.signup: [AppRoute.serviceIntro],
   AppRoute.serviceIntro: [AppRoute.codefConsent],
   AppRoute.codefConsent: [AppRoute.cardCompanySelect],
-  AppRoute.cardCompanySelect: [AppRoute.cardCompanyAuth],
-  AppRoute.cardCompanyAuth: [AppRoute.connecting],
+  AppRoute.cardCompanySelect: [AppRoute.connecting],
   AppRoute.connecting: [
     AppRoute.connectComplete,
     AppRoute.connectPartialFailure,
@@ -47,6 +47,7 @@ Widget _screenFor(AppRoute route) {
     AppRoute.signup => const SignupScreen(),
     AppRoute.serviceIntro => const ServiceIntroScreen(),
     AppRoute.codefConsent => const CodefConsentScreen(),
+    AppRoute.cardCompanySelect => const CardCompanySelectScreen(),
     _ => PlaceholderScreen(
       route: route,
       nextRoutes: onboardingNextRoutes[route] ?? const [],

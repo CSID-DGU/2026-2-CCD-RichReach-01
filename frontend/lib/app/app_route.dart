@@ -9,12 +9,6 @@ enum AppRoute {
     '연결할 카드사 선택',
     step: 1,
   ),
-  cardCompanyAuth(
-    '/onboarding/card-companies/auth',
-    'ONB-02B',
-    '카드사 계정 인증',
-    step: 1,
-  ),
   connecting(
     '/onboarding/connecting',
     'ONB-03A',

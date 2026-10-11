@@ -43,7 +43,7 @@ void main() {
 
   // 아직 구현하지 않은 화면은 임시 화면의 버튼으로 이어서 이동할 수 있어야 한다.
   // 화면을 구현하면 시작 화면을 다음 임시 화면으로 옮긴다.
-  const firstPlaceholder = AppRoute.cardCompanySelect;
+  const firstPlaceholder = AppRoute.connecting;
 
   testWidgets('임시 화면끼리 플랜 생성 완료까지 이동할 수 있다', (tester) async {
     await _pumpRouter(tester, firstPlaceholder);
@@ -64,9 +64,11 @@ void main() {
   });
 
   testWidgets('뒤로가기 버튼으로 이전 화면에 돌아간다', (tester) async {
-    await _pumpRouter(tester, firstPlaceholder);
+    // 뒤로가기 버튼이 있는 임시 화면끼리 확인한다. (연결 진행 화면 등은 뒤로가기가 없음)
+    const start = AppRoute.cardSelect;
+    await _pumpRouter(tester, start);
 
-    final next = onboardingNextRoutes[firstPlaceholder]!.first;
+    final next = onboardingNextRoutes[start]!.first;
     await tester.tap(findText('${next.title}(으)로'));
     await tester.pumpAndSettle();
     expect(findText(next.title), findsOneWidget);
@@ -74,6 +76,6 @@ void main() {
     await tester.tap(find.byIcon(Icons.chevron_left));
     await tester.pumpAndSettle();
 
-    expect(findText(firstPlaceholder.title), findsOneWidget);
+    expect(findText(start.title), findsOneWidget);
   });
 }

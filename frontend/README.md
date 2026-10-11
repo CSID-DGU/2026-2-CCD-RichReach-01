@@ -54,7 +54,6 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | ONB-01 | 서비스 안내 | `/onboarding/intro` | `serviceIntro` |
 | ONB-02 | CODEF 연결 안내 | `/onboarding/codef-consent` | `codefConsent` |
 | ONB-02A | 연결할 카드사 선택 | `/onboarding/card-companies` | `cardCompanySelect` |
-| ONB-02B | 카드사 계정 인증 | `/onboarding/card-companies/auth` | `cardCompanyAuth` |
 | ONB-03A | 카드 연결 진행 | `/onboarding/connecting` | `connecting` |
 | ONB-03B | 카드 연결 완료 | `/onboarding/connect-complete` | `connectComplete` |
 | ONB-03C | 일부 연결 실패 | `/onboarding/connect-partial-failure` | `connectPartialFailure` |
@@ -63,6 +62,8 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | ONB-06 | 소비패턴·월간 예산 | `/onboarding/budget` | `budget` |
 | ONB-07A | 최초 플랜 생성 중 | `/onboarding/plan-generating` | `planGenerating` |
 | ONB-07B | 최초 플랜 생성 완료 | `/onboarding/plan-ready` | `planReady` |
+
+- ONB-02B 카드사 계정 인증은 화면이 아니라 ONB-02A에서 띄우는 팝업이라 경로가 없습니다. 카드사를 선택하고 연결하기를 누르면 나타납니다.
 
 ## 검사
 
