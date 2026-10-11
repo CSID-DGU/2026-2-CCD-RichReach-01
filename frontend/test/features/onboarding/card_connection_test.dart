@@ -7,6 +7,7 @@ import 'package:frontend/features/onboarding/application/card_connection_provide
 import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
 import 'package:frontend/features/onboarding/domain/card_connection.dart';
+import 'package:frontend/features/onboarding/presentation/card_select_screen.dart';
 import 'package:frontend/features/onboarding/presentation/connect_complete_screen.dart';
 import 'package:frontend/features/onboarding/presentation/connect_partial_failure_screen.dart';
 
@@ -135,7 +136,7 @@ void main() {
 
     await tester.tap(findText('연결된 카드 확인하기'));
     await tester.pumpAndSettle();
-    expect(findText(AppRoute.cardSelect.title), findsOneWidget);
+    expect(find.byType(CardSelectScreen), findsOneWidget);
   });
 
   testWidgets('일부 실패하면 완료·실패 개수와 실패 사유를 보여준다', (tester) async {
@@ -197,7 +198,7 @@ void main() {
     await tester.tap(findText('연결된 카드만 확인'));
     await tester.pumpAndSettle();
 
-    expect(findText(AppRoute.cardSelect.title), findsOneWidget);
+    expect(find.byType(CardSelectScreen), findsOneWidget);
   });
 
   testWidgets('일부 실패 화면의 두 버튼 문구가 각각 한 줄로 보인다', (tester) async {

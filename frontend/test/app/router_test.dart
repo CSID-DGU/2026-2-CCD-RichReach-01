@@ -5,6 +5,8 @@ import 'package:frontend/app/app.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/app/router.dart';
 import 'package:frontend/features/auth/presentation/signup_screen.dart';
+import 'package:frontend/features/onboarding/presentation/card_select_screen.dart';
+import 'package:frontend/features/onboarding/presentation/transactions_screen.dart';
 
 import '../helpers/finders.dart';
 import '../helpers/pump_app.dart';
@@ -38,7 +40,7 @@ void main() {
 
   // 아직 구현하지 않은 화면은 임시 화면의 버튼으로 이어서 이동할 수 있어야 한다.
   // 화면을 구현하면 시작 화면을 다음 임시 화면으로 옮긴다.
-  const firstPlaceholder = AppRoute.cardSelect;
+  const firstPlaceholder = AppRoute.budget;
 
   testWidgets('임시 화면끼리 플랜 생성 완료까지 이동할 수 있다', (tester) async {
     await _pumpRouter(tester, firstPlaceholder);
@@ -59,18 +61,15 @@ void main() {
   });
 
   testWidgets('뒤로가기 버튼으로 이전 화면에 돌아간다', (tester) async {
-    // 뒤로가기 버튼이 있는 임시 화면끼리 확인한다. (연결 진행 화면 등은 뒤로가기가 없음)
-    const start = AppRoute.cardSelect;
-    await _pumpRouter(tester, start);
+    await _pumpRouter(tester, AppRoute.cardSelect);
 
-    final next = onboardingNextRoutes[start]!.first;
-    await tester.tap(findText('${next.title}(으)로'));
+    await tester.tap(findText('선택한 카드 3장으로 분석하기'));
     await tester.pumpAndSettle();
-    expect(findText(next.title), findsOneWidget);
+    expect(find.byType(TransactionsScreen), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.chevron_left));
     await tester.pumpAndSettle();
 
-    expect(findText(start.title), findsOneWidget);
+    expect(find.byType(CardSelectScreen), findsOneWidget);
   });
 }
