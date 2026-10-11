@@ -7,6 +7,7 @@ import 'package:frontend/features/onboarding/application/onboarding_data_provide
 import 'package:frontend/features/onboarding/data/transaction_repository.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
 import 'package:frontend/features/onboarding/domain/transaction.dart';
+import 'package:frontend/features/onboarding/presentation/budget_screen.dart';
 import 'package:frontend/features/onboarding/presentation/card_company_select_screen.dart';
 import 'package:frontend/features/onboarding/presentation/transactions_screen.dart';
 
@@ -218,7 +219,7 @@ void main() {
       await tester.tap(findText('이 거래내역으로 분석하기'));
       await tester.pumpAndSettle();
 
-      expect(findText(AppRoute.budget.title), findsOneWidget);
+      expect(find.byType(BudgetScreen), findsOneWidget);
     });
 
     testWidgets('다시 불러오기는 분석하기 버튼 바로 위에 겹치지 않게 항상 보인다', (tester) async {

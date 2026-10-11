@@ -4,10 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/app/router.dart';
 import 'package:frontend/core/theme/app_theme.dart';
+import 'package:frontend/features/onboarding/application/budget_plan_providers.dart';
 import 'package:frontend/features/onboarding/application/card_connection_providers.dart';
 import 'package:frontend/features/onboarding/application/onboarding_data_providers.dart';
 import 'package:frontend/features/onboarding/data/card_repository.dart';
+import 'package:frontend/features/onboarding/data/budget_repository.dart';
 import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
+import 'package:frontend/features/onboarding/data/plan_repository.dart';
 import 'package:frontend/features/onboarding/data/transaction_repository.dart';
 
 /// 테스트에서는 카드 연결을 기다리지 않고 바로 끝내는 가짜 저장소를 쓴다.
@@ -22,6 +25,8 @@ Future<void> pumpAppAt(
   CardConnectionRepository connection = instantCardConnection,
   CardRepository cards = const FakeCardRepository(delay: Duration.zero),
   TransactionRepository? transactions,
+  BudgetRepository? budget,
+  PlanRepository plan = const FakePlanRepository(stepDelay: Duration.zero),
 }) async {
   tester.view.physicalSize = const Size(414, 896);
   tester.view.devicePixelRatio = 1;
@@ -35,6 +40,10 @@ Future<void> pumpAppAt(
         transactionRepositoryProvider.overrideWithValue(
           transactions ?? FakeTransactionRepository(delay: Duration.zero),
         ),
+        budgetRepositoryProvider.overrideWithValue(
+          budget ?? FakeBudgetRepository(delay: Duration.zero),
+        ),
+        planRepositoryProvider.overrideWithValue(plan),
       ],
       child: MaterialApp.router(
         theme: AppTheme.light,
