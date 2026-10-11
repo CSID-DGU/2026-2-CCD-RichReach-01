@@ -3,12 +3,14 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/signup_screen.dart';
 import '../features/onboarding/presentation/card_company_select_screen.dart';
+import '../features/onboarding/presentation/card_select_screen.dart';
 import '../features/onboarding/presentation/codef_consent_screen.dart';
 import '../features/onboarding/presentation/connect_complete_screen.dart';
 import '../features/onboarding/presentation/connect_partial_failure_screen.dart';
 import '../features/onboarding/presentation/connecting_screen.dart';
 import '../features/onboarding/presentation/placeholder_screen.dart';
 import '../features/onboarding/presentation/service_intro_screen.dart';
+import '../features/onboarding/presentation/transactions_screen.dart';
 import 'app_route.dart';
 
 /// 각 화면에서 이동할 수 있는 다음 화면. 화면을 구현하면 실제 버튼 동작으로 옮긴다.
@@ -54,6 +56,8 @@ Widget _screenFor(AppRoute route) {
     AppRoute.connecting => const ConnectingScreen(),
     AppRoute.connectComplete => const ConnectCompleteScreen(),
     AppRoute.connectPartialFailure => const ConnectPartialFailureScreen(),
+    AppRoute.cardSelect => const CardSelectScreen(),
+    AppRoute.transactions => const TransactionsScreen(),
     _ => PlaceholderScreen(
       route: route,
       nextRoutes: onboardingNextRoutes[route] ?? const [],

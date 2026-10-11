@@ -41,7 +41,7 @@ class _CardCompanySelectScreenState
     final authenticated = await runCardCompanyAuthFlow(context, companies);
     if (!authenticated || !mounted) return;
 
-    ref.read(cardConnectionResultsProvider.notifier).clear();
+    // 결과는 지우지 않고 쌓는다. ("다른 카드사 연결하기"로 돌아와 추가 연결하는 경우)
     ref.read(connectingCompaniesProvider.notifier).set(companies);
     context.push(AppRoute.connecting.path);
   }

@@ -38,9 +38,6 @@ class CardConnectionResults extends Notifier<List<CardConnectionResult>> {
   @override
   List<CardConnectionResult> build() => const [];
 
-  /// 처음부터 다시 연결할 때 이전 결과를 지운다.
-  void clear() => state = const [];
-
   /// 새 결과로 같은 카드사의 이전 결과를 덮어쓴다. (다시 연결하기는 실패한 카드사만 다시 연결하므로)
   /// 순서는 카드사 목록 순서를 따른다.
   void merge(List<CardConnectionResult> results) {
