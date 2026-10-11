@@ -80,24 +80,28 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
               _ => const _Loading(),
             },
-          const SizedBox(height: 12),
-          Center(
-            child: TextButton(
-              onPressed: _refreshing ? null : _refresh,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.textSecondary,
-                textStyle: AppTextStyles.label.copyWith(fontSize: 12),
-              ),
-              child: const Text('거래내역 다시 불러오기'),
-            ),
-          ),
         ],
       ),
-      bottom: PrimaryButton(
-        label: '이 거래내역으로 분석하기',
-        onPressed: summaryAsync.hasValue && !_refreshing
-            ? () => context.push(AppRoute.budget.path)
-            : null,
+      // "다시 불러오기"는 내용 길이와 상관없이 항상 보이도록 하단 버튼 바로 위에 고정한다.
+      bottom: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton(
+            onPressed: _refreshing ? null : _refresh,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+              textStyle: AppTextStyles.label.copyWith(fontSize: 12),
+            ),
+            child: const Text('거래내역 다시 불러오기'),
+          ),
+          const SizedBox(height: 6),
+          PrimaryButton(
+            label: '이 거래내역으로 분석하기',
+            onPressed: summaryAsync.hasValue && !_refreshing
+                ? () => context.push(AppRoute.budget.path)
+                : null,
+          ),
+        ],
       ),
     );
   }

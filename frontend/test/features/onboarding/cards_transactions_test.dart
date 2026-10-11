@@ -201,7 +201,6 @@ void main() {
         transactions: transactions,
       );
 
-      await tester.ensureVisible(findText('거래내역 다시 불러오기'));
       await tester.tap(findText('거래내역 다시 불러오기'));
       await tester.pumpAndSettle();
 
@@ -220,6 +219,25 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(findText(AppRoute.budget.title), findsOneWidget);
+    });
+
+    testWidgets('다시 불러오기는 분석하기 버튼 바로 위에 겹치지 않게 항상 보인다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.transactions,
+        transactions: _transactions(),
+      );
+
+      final link = tester.getRect(findText('거래내역 다시 불러오기'));
+      final button = tester.getRect(
+        find.widgetWithText(FilledButton, '이 거래내역으로 분석하기'),
+      );
+      final screen = tester.getRect(find.byType(TransactionsScreen));
+
+      expect(link.bottom, lessThanOrEqualTo(button.top));
+      expect(button.top - link.bottom, lessThan(24));
+      expect(link.top, greaterThanOrEqualTo(screen.top));
+      expect(button.bottom, lessThanOrEqualTo(screen.bottom));
     });
   });
 }
