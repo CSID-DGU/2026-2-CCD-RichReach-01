@@ -34,11 +34,12 @@ class InfoTile extends StatelessWidget {
             children: [
               Icon(icon, size: 22, color: AppColors.primary),
               const SizedBox(width: 8),
+              // 글꼴에 따라 제목이 길어지면 잘리지 않도록 조금 줄여서 한 줄에 맞춘다.
               Expanded(
-                child: Text(
-                  title,
-                  style: AppTextStyles.bodyStrong,
-                  overflow: TextOverflow.ellipsis,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(title, style: AppTextStyles.bodyStrong),
                 ),
               ),
             ],
@@ -47,5 +48,35 @@ class InfoTile extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// [InfoTile]을 두 줄씩 배치한다.
+class InfoTileGrid extends StatelessWidget {
+  const InfoTileGrid({super.key, required this.tiles});
+
+  final List<InfoTile> tiles;
+
+  static const _columnGap = 18.0;
+  static const _rowGap = 14.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var i = 0; i < tiles.length; i += 2) {
+      if (i > 0) rows.add(const SizedBox(height: _rowGap));
+      rows.add(
+        Row(
+          children: [
+            Expanded(child: tiles[i]),
+            const SizedBox(width: _columnGap),
+            Expanded(
+              child: i + 1 < tiles.length ? tiles[i + 1] : const SizedBox(),
+            ),
+          ],
+        ),
+      );
+    }
+    return Column(children: rows);
   }
 }

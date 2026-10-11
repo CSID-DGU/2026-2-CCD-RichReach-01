@@ -2,7 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/signup_screen.dart';
+import '../features/onboarding/presentation/codef_consent_screen.dart';
 import '../features/onboarding/presentation/placeholder_screen.dart';
+import '../features/onboarding/presentation/service_intro_screen.dart';
 import 'app_route.dart';
 
 /// 각 화면에서 이동할 수 있는 다음 화면. 화면을 구현하면 실제 버튼 동작으로 옮긴다.
@@ -43,6 +45,8 @@ GoRouter createRouter({String? initialLocation}) {
 Widget _screenFor(AppRoute route) {
   return switch (route) {
     AppRoute.signup => const SignupScreen(),
+    AppRoute.serviceIntro => const ServiceIntroScreen(),
+    AppRoute.codefConsent => const CodefConsentScreen(),
     _ => PlaceholderScreen(
       route: route,
       nextRoutes: onboardingNextRoutes[route] ?? const [],
