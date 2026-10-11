@@ -12,6 +12,22 @@ abstract final class AppTextStyles {
     color: AppColors.textPrimary,
   );
 
+  /// 큰 화면 제목 (예: 회원가입 화면의 "회원가입")
+  static const titleLarge = TextStyle(
+    fontSize: 30,
+    fontWeight: FontWeight.w600,
+    height: 1.35,
+    color: AppColors.textPrimary,
+  );
+
+  /// 상단 서비스명 ("RICH RICH")
+  static const brand = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    height: 1.35,
+    color: AppColors.textPrimary,
+  );
+
   /// 화면 제목 아래 설명
   static const description = TextStyle(
     fontSize: 14,

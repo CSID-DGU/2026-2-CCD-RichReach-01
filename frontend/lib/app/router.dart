@@ -1,5 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/auth/presentation/signup_screen.dart';
 import '../features/onboarding/presentation/placeholder_screen.dart';
 import 'app_route.dart';
 
@@ -23,19 +25,27 @@ const Map<AppRoute, List<AppRoute>> onboardingNextRoutes = {
   AppRoute.planReady: [],
 };
 
-GoRouter createRouter() {
+GoRouter createRouter({String? initialLocation}) {
   return GoRouter(
-    initialLocation: AppRoute.signup.path,
+    initialLocation: initialLocation ?? AppRoute.signup.path,
     routes: [
       for (final route in AppRoute.values)
         GoRoute(
           path: route.path,
           name: route.name,
-          builder: (context, state) => PlaceholderScreen(
-            route: route,
-            nextRoutes: onboardingNextRoutes[route] ?? const [],
-          ),
+          builder: (context, state) => _screenFor(route),
         ),
     ],
   );
+}
+
+/// 구현된 화면은 해당 화면을, 아직 없는 화면은 임시 화면을 보여준다.
+Widget _screenFor(AppRoute route) {
+  return switch (route) {
+    AppRoute.signup => const SignupScreen(),
+    _ => PlaceholderScreen(
+      route: route,
+      nextRoutes: onboardingNextRoutes[route] ?? const [],
+    ),
+  };
 }

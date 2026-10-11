@@ -13,6 +13,7 @@ class ConsentTile extends StatelessWidget {
     required this.onChanged,
     this.onDetail,
     this.emphasized = false,
+    this.labelStyle,
   });
 
   final String label;
@@ -22,6 +23,9 @@ class ConsentTile extends StatelessWidget {
 
   /// "전체 동의"처럼 굵게 보여줄 항목
   final bool emphasized;
+
+  /// 문구 스타일을 직접 지정할 때 사용 ([emphasized]보다 우선)
+  final TextStyle? labelStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -39,9 +43,11 @@ class ConsentTile extends StatelessWidget {
                   Expanded(
                     child: Text(
                       label,
-                      style: emphasized
-                          ? AppTextStyles.sectionTitle
-                          : AppTextStyles.body,
+                      style:
+                          labelStyle ??
+                          (emphasized
+                              ? AppTextStyles.sectionTitle
+                              : AppTextStyles.body),
                     ),
                   ),
                 ],
