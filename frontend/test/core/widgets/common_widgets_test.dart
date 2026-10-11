@@ -6,6 +6,8 @@ import 'package:frontend/core/widgets/card_company_tile.dart';
 import 'package:frontend/core/widgets/consent_tile.dart';
 import 'package:frontend/core/widgets/primary_button.dart';
 
+import '../../helpers/finders.dart';
+
 Widget _wrap(Widget child) {
   return MaterialApp(
     theme: AppTheme.light,
@@ -42,7 +44,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('KB국민카드'));
+    await tester.tap(findText('KB국민카드'));
     expect(changed, isTrue);
   });
 
@@ -60,7 +62,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('[필수] 카드정보 조회 동의'));
+    await tester.tap(findText('[필수] 카드정보 조회 동의'));
     expect(changed, isFalse);
 
     await tester.tap(find.byIcon(Icons.chevron_right));

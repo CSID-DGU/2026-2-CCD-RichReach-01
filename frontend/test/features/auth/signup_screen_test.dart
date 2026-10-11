@@ -4,6 +4,8 @@ import 'package:frontend/app/router.dart';
 import 'package:frontend/core/theme/app_theme.dart';
 import 'package:frontend/features/onboarding/presentation/service_intro_screen.dart';
 
+import '../../helpers/finders.dart';
+
 Future<void> _pumpSignup(WidgetTester tester) async {
   // 화면 전체가 보이도록 와이어프레임 크기(414×896)로 맞춘다.
   tester.view.physicalSize = const Size(414, 896);
@@ -38,7 +40,7 @@ FilledButton _submitButton(WidgetTester tester) =>
     tester.widget<FilledButton>(find.widgetWithText(FilledButton, '회원가입'));
 
 Future<void> _agreeTerms(WidgetTester tester) async {
-  await tester.tap(find.text('[필수] 서비스 이용약관 및 개인정보 수집에 동의합니다.'));
+  await tester.tap(findText('[필수] 서비스 이용약관 및 개인정보 수집에 동의합니다.'));
   await tester.pump();
 }
 
@@ -65,7 +67,7 @@ void main() {
     await tester.enterText(_field('010-0000-0000'), '01012345678');
     await tester.pump();
 
-    expect(find.text('010-1234-5678'), findsOneWidget);
+    expect(findText('010-1234-5678'), findsOneWidget);
   });
 
   testWidgets('잘못 입력하고 가입하면 오류를 보여주고 이동하지 않는다', (tester) async {
@@ -75,8 +77,8 @@ void main() {
     await _agreeTerms(tester);
     await _submit(tester);
 
-    expect(find.text('이메일 형식으로 입력해 주세요.'), findsOneWidget);
-    expect(find.text('비밀번호가 일치하지 않아요.'), findsOneWidget);
+    expect(findText('이메일 형식으로 입력해 주세요.'), findsOneWidget);
+    expect(findText('비밀번호가 일치하지 않아요.'), findsOneWidget);
     expect(find.byType(ServiceIntroScreen), findsNothing);
   });
 
@@ -96,6 +98,6 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, '로그인'));
     await tester.pump();
 
-    expect(find.text('로그인 화면은 준비 중이에요.'), findsOneWidget);
+    expect(findText('로그인 화면은 준비 중이에요.'), findsOneWidget);
   });
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_text_styles.dart';
+import 'word_wrap_text.dart';
 
 /// 아이콘 + 제목, 그 아래 설명이 있는 회색 타일 (예: "보유카드 정보 / 카드명·구분").
 class InfoTile extends StatelessWidget {
@@ -44,7 +45,7 @@ class InfoTile extends StatelessWidget {
               ),
             ],
           ),
-          Text(description, style: AppTextStyles.caption),
+          WordWrapText(description, style: AppTextStyles.caption),
         ],
       ),
     );

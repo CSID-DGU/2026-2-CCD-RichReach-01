@@ -6,6 +6,8 @@ import 'package:frontend/app/app_route.dart';
 import 'package:frontend/app/router.dart';
 import 'package:frontend/features/auth/presentation/signup_screen.dart';
 
+import '../helpers/finders.dart';
+
 Future<void> _pumpRouter(WidgetTester tester, AppRoute initial) async {
   await tester.pumpWidget(
     MaterialApp.router(
@@ -47,14 +49,14 @@ void main() {
     await _pumpRouter(tester, firstPlaceholder);
 
     var current = firstPlaceholder;
-    expect(find.text(current.title), findsOneWidget);
+    expect(findText(current.title), findsOneWidget);
 
     while (onboardingNextRoutes[current]!.isNotEmpty) {
       final next = onboardingNextRoutes[current]!.first;
-      await tester.tap(find.text('${next.title}(으)로'));
+      await tester.tap(findText('${next.title}(으)로'));
       await tester.pumpAndSettle();
 
-      expect(find.text(next.title), findsOneWidget);
+      expect(findText(next.title), findsOneWidget);
       current = next;
     }
 
@@ -65,13 +67,13 @@ void main() {
     await _pumpRouter(tester, firstPlaceholder);
 
     final next = onboardingNextRoutes[firstPlaceholder]!.first;
-    await tester.tap(find.text('${next.title}(으)로'));
+    await tester.tap(findText('${next.title}(으)로'));
     await tester.pumpAndSettle();
-    expect(find.text(next.title), findsOneWidget);
+    expect(findText(next.title), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.chevron_left));
     await tester.pumpAndSettle();
 
-    expect(find.text(firstPlaceholder.title), findsOneWidget);
+    expect(findText(firstPlaceholder.title), findsOneWidget);
   });
 }

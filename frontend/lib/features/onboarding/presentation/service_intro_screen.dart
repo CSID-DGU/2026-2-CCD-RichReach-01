@@ -10,6 +10,7 @@ import '../../../core/widgets/info_tile.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/page_title.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../../core/widgets/word_wrap_text.dart';
 
 /// ONB-01 서비스 안내 화면.
 class ServiceIntroScreen extends StatelessWidget {
@@ -73,7 +74,7 @@ class ServiceIntroScreen extends StatelessWidget {
             onPressed: () => context.push(AppRoute.codefConsent.path),
           ),
           const SizedBox(height: 8),
-          Text(
+          WordWrapText(
             '추가 소비를 권하지 않고 예상 소비예산 안에서 계획해요.',
             style: AppTextStyles.caption.copyWith(fontSize: 11),
             textAlign: TextAlign.center,

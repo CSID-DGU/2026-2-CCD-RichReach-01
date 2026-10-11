@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_text_styles.dart';
+import 'word_wrap_text.dart';
 
 /// 화면 제목과 그 아래 설명 문구.
 class PageTitle extends StatelessWidget {
@@ -26,13 +27,13 @@ class PageTitle extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        WordWrapText(
           title,
           style: large ? AppTextStyles.titleLarge : AppTextStyles.title,
         ),
         if (description != null) ...[
           SizedBox(height: descriptionGap),
-          Text(description!, style: AppTextStyles.description),
+          WordWrapText(description!, style: AppTextStyles.description),
         ],
       ],
     );
