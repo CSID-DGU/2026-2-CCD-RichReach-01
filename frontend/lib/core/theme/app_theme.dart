@@ -11,6 +11,7 @@ abstract final class AppTheme {
       seedColor: AppColors.primary,
       primary: AppColors.primary,
       onPrimary: AppColors.onPrimary,
+      primaryContainer: AppColors.primaryContainer,
       surface: AppColors.background,
       onSurface: AppColors.textPrimary,
     );
@@ -21,6 +22,7 @@ abstract final class AppTheme {
     );
 
     return ThemeData(
+      fontFamily: 'Pretendard',
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.background,
       appBarTheme: const AppBarTheme(
