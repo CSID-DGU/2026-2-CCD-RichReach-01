@@ -1,27 +1,33 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/labeled_text_field.dart';
+import '../../../core/widgets/notice_box.dart';
 import '../../../core/widgets/word_wrap_text.dart';
 import '../domain/card_company.dart';
 import 'onboarding_images.dart';
 
-/// ONB-02B 카드사 계정 인증 팝업을 띄운다. 인증을 마치면 true, 취소하면 false를 돌려준다.
+/// ONB-02B 카드사 계정 인증 팝업(아래에서 올라오는 팝업)을 띄운다.
+/// 인증을 마치면 true, 취소하거나 팝업을 내려 닫으면 false를 돌려준다.
 ///
 /// 아이디·비밀번호는 팝업 안에서만 다루고 밖으로 돌려주지 않는다.
-/// (화면 안내: "인증정보는 연결 과정에만 사용되며 카드루트에 저장되지 않아요.")
+/// (화면 안내: "입력 정보는 연결 요청에만 사용되고 저장되지 않아요.")
 Future<bool> showCardCompanyAuthDialog(
   BuildContext context, {
   required List<CardCompany> companies,
   required int index,
 }) async {
-  final result = await showDialog<bool>(
+  final result = await showModalBottomSheet<bool>(
     context: context,
-    barrierDismissible: false,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: AppColors.background,
     barrierColor: Colors.black.withValues(alpha: 0.38),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
     builder: (context) =>
         CardCompanyAuthDialog(companies: companies, index: index),
   );
@@ -43,19 +49,6 @@ Future<bool> runCardCompanyAuthFlow(
     if (!authenticated) return false;
   }
   return context.mounted;
-}
-
-/// 다음에 인증할 카드사 안내 문구. 마지막 카드사면 null.
-/// (예: "KB 인증 후 우리카드와 신한카드 인증이 이어집니다.")
-String? nextAuthNotice(List<CardCompany> companies, int index) {
-  final rest = companies.sublist(index + 1).map((c) => c.name).toList();
-  if (rest.isEmpty) return null;
-
-  // 카드사 이름이 모두 "카드"로 끝나 받침이 없으므로 조사는 "와"를 쓴다.
-  final names = rest.length == 1
-      ? rest.single
-      : '${rest.sublist(0, rest.length - 1).join(', ')}와 ${rest.last}';
-  return '${companies[index].badge} 인증 후 $names 인증이 이어집니다.';
 }
 
 class CardCompanyAuthDialog extends StatefulWidget {
@@ -98,34 +91,31 @@ class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final notice = nextAuthNotice(widget.companies, widget.index);
+    // 키보드가 올라오면 팝업도 함께 올리고, 아니면 화면 아래 시스템 영역만큼 띄운다.
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final systemBottom = MediaQuery.viewPaddingOf(context).bottom;
 
-    return Dialog(
-      backgroundColor: AppColors.background,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    return Padding(
+      padding: EdgeInsets.only(bottom: keyboard),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 30, 24, 20),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          0,
+          24,
+          20 + (keyboard > 0 ? 0 : systemBottom),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              '카드사 계정으로 인증',
-              style: AppTextStyles.title.copyWith(fontSize: 22, height: 1.35),
-            ),
-            const SizedBox(height: 8),
-            const WordWrapText(
-              '선택한 카드사별로 계정 인증이 필요해요.',
-              style: AppTextStyles.label,
-            ),
-            const SizedBox(height: 18),
-            _CompanyProgress(
+            const _DragHandle(),
+            const SizedBox(height: 21),
+            _Header(
               company: _company,
               step: widget.index + 1,
               total: widget.companies.length,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
             LabeledTextField(
               label: '카드사 아이디',
               hint: '아이디를 입력해 주세요',
@@ -133,7 +123,7 @@ class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
               textInputAction: TextInputAction.next,
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             LabeledTextField(
               label: '카드사 비밀번호',
               hint: '비밀번호를 입력해 주세요',
@@ -142,49 +132,22 @@ class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
               textInputAction: TextInputAction.done,
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 18),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: WordWrapText(
-                '인증정보는 연결 과정에만 사용되며\n카드루트에 저장되지 않아요.',
-                style: AppTextStyles.caption.copyWith(fontSize: 11),
-              ),
+            const SizedBox(height: 12),
+            const NoticeBox(
+              title: '안전하게 연결돼요',
+              description: '입력 정보는 연결 요청에만 사용되고 저장되지 않아요.',
             ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    label: '취소',
-                    onPressed: () => Navigator.of(context).pop(false),
-                  ),
-                ),
-                const SizedBox(width: 22),
-                Expanded(
-                  child: AppButton(
-                    label: _isLast ? '인증하고 연결하기' : '인증하고 다음',
-                    variant: AppButtonVariant.primary,
-                    onPressed: _canSubmit ? _onSubmit : null,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 19),
+            AppButton(
+              label: _isLast ? '인증하고 연결하기' : '인증하고 다음',
+              variant: AppButtonVariant.primary,
+              onPressed: _canSubmit ? _onSubmit : null,
             ),
-            if (notice != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: WordWrapText(
-                  notice,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.caption.copyWith(fontSize: 10),
-                ),
-              ),
-            ],
+            const SizedBox(height: 4),
+            AppButton(
+              label: '취소',
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
           ],
         ),
       ),
@@ -192,9 +155,29 @@ class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
   }
 }
 
-/// 지금 인증 중인 카드사와 진행 표시 (예: "KB국민카드 1 / 3").
-class _CompanyProgress extends StatelessWidget {
-  const _CompanyProgress({
+/// 팝업 위쪽 손잡이.
+class _DragHandle extends StatelessWidget {
+  const _DragHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 66,
+        height: 5,
+        margin: const EdgeInsets.only(top: 19),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceStrong,
+          borderRadius: BorderRadius.circular(3),
+        ),
+      ),
+    );
+  }
+}
+
+/// 카드사 로고, "○○ 계정 인증" 제목과 안내, 오른쪽 진행 표시 (예: "1 / 3").
+class _Header extends StatelessWidget {
+  const _Header({
     required this.company,
     required this.step,
     required this.total,
@@ -206,21 +189,45 @@ class _CompanyProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppDimens.radiusBox),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(left: 16),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CardCompanyLogo(company: company),
+          CardCompanyLogo(company: company, size: 40),
           const SizedBox(width: 14),
-          Expanded(child: Text(company.name, style: AppTextStyles.bodyStrong)),
-          Text(
-            '$step / $total',
-            style: AppTextStyles.label.copyWith(fontSize: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: WordWrapText(
+                        '${company.name} 계정 인증',
+                        style: AppTextStyles.title.copyWith(fontSize: 20),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '$step / $total',
+                        style: AppTextStyles.caption.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                const WordWrapText(
+                  '카드사 홈페이지에서 사용하는 계정을 입력해 주세요.',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
           ),
         ],
       ),

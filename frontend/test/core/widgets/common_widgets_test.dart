@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/core/theme/app_theme.dart';
 import 'package:frontend/core/widgets/app_checkbox.dart';
-import 'package:frontend/core/widgets/card_company_tile.dart';
 import 'package:frontend/core/widgets/consent_tile.dart';
 import 'package:frontend/core/widgets/primary_button.dart';
 
@@ -29,23 +28,6 @@ void main() {
 
     await tester.pumpWidget(_wrap(const AppCheckbox(checked: true)));
     expect(find.byIcon(Icons.check), findsOneWidget);
-  });
-
-  testWidgets('CardCompanyTile을 누르면 반대 선택값을 전달한다', (tester) async {
-    bool? changed;
-    await tester.pumpWidget(
-      _wrap(
-        CardCompanyTile(
-          logo: const SizedBox(),
-          name: 'KB국민카드',
-          selected: false,
-          onChanged: (value) => changed = value,
-        ),
-      ),
-    );
-
-    await tester.tap(findText('KB국민카드'));
-    expect(changed, isTrue);
   });
 
   testWidgets('ConsentTile은 문구를 누르면 체크를 바꾸고, ›를 누르면 상세로 이동한다', (tester) async {
