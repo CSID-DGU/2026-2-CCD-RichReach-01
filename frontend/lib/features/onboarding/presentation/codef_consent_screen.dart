@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
-import '../../../core/theme/app_images.dart';
+import '../../../core/assets/app_assets.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/consent_tile.dart';
 import '../../../core/widgets/notice_box.dart';
@@ -99,10 +99,10 @@ class _ConnectedInfoGrid extends StatelessWidget {
   const _ConnectedInfoGrid();
 
   static const _items = [
-    (AppImages.iconInfoCards, '보유카드'),
-    (AppImages.iconInfoPerformance, '실적 현황'),
-    (AppImages.iconInfoTransactions, '거래내역'),
-    (AppImages.iconInfoPayment, '결제 예정'),
+    (AppAssets.infoCards, '보유카드'),
+    (AppAssets.infoPerformance, '실적 현황'),
+    (AppAssets.infoTransactions, '거래내역'),
+    (AppAssets.infoPayment, '결제 예정'),
   ];
 
   static const _itemWidth = 136.0;

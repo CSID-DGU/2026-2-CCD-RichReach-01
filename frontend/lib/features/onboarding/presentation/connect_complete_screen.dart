@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
-import '../../../core/theme/app_images.dart';
+import '../../../core/assets/app_assets.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
@@ -28,7 +28,7 @@ class ConnectCompleteScreen extends ConsumerWidget {
         children: [
           const SizedBox(height: 29),
           Image.asset(
-            AppImages.illustConnectionComplete,
+            AppAssets.connectionCompleteCheck,
             width: 171,
             height: 153,
             excludeFromSemantics: true,
