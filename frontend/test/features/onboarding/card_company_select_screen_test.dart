@@ -122,7 +122,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 테스트용 가짜 연결은 바로 끝나므로 모두 성공한 연결 완료 화면이 보인다.
-    expect(findText('카드 3장이\n연결됐어요'), findsOneWidget);
+    expect(findText('카드 3장이 연결됐어요'), findsOneWidget);
   });
 
   testWidgets('아이디와 비밀번호를 모두 입력해야 인증 버튼이 활성화된다', (tester) async {

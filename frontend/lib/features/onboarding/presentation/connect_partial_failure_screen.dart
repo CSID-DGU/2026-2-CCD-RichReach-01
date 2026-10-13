@@ -3,13 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_images.dart';
-import '../../../core/widgets/app_button.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/step_header.dart';
-import '../../../core/widgets/word_wrap_text.dart';
 import '../application/card_connection_providers.dart';
 import '../domain/card_connection.dart';
 import 'card_company_auth_dialog.dart';
@@ -17,7 +15,7 @@ import 'connection_widgets.dart';
 
 /// ONB-03C 일부 연결 실패 화면.
 ///
-/// "다시 연결하기"는 실패한 카드사만 다시 인증한 뒤 연결 진행 화면으로 돌아간다.
+/// "실패한 카드 다시 연결하기"는 실패한 카드사만 다시 인증한 뒤 연결 진행 화면으로 돌아간다.
 class ConnectPartialFailureScreen extends ConsumerWidget {
   const ConnectPartialFailureScreen({super.key});
 
@@ -45,59 +43,52 @@ class ConnectPartialFailureScreen extends ConsumerWidget {
     return OnboardingScaffold(
       header: const StepHeader(step: 2, showBack: false),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 6),
-          Image.asset(
-            AppImages.illustConnectionWarning,
-            width: 171,
-            height: 153,
-            excludeFromSemantics: true,
+          const SizedBox(height: 32),
+          Center(
+            child: Image.asset(
+              AppImages.illustConnectionWarning,
+              width: 171,
+              height: 153,
+              excludeFromSemantics: true,
+            ),
           ),
-          const SizedBox(height: 40),
-          const CenteredTitle(title: '일부 카드를\n불러오지 못했어요'),
-          const SizedBox(height: 34),
-          Row(
-            children: [
-              StatusPill(label: '연결 완료  ${succeeded.length}', width: 116),
-              const SizedBox(width: 12),
-              StatusPill(
-                label: '연결 실패  ${failed.length}',
-                filled: false,
-                width: 116,
-              ),
-            ],
+          const SizedBox(height: 16),
+          const CenteredTitle(
+            title: '일부 카드를 불러오지 못했어요',
+            description: '실패한 카드사만 다시 연결할 수 있어요.',
+            titleSize: 23,
+            descriptionSize: 13,
+            descriptionGap: 8,
           ),
-          const SizedBox(height: 26),
-          for (final result in results) ...[
-            _ResultRow(result: result),
-            if (result != results.last) const SizedBox(height: 16),
+          if (succeeded.isNotEmpty) ...[
+            const SizedBox(height: 15),
+            _ResultGroup(title: '연결 완료', results: succeeded),
           ],
-          const SizedBox(height: 40),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  label: '다시 연결하기',
-                  height: 52,
-                  radius: 14,
-                  onPressed: failed.isEmpty
-                      ? null
-                      : () => _retry(context, ref, failed),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: AppButton(
-                  label: '연결된 카드만 확인',
-                  variant: AppButtonVariant.primary,
-                  height: 52,
-                  radius: 14,
-                  onPressed: succeeded.isEmpty
-                      ? null
-                      : () => context.push(AppRoute.cardSelect.path),
-                ),
-              ),
-            ],
+          if (failed.isNotEmpty) ...[
+            const SizedBox(height: 11),
+            _ResultGroup(title: '연결 실패', results: failed),
+          ],
+        ],
+      ),
+      bottom: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppButton(
+            label: '실패한 카드 다시 연결하기',
+            variant: AppButtonVariant.primary,
+            onPressed: failed.isEmpty
+                ? null
+                : () => _retry(context, ref, failed),
+          ),
+          const SizedBox(height: 4),
+          AppButton(
+            label: '연결된 카드만 확인하기',
+            onPressed: succeeded.isEmpty
+                ? null
+                : () => context.push(AppRoute.cardSelect.path),
           ),
         ],
       ),
@@ -105,46 +96,25 @@ class ConnectPartialFailureScreen extends ConsumerWidget {
   }
 }
 
-/// 카드사별 결과 한 줄 (이름, 상태 설명, 완료/실패 표시).
-class _ResultRow extends StatelessWidget {
-  const _ResultRow({required this.result});
+/// "연결 완료" / "연결 실패" 제목 아래 카드사 결과 묶음.
+class _ResultGroup extends StatelessWidget {
+  const _ResultGroup({required this.title, required this.results});
 
-  final CardConnectionResult result;
+  final String title;
+  final List<CardConnectionResult> results;
 
   @override
   Widget build(BuildContext context) {
-    final detail = result.isSuccess
-        ? '${result.cardCount}장 연결 완료'
-        : result.failureReason ?? '연결하지 못했어요.';
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 66),
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 3),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(result.company.name, style: AppTextStyles.bodyStrong),
-                  const SizedBox(height: 4),
-                  WordWrapText(detail, style: AppTextStyles.caption),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          StatusPill(label: result.isSuccess ? '완료' : '실패'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(title, style: AppTextStyles.bodyStrong),
+        const SizedBox(height: 8),
+        for (final result in results) ...[
+          ConnectionResultRow(result: result),
+          if (result != results.last) const SizedBox(height: 4),
         ],
-      ),
+      ],
     );
   }
 }
