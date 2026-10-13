@@ -12,18 +12,18 @@ abstract final class AppTextStyles {
   /// 화면 제목 (예: "보유카드를 연결해 주세요")
   static const title = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 28,
-    fontWeight: FontWeight.w600,
-    height: 1.22,
+    fontSize: 26,
+    fontWeight: FontWeight.w700,
+    height: 1.3,
     color: AppColors.textPrimary,
   );
 
-  /// 큰 화면 제목 (예: 회원가입 화면의 "회원가입")
+  /// 큰 화면 제목 (예: 서비스 안내 화면의 "같은 소비로, 카드 혜택은 더 크게")
   static const titleLarge = TextStyle(
     fontFamily: fontFamily,
     fontSize: 30,
-    fontWeight: FontWeight.w600,
-    height: 1.35,
+    fontWeight: FontWeight.w700,
+    height: 1.3,
     color: AppColors.textPrimary,
   );
 

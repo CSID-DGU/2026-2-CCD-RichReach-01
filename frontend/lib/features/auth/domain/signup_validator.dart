@@ -18,9 +18,9 @@ abstract final class SignupValidator {
     return null;
   }
 
-  static String? loginId(String value) {
+  static String? email(String value) {
     final trimmed = value.trim();
-    if (trimmed.isEmpty) return '아이디를 입력해 주세요.';
+    if (trimmed.isEmpty) return '이메일을 입력해 주세요.';
     if (!_emailPattern.hasMatch(trimmed)) return '이메일 형식으로 입력해 주세요.';
     return null;
   }

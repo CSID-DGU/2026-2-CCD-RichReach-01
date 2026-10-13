@@ -3,61 +3,78 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_text_styles.dart';
-import 'word_wrap_text.dart';
 
-/// 아이콘 + 제목, 그 아래 설명이 있는 회색 타일 (예: "보유카드 정보 / 카드명·구분").
+/// CR/Feature Tile. 왼쪽 3D 아이콘, 오른쪽 정렬 제목, 그 아래 설명이 있는 회색 타일
+/// (예: "목표 사용금액 / 카드별 월간 목표").
 class InfoTile extends StatelessWidget {
   const InfoTile({
     super.key,
-    this.icon,
-    this.image,
+    required this.image,
     required this.title,
     required this.description,
-  }) : assert(icon != null || image != null, 'icon이나 image 중 하나는 있어야 한다');
+  });
 
-  final IconData? icon;
-
-  /// 아이콘 대신 쓸 그림 경로 (예: 3D 아이콘)
-  final String? image;
+  /// 3D 아이콘 그림 경로
+  final String image;
   final String title;
   final String description;
+
+  static const _height = 69.0;
+  static const _headerHeight = 29.0;
+  static const _iconSize = 42.0;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 84,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      height: _height,
+      padding: const EdgeInsets.all(AppDimens.spacing12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppDimens.radiusField),
+        borderRadius: BorderRadius.circular(AppDimens.radiusCard),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Row(
-            children: [
-              if (image != null)
-                Image.asset(
-                  image!,
-                  width: 28,
-                  height: 28,
-                  excludeFromSemantics: true,
-                )
-              else
-                Icon(icon, size: 22, color: AppColors.primary),
-              const SizedBox(width: 8),
-              // 글꼴에 따라 제목이 길어지면 잘리지 않도록 조금 줄여서 한 줄에 맞춘다.
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(title, style: AppTextStyles.bodyStrong),
+          SizedBox(
+            height: _headerHeight,
+            child: Row(
+              children: [
+                // 아이콘 그림은 위아래 여백이 있어 줄 높이보다 크게 그린다.
+                SizedBox(
+                  width: _iconSize,
+                  child: OverflowBox(
+                    maxHeight: _iconSize,
+                    child: Image.asset(
+                      image,
+                      width: _iconSize,
+                      height: _iconSize,
+                      excludeFromSemantics: true,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                // 글꼴에 따라 제목이 길어지면 잘리지 않도록 조금 줄여서 한 줄에 맞춘다.
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      title,
+                      style: AppTextStyles.body.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          WordWrapText(description, style: AppTextStyles.caption),
+          Text(
+            description,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(height: 16 / 12),
+          ),
         ],
       ),
     );
@@ -70,19 +87,18 @@ class InfoTileGrid extends StatelessWidget {
 
   final List<InfoTile> tiles;
 
-  static const _columnGap = 18.0;
-  static const _rowGap = 14.0;
+  static const _gap = 8.0;
 
   @override
   Widget build(BuildContext context) {
     final rows = <Widget>[];
     for (var i = 0; i < tiles.length; i += 2) {
-      if (i > 0) rows.add(const SizedBox(height: _rowGap));
+      if (i > 0) rows.add(const SizedBox(height: _gap));
       rows.add(
         Row(
           children: [
             Expanded(child: tiles[i]),
-            const SizedBox(width: _columnGap),
+            const SizedBox(width: _gap),
             Expanded(
               child: i + 1 < tiles.length ? tiles[i + 1] : const SizedBox(),
             ),

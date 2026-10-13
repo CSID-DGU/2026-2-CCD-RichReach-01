@@ -2,17 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_dimens.dart';
+import '../../../core/theme/app_images.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/consent_tile.dart';
-import '../../../core/widgets/info_tile.dart';
+import '../../../core/widgets/notice_box.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/page_title.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
 import '../domain/codef_consent.dart';
-import '../../../core/widgets/word_wrap_text.dart';
 
 /// ONB-02 CODEF 연결 안내 · 동의 화면.
 ///
@@ -59,74 +57,88 @@ class _CodefConsentScreenState extends State<CodefConsentScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const PageTitle(
-            title: '보유카드를\n연결해 주세요',
-            description: '카드사에 등록된 보유카드와 거래내역을\n안전하게 불러옵니다.',
+            title: '보유카드를 연결해 주세요',
+            description: '카드사에 등록된 정보와 거래내역을 안전하게 불러와요.',
+            descriptionGap: 8,
           ),
-          const SizedBox(height: 32),
-          const Text('연결되는 정보', style: AppTextStyles.sectionTitle),
-          const SizedBox(height: 11),
-          const InfoTileGrid(
-            tiles: [
-              InfoTile(
-                icon: Icons.credit_card,
-                title: '보유카드 정보',
-                description: '카드명·구분',
-              ),
-              InfoTile(
-                icon: Icons.swap_vert,
-                title: '최근 거래내역',
-                description: '가맹점·이용금액',
-              ),
-              InfoTile(
-                icon: Icons.check,
-                title: '카드별 실적',
-                description: '현재 충족 현황',
-              ),
-              InfoTile(
-                icon: Icons.payments_outlined,
-                title: '결제 예정정보',
-                description: '예정일·청구금액',
-              ),
-            ],
+          const SizedBox(height: 65),
+          const _ConnectedInfoGrid(),
+          const SizedBox(height: 79),
+          const NoticeBox(
+            title: '인증정보는 저장하지 않아요',
+            description: '카드 연결은 CODEF를 통해 안전하게 진행돼요.',
           ),
-          const SizedBox(height: 24),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppDimens.radiusBox),
-            ),
-            child: const WordWrapText(
-              '카드 비밀번호와 인증정보는 카드루트가 직접 저장하지 않아요.\n'
-              '카드 연결은 CODEF를 통해 진행됩니다.',
-              style: AppTextStyles.caption,
-            ),
-          ),
-          const SizedBox(height: 26),
+          const SizedBox(height: 35),
+          const Text('필수 동의', style: AppTextStyles.sectionTitle),
+          const SizedBox(height: 4),
           ConsentTile(
             label: '전체 동의',
             checked: _allAgreed,
-            emphasized: true,
             onChanged: _toggleAll,
           ),
-          const Divider(),
-          const SizedBox(height: 8),
+          const Divider(height: 9),
           for (final consent in CodefConsent.values)
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: ConsentTile(
-                label: consent.label,
-                checked: _agreed.contains(consent),
-                onChanged: (value) => _toggle(consent, value),
-                onDetail: () => _showTerms(consent),
-              ),
+            ConsentTile(
+              label: consent.label,
+              checked: _agreed.contains(consent),
+              onChanged: (value) => _toggle(consent, value),
+              onDetail: () => _showTerms(consent),
             ),
         ],
       ),
       bottom: PrimaryButton(
         label: '동의하고 카드사 선택하기',
         onPressed: _allAgreed ? _onNext : null,
+      ),
+    );
+  }
+}
+
+/// 카드를 연결하면 불러오는 정보 4가지 (아이콘 + 이름, 두 줄 두 칸).
+class _ConnectedInfoGrid extends StatelessWidget {
+  const _ConnectedInfoGrid();
+
+  static const _items = [
+    (AppImages.iconInfoCards, '보유카드'),
+    (AppImages.iconInfoPerformance, '실적 현황'),
+    (AppImages.iconInfoTransactions, '거래내역'),
+    (AppImages.iconInfoPayment, '결제 예정'),
+  ];
+
+  static const _itemWidth = 136.0;
+  static const _iconSize = 34.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SizedBox(
+        width: _itemWidth * 2,
+        child: Wrap(
+          runSpacing: 22,
+          children: [
+            for (final (image, label) in _items)
+              SizedBox(
+                width: _itemWidth,
+                child: Row(
+                  children: [
+                    Image.asset(
+                      image,
+                      width: _iconSize,
+                      height: _iconSize,
+                      excludeFromSemantics: true,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      label,
+                      style: AppTextStyles.body.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

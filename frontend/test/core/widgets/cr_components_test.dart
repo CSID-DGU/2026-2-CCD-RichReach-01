@@ -140,12 +140,25 @@ void main() {
   });
 
   group('상단 바 (CR/Top bar)', () {
+    testWidgets('온보딩 기본형: 보라 뒤로가기 + 가운데 로고 + 보라 진행 표시', (tester) async {
+      await tester.pumpWidget(_wrap(const StepHeader(step: 1)));
+
+      expect(find.byTooltip('뒤로가기'), findsOneWidget);
+      expect(find.byType(BrandLogo), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.text('1 / 5')).style!.color,
+        AppColors.primary,
+      );
+    });
+
     testWidgets('뒤로가기 + 제목 + 진행 표시', (tester) async {
       await tester.pumpWidget(_wrap(const StepHeader(step: 2, title: '카드 연결')));
 
       expect(find.byTooltip('뒤로가기'), findsOneWidget);
       expect(find.text('카드 연결'), findsOneWidget);
       expect(find.text('2 / 5'), findsOneWidget);
+      // 제목이 있으면 가운데 로고는 보여주지 않는다.
+      expect(find.byType(BrandLogo), findsNothing);
     });
 
     testWidgets('로고형은 서비스 로고를 보여주고 뒤로가기가 없다', (tester) async {

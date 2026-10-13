@@ -26,7 +26,7 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
-  final _loginId = TextEditingController();
+  final _email = TextEditingController();
   final _password = TextEditingController();
   final _passwordConfirm = TextEditingController();
 
@@ -38,7 +38,7 @@ class _SignupScreenState extends State<SignupScreen> {
   List<TextEditingController> get _controllers => [
     _name,
     _phone,
-    _loginId,
+    _email,
     _password,
     _passwordConfirm,
   ];
@@ -51,7 +51,7 @@ class _SignupScreenState extends State<SignupScreen> {
   bool get _hasError => [
     SignupValidator.name(_name.text),
     SignupValidator.phoneNumber(_phone.text),
-    SignupValidator.loginId(_loginId.text),
+    SignupValidator.email(_email.text),
     SignupValidator.password(_password.text),
     SignupValidator.passwordConfirm(_password.text, _passwordConfirm.text),
   ].any((error) => error != null);
@@ -74,22 +74,23 @@ class _SignupScreenState extends State<SignupScreen> {
 
   void _onLogin() => context.go(AppRoute.login.path);
 
+  void _showTerms() {
+    // TODO(#19): 약관 본문 제공 방식이 정해지면 상세 화면으로 연결한다.
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('약관 내용은 준비 중이에요.')));
+  }
+
   @override
   Widget build(BuildContext context) {
     return OnboardingScaffold(
       body: AutofillGroup(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const BrandLogo(),
-            const SizedBox(height: 32),
-            const PageTitle(
-              title: '회원가입',
-              description: '카드 혜택을 더 똑똑하게 관리해 보세요.',
-              large: true,
-              descriptionGap: 2,
-            ),
-            const SizedBox(height: 28),
+            const Align(alignment: Alignment.centerLeft, child: BrandLogo()),
+            const PageTitle(title: '회원가입'),
+            const SizedBox(height: 14),
             LabeledTextField(
               label: '이름',
               hint: '이름을 입력해 주세요',
@@ -99,10 +100,10 @@ class _SignupScreenState extends State<SignupScreen> {
               errorText: _errorIfSubmitted(SignupValidator.name(_name.text)),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: _fieldGap),
             LabeledTextField(
               label: '전화번호',
-              hint: '010-0000-0000',
+              hint: '전화번호를 입력해 주세요',
               controller: _phone,
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.next,
@@ -113,20 +114,18 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: _fieldGap),
             LabeledTextField(
-              label: '아이디',
-              hint: 'example@email.com',
-              controller: _loginId,
+              label: '이메일',
+              hint: '이메일을 입력해 주세요',
+              controller: _email,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.email],
-              errorText: _errorIfSubmitted(
-                SignupValidator.loginId(_loginId.text),
-              ),
+              errorText: _errorIfSubmitted(SignupValidator.email(_email.text)),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: _fieldGap),
             LabeledTextField(
               label: '비밀번호',
               hint: '영문·숫자 포함 8자 이상',
@@ -139,7 +138,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: _fieldGap),
             LabeledTextField(
               label: '비밀번호 확인',
               hint: '비밀번호를 다시 입력해 주세요',
@@ -155,41 +154,45 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 18),
             ConsentTile(
               label: '[필수] 서비스 이용약관 및 개인정보 수집에 동의합니다.',
               checked: _termsAgreed,
               labelStyle: AppTextStyles.caption,
               onChanged: (value) => setState(() => _termsAgreed = value),
+              onDetail: _showTerms,
+            ),
+            const SizedBox(height: 4),
+            PrimaryButton(
+              label: '회원가입',
+              onPressed: _canSubmit ? _onSubmit : null,
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('이미 계정이 있나요?', style: _loginLinkStyle),
+                TextButton(
+                  onPressed: _onLogin,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    textStyle: _loginLinkStyle.copyWith(
+                      decoration: TextDecoration.underline,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                  ),
+                  child: const Text('로그인'),
+                ),
+              ],
             ),
           ],
         ),
       ),
-      bottom: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          PrimaryButton(
-            label: '회원가입',
-            onPressed: _canSubmit ? _onSubmit : null,
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('이미 계정이 있나요?', style: AppTextStyles.label),
-              TextButton(
-                onPressed: _onLogin,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  textStyle: AppTextStyles.label,
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                ),
-                child: const Text('로그인'),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
+
+  static const _fieldGap = 6.0;
+
+  static final _loginLinkStyle = AppTextStyles.label.copyWith(
+    color: AppColors.primary,
+  );
 }
