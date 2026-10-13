@@ -9,8 +9,11 @@ abstract final class AppColors {
   /// 보조 글자색 (설명, 라벨) — `--cr-text-secondary`
   static const textSecondary = Color(0xFF686D7A);
 
-  /// 흐린 글자색 (placeholder, 비활성 글자) — `CardRoute/Neutral/60`
+  /// 흐린 글자색 (placeholder) — `CardRoute/Neutral/60`
   static const textTertiary = Color(0xFF858996);
+
+  /// 비활성 글자색 (비활성 버튼·입력칸·체크박스) — `--cr-text-disabled`
+  static const textDisabled = Color(0xFFA5A8B3);
 
   /// 주요 버튼, 선택된 체크박스, 강조 글자 — `--cr-action-primary`
   static const primary = Color(0xFF7357C7);

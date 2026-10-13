@@ -71,7 +71,7 @@ class _BudgetDialogFrame extends StatelessWidget {
                 Expanded(
                   child: AppButton(
                     label: confirmLabel,
-                    filled: true,
+                    variant: AppButtonVariant.primary,
                     onPressed: onConfirm,
                   ),
                 ),
