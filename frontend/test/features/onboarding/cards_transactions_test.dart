@@ -94,7 +94,7 @@ void main() {
     testWidgets('연결된 카드가 모두 선택된 채로 시작한다', (tester) async {
       await pumpAppAt(tester, AppRoute.cardSelect);
 
-      for (final name in ['KB My WE:SH', '우리 NU 카드', '신한 Deep Dream']) {
+      for (final name in ['KB My WE:SH', '우리 카드의정석', '신한 Deep Dream']) {
         expect(findText(name), findsOneWidget);
       }
       expect(findText('신용 · 일부 혜택 제외'), findsOneWidget);
@@ -137,7 +137,7 @@ void main() {
       );
       expect(container.read(analysisCardsProvider).map((c) => c.name), [
         'KB My WE:SH',
-        '우리 NU 카드',
+        '우리 카드의정석',
       ]);
     });
 

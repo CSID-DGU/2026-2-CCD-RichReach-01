@@ -6,6 +6,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/word_wrap_text.dart';
 import '../domain/card_company.dart';
 import '../domain/card_connection.dart';
+import 'onboarding_images.dart';
 
 /// 화면 위쪽의 둥근 상태 아이콘 (연결 중 ↻, 완료 ✓, 실패 !).
 class StatusCircle extends StatelessWidget {
@@ -69,31 +70,14 @@ class CenteredTitle extends StatelessWidget {
   }
 }
 
-/// 카드사 약칭 배지 (30×30).
+/// 카드사 로고 (30×30).
 class CompanyBadge extends StatelessWidget {
   const CompanyBadge({super.key, required this.company});
 
   final CardCompany company;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 30,
-      height: 30,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceStrong,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Text(
-        company.badge,
-        style: AppTextStyles.caption.copyWith(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => CardCompanyLogo(company: company);
 }
 
 /// 둥근 상태 표시 (예: "완료", "연결 실패 1").

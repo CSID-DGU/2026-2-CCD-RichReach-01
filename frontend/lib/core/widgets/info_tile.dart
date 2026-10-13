@@ -9,12 +9,16 @@ import 'word_wrap_text.dart';
 class InfoTile extends StatelessWidget {
   const InfoTile({
     super.key,
-    required this.icon,
+    this.icon,
+    this.image,
     required this.title,
     required this.description,
-  });
+  }) : assert(icon != null || image != null, 'icon이나 image 중 하나는 있어야 한다');
 
-  final IconData icon;
+  final IconData? icon;
+
+  /// 아이콘 대신 쓸 그림 경로 (예: 3D 아이콘)
+  final String? image;
   final String title;
   final String description;
 
@@ -33,7 +37,15 @@ class InfoTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 22, color: AppColors.primary),
+              if (image != null)
+                Image.asset(
+                  image!,
+                  width: 28,
+                  height: 28,
+                  excludeFromSemantics: true,
+                )
+              else
+                Icon(icon, size: 22, color: AppColors.primary),
               const SizedBox(width: 8),
               // 글꼴에 따라 제목이 길어지면 잘리지 않도록 조금 줄여서 한 줄에 맞춘다.
               Expanded(

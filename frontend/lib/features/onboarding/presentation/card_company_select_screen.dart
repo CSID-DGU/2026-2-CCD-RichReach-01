@@ -13,6 +13,7 @@ import '../../../core/widgets/word_wrap_text.dart';
 import '../application/card_connection_providers.dart';
 import '../domain/card_company.dart';
 import 'card_company_auth_dialog.dart';
+import 'onboarding_images.dart';
 
 /// ONB-02A 연결할 카드사 선택 화면.
 ///
@@ -64,7 +65,7 @@ class _CardCompanySelectScreenState
           const SizedBox(height: 28),
           for (final company in CardCompany.values) ...[
             CardCompanyTile(
-              badge: company.badge,
+              logo: CardCompanyLogo(company: company, size: 36),
               name: company.name,
               selected: _selected.contains(company),
               onChanged: (value) => _toggle(company, value),

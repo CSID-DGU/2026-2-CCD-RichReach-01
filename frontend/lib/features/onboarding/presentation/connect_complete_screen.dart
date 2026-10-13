@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_images.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
@@ -29,7 +30,12 @@ class ConnectCompleteScreen extends ConsumerWidget {
       body: Column(
         children: [
           const SizedBox(height: 16),
-          const StatusCircle(icon: Icons.check, filled: true),
+          Image.asset(
+            AppImages.illustConnectionComplete,
+            width: 171,
+            height: 153,
+            excludeFromSemantics: true,
+          ),
           const SizedBox(height: 42),
           CenteredTitle(
             title: '카드 $cardCount장이\n연결됐어요',
