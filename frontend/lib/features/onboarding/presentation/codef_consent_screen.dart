@@ -98,7 +98,7 @@ class _CodefConsentScreenState extends State<CodefConsentScreen> {
               borderRadius: BorderRadius.circular(AppDimens.radiusBox),
             ),
             child: const WordWrapText(
-              '카드 비밀번호와 인증정보는 리치리치가 직접 저장하지 않아요.\n'
+              '카드 비밀번호와 인증정보는 카드루트가 직접 저장하지 않아요.\n'
               '카드 연결은 CODEF를 통해 진행됩니다.',
               style: AppTextStyles.caption,
             ),

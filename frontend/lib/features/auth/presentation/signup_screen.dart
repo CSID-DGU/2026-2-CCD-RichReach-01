@@ -83,7 +83,7 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('RICH RICH', style: AppTextStyles.brand),
+            const Text('카드루트', style: AppTextStyles.brand),
             const SizedBox(height: 32),
             const PageTitle(
               title: '회원가입',

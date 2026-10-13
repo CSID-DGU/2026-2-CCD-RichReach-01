@@ -24,7 +24,7 @@ class _RichReachAppState extends State<RichReachApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: '리치리치',
+      title: '카드루트',
       theme: AppTheme.light,
       routerConfig: _router,
       debugShowCheckedModeBanner: false,

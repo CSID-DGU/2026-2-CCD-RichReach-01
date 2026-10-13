@@ -2,10 +2,16 @@ import 'package:flutter/painting.dart';
 
 import 'app_colors.dart';
 
-/// 글자 스타일. Figma 온보딩 와이어프레임 기준.
+/// 글자 스타일. 글꼴은 Pretendard.
+/// 버튼처럼 글자 스타일을 직접 지정하는 위젯은 테마 글꼴을 이어받지 않으므로 스타일마다 글꼴을 넣는다.
+/// 크기·줄 높이는 Figma 디자인 변수(`CardRoute/Label/16`, `Body/14`, `Caption/12`)를 따르고,
+/// 변수가 없는 제목 크기는 와이어프레임 값을 유지한다.
 abstract final class AppTextStyles {
+  static const fontFamily = 'Pretendard';
+
   /// 화면 제목 (예: "보유카드를 연결해 주세요")
   static const title = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 28,
     fontWeight: FontWeight.w600,
     height: 1.22,
@@ -14,29 +20,33 @@ abstract final class AppTextStyles {
 
   /// 큰 화면 제목 (예: 회원가입 화면의 "회원가입")
   static const titleLarge = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 30,
     fontWeight: FontWeight.w600,
     height: 1.35,
     color: AppColors.textPrimary,
   );
 
-  /// 상단 서비스명 ("RICH RICH")
+  /// 상단 서비스명 ("카드루트", 로고 이미지로 바꾸기 전까지 사용)
   static const brand = TextStyle(
-    fontSize: 15,
-    fontWeight: FontWeight.w600,
-    height: 1.35,
-    color: AppColors.textPrimary,
+    fontFamily: fontFamily,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    height: 1.5,
+    color: AppColors.primary,
   );
 
-  /// 화면 제목 아래 설명
+  /// 화면 제목 아래 설명 — `CardRoute/Body/14` (14/20)
   static const description = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 14,
-    height: 1.35,
+    height: 20 / 14,
     color: AppColors.textSecondary,
   );
 
   /// 섹션 제목 (예: "연결되는 정보")
   static const sectionTitle = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 15,
     fontWeight: FontWeight.w600,
     height: 1.35,
@@ -45,6 +55,7 @@ abstract final class AppTextStyles {
 
   /// 굵은 본문 (타일 제목, 카드사 이름)
   static const bodyStrong = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 14,
     fontWeight: FontWeight.w600,
     height: 1.35,
@@ -53,6 +64,7 @@ abstract final class AppTextStyles {
 
   /// 일반 본문 (동의 항목 등)
   static const body = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 13,
     height: 1.35,
     color: AppColors.textPrimary,
@@ -60,6 +72,7 @@ abstract final class AppTextStyles {
 
   /// 입력칸 위 라벨, 진행 표시(1 / 5)
   static const label = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 13,
     fontWeight: FontWeight.w500,
     height: 1.35,
@@ -68,23 +81,26 @@ abstract final class AppTextStyles {
 
   /// 입력칸 글자
   static const input = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 15,
     height: 1.35,
     color: AppColors.textPrimary,
   );
 
-  /// 작은 보조 문구 (안내, 타일 설명)
+  /// 작은 보조 문구 (안내, 타일 설명) — `CardRoute/Caption/12` (12/18)
   static const caption = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 12,
-    height: 1.35,
+    height: 18 / 12,
     color: AppColors.textSecondary,
   );
 
-  /// 주요 버튼 글자
+  /// 주요 버튼 글자 — `CardRoute/Label/16` (SemiBold 16)
   static const button = TextStyle(
-    fontSize: 15,
+    fontFamily: fontFamily,
+    fontSize: 16,
     fontWeight: FontWeight.w600,
-    height: 1.1,
+    height: 1.2,
     color: AppColors.onPrimary,
   );
 }
