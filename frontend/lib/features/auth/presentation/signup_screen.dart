@@ -72,10 +72,7 @@ class _SignupScreenState extends State<SignupScreen> {
     context.go(AppRoute.serviceIntro.path);
   }
 
-  void _onLogin() {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('로그인 화면은 준비 중이에요.')));
-  }
+  void _onLogin() => context.go(AppRoute.login.path);
 
   @override
   Widget build(BuildContext context) {

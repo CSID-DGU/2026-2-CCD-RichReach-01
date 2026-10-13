@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app.dart';
 import 'package:frontend/app/app_route.dart';
-import 'package:frontend/features/auth/presentation/signup_screen.dart';
+import 'package:frontend/features/auth/presentation/login_screen.dart';
+import 'package:frontend/features/auth/presentation/splash_screen.dart';
 import 'package:frontend/features/onboarding/presentation/card_select_screen.dart';
 import 'package:frontend/features/onboarding/presentation/transactions_screen.dart';
 
@@ -19,11 +20,14 @@ void main() {
     expect(paths.length, AppRoute.values.length);
   });
 
-  testWidgets('앱은 회원가입 화면에서 시작한다', (tester) async {
+  testWidgets('앱은 로딩창에서 시작해 잠시 뒤 로그인 화면으로 넘어간다', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: RichReachApp()));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    expect(find.byType(SplashScreen), findsOneWidget);
 
-    expect(find.byType(SignupScreen), findsOneWidget);
+    await tester.pump(SplashScreen.displayDuration);
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginScreen), findsOneWidget);
   });
 
   testWidgets('모든 화면이 오류 없이 열린다', (tester) async {
