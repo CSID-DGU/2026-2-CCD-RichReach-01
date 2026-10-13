@@ -24,7 +24,7 @@ class ProgressTrack extends StatelessWidget {
         widthFactor: fraction.clamp(0.0, 1.0),
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.textSecondary,
+            color: AppColors.primary,
             borderRadius: radius,
           ),
         ),

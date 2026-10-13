@@ -11,17 +11,20 @@ abstract final class AppTheme {
       seedColor: AppColors.primary,
       primary: AppColors.primary,
       onPrimary: AppColors.onPrimary,
+      error: AppColors.error,
       surface: AppColors.background,
       onSurface: AppColors.textPrimary,
     );
 
-    final fieldBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppDimens.radiusField),
-      borderSide: BorderSide.none,
-    );
+    OutlineInputBorder fieldBorder(Color color, {double width = 1}) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppDimens.radiusField),
+          borderSide: BorderSide(color: color, width: width),
+        );
 
     return ThemeData(
       colorScheme: colorScheme,
+      fontFamily: AppTextStyles.fontFamily,
       scaffoldBackgroundColor: AppColors.background,
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.background,
@@ -29,19 +32,25 @@ abstract final class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
+      // 입력칸: 흰 배경 + 테두리, 입력 중에는 보라 테두리, 오류는 빨간 테두리 (CR/Text field)
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surface,
-        hintStyle: AppTextStyles.input.copyWith(color: AppColors.textSecondary),
+        fillColor: AppColors.background,
+        hintStyle: AppTextStyles.input.copyWith(color: AppColors.textTertiary),
+        errorStyle: AppTextStyles.caption.copyWith(color: AppColors.error),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 18,
+          horizontal: 16,
+          vertical: 15,
         ),
-        border: fieldBorder,
-        enabledBorder: fieldBorder,
-        focusedBorder: fieldBorder.copyWith(
-          borderSide: const BorderSide(color: AppColors.primary),
-        ),
+        border: fieldBorder(AppColors.border),
+        enabledBorder: fieldBorder(AppColors.border),
+        disabledBorder: fieldBorder(AppColors.border),
+        focusedBorder: fieldBorder(AppColors.borderFocus, width: 1.5),
+        errorBorder: fieldBorder(AppColors.error),
+        focusedErrorBorder: fieldBorder(AppColors.error, width: 1.5),
+      ),
+      textSelectionTheme: const TextSelectionThemeData(
+        cursorColor: AppColors.primary,
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.border,

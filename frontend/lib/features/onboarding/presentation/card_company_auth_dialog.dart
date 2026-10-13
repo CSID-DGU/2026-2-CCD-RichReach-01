@@ -11,7 +11,7 @@ import '../domain/card_company.dart';
 /// ONB-02B 카드사 계정 인증 팝업을 띄운다. 인증을 마치면 true, 취소하면 false를 돌려준다.
 ///
 /// 아이디·비밀번호는 팝업 안에서만 다루고 밖으로 돌려주지 않는다.
-/// (화면 안내: "인증정보는 연결 과정에만 사용되며 리치리치에 저장되지 않아요.")
+/// (화면 안내: "인증정보는 연결 과정에만 사용되며 카드루트에 저장되지 않아요.")
 Future<bool> showCardCompanyAuthDialog(
   BuildContext context, {
   required List<CardCompany> companies,
@@ -150,7 +150,7 @@ class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: WordWrapText(
-                '인증정보는 연결 과정에만 사용되며\n리치리치에 저장되지 않아요.',
+                '인증정보는 연결 과정에만 사용되며\n카드루트에 저장되지 않아요.',
                 style: AppTextStyles.caption.copyWith(fontSize: 11),
               ),
             ),

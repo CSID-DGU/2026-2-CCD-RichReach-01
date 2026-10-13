@@ -22,7 +22,7 @@ class ServiceIntroScreen extends StatelessWidget {
       body: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('RICH RICH', style: AppTextStyles.brand),
+          Text('카드루트', style: AppTextStyles.brand),
           SizedBox(height: 24),
           PageTitle(
             title: '같은 소비로,\n카드 혜택은 더 크게',
