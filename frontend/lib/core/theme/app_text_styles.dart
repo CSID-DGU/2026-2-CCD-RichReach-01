@@ -27,6 +27,17 @@ abstract final class AppTextStyles {
     color: AppColors.textPrimary,
   );
 
+  /// 상단 바 제목·로고 글자 — `CardRoute/Title/20`
+  /// (Figma는 IBM Plex Sans KR이지만 앱은 Pretendard로 통일한다)
+  static const topBarTitle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    height: 28 / 20,
+    letterSpacing: -0.2,
+    color: AppColors.textPrimary,
+  );
+
   /// 상단 서비스명 ("카드루트", 로고 이미지로 바꾸기 전까지 사용)
   static const brand = TextStyle(
     fontFamily: fontFamily,
@@ -62,11 +73,11 @@ abstract final class AppTextStyles {
     color: AppColors.textPrimary,
   );
 
-  /// 일반 본문 (동의 항목 등)
+  /// 일반 본문 (동의 항목, 체크박스 문구) — `CardRoute/Body/14` (14/20)
   static const body = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 13,
-    height: 1.35,
+    fontSize: 14,
+    height: 20 / 14,
     color: AppColors.textPrimary,
   );
 
@@ -79,11 +90,11 @@ abstract final class AppTextStyles {
     color: AppColors.textSecondary,
   );
 
-  /// 입력칸 글자
+  /// 입력칸 글자 — `CardRoute/Body/14` (14/20)
   static const input = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 15,
-    height: 1.35,
+    fontSize: 14,
+    height: 20 / 14,
     color: AppColors.textPrimary,
   );
 

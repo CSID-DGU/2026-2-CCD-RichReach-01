@@ -83,7 +83,7 @@ class ConnectPartialFailureScreen extends ConsumerWidget {
               Expanded(
                 child: AppButton(
                   label: '연결된 카드만 확인',
-                  filled: true,
+                  variant: AppButtonVariant.primary,
                   height: 52,
                   radius: 14,
                   onPressed: succeeded.isEmpty

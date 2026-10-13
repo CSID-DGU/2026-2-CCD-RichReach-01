@@ -38,16 +38,21 @@ abstract final class AppTheme {
         fillColor: AppColors.background,
         hintStyle: AppTextStyles.input.copyWith(color: AppColors.textTertiary),
         errorStyle: AppTextStyles.caption.copyWith(color: AppColors.error),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 15,
-        ),
+        // 높이 56 = 위아래 18 + 글자 줄 높이 20
+        contentPadding: const EdgeInsets.fromLTRB(16, 18, 12, 18),
+        isDense: true,
         border: fieldBorder(AppColors.border),
         enabledBorder: fieldBorder(AppColors.border),
         disabledBorder: fieldBorder(AppColors.border),
-        focusedBorder: fieldBorder(AppColors.borderFocus, width: 1.5),
+        focusedBorder: fieldBorder(
+          AppColors.borderFocus,
+          width: AppDimens.focusBorderWidth,
+        ),
         errorBorder: fieldBorder(AppColors.error),
-        focusedErrorBorder: fieldBorder(AppColors.error, width: 1.5),
+        focusedErrorBorder: fieldBorder(
+          AppColors.error,
+          width: AppDimens.focusBorderWidth,
+        ),
       ),
       textSelectionTheme: const TextSelectionThemeData(
         cursorColor: AppColors.primary,

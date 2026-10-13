@@ -167,7 +167,7 @@ class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
                 Expanded(
                   child: AppButton(
                     label: _isLast ? '인증하고 연결하기' : '인증하고 다음',
-                    filled: true,
+                    variant: AppButtonVariant.primary,
                     onPressed: _canSubmit ? _onSubmit : null,
                   ),
                 ),
