@@ -14,7 +14,6 @@ import '../../../core/widgets/step_header.dart';
 import '../../../core/widgets/word_wrap_text.dart';
 import '../application/onboarding_data_providers.dart';
 import '../domain/owned_card.dart';
-import 'connection_widgets.dart';
 import 'load_failure_view.dart';
 import 'onboarding_images.dart';
 
@@ -64,10 +63,11 @@ class _CardSelectScreenState extends ConsumerState<CardSelectScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const PageTitle(
-            title: '분석할 카드를\n확인해 주세요',
-            description: '실제로 사용하는 카드를 선택하면 더 정확한 플랜을 만들 수 있어요.',
+            title: '분석할 카드를 확인해 주세요',
+            description: '실제로 사용하는 카드를 선택하면 더 정확한 플랜을 만들어요.',
+            descriptionGap: 8,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 25),
           switch (cardsAsync) {
             AsyncData(value: final cards) => _CardList(
               cards: cards,
@@ -125,35 +125,28 @@ class _CardList extends StatelessWidget {
     final allSelected = cards.isNotEmpty && selectedIds.length == cards.length;
     return Column(
       children: [
-        Material(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppDimens.radiusBox),
-          child: InkWell(
-            onTap: () => onToggleAll(!allSelected),
-            borderRadius: BorderRadius.circular(AppDimens.radiusBox),
-            child: SizedBox(
-              height: 48,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  children: [
-                    AppCheckbox(checked: allSelected),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text('전체 선택', style: AppTextStyles.bodyStrong),
-                    ),
-                    Text(
-                      '${selectedIds.length}장 선택',
-                      style: AppTextStyles.label,
-                    ),
-                  ],
+        _OutlinedTile(
+          height: 58,
+          radius: 15,
+          onTap: () => onToggleAll(!allSelected),
+          child: Row(
+            children: [
+              AppCheckbox(checked: allSelected),
+              const SizedBox(width: 10),
+              const Expanded(child: Text('전체 선택', style: AppTextStyles.body)),
+              Text(
+                '${selectedIds.length}장 선택',
+                style: AppTextStyles.label.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
                 ),
               ),
-            ),
+            ],
           ),
         ),
+        const SizedBox(height: 20),
         for (final card in cards) ...[
-          const SizedBox(height: 16),
+          if (card != cards.first) const SizedBox(height: 4),
           _OwnedCardTile(
             card: card,
             selected: selectedIds.contains(card.id),
@@ -165,8 +158,46 @@ class _CardList extends StatelessWidget {
   }
 }
 
-/// 보유카드 한 장. 펼치면 혜택 요약(준비 중)을 보여준다.
-class _OwnedCardTile extends StatefulWidget {
+/// 흰 바탕에 회색 테두리를 두른 누를 수 있는 줄.
+class _OutlinedTile extends StatelessWidget {
+  const _OutlinedTile({
+    required this.height,
+    required this.radius,
+    required this.onTap,
+    required this.child,
+  });
+
+  final double height;
+  final double radius;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(radius);
+    return Material(
+      color: AppColors.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: borderRadius,
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: SizedBox(
+          height: height,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 19),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 보유카드 한 장: 체크, 카드 이미지, 카드 이름, "신용 · 번호".
+class _OwnedCardTile extends StatelessWidget {
   const _OwnedCardTile({
     required this.card,
     required this.selected,
@@ -178,93 +209,49 @@ class _OwnedCardTile extends StatefulWidget {
   final ValueChanged<bool> onChanged;
 
   @override
-  State<_OwnedCardTile> createState() => _OwnedCardTileState();
-}
-
-class _OwnedCardTileState extends State<_OwnedCardTile> {
-  bool _expanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    final card = widget.card;
-    final radius = BorderRadius.circular(14);
-
-    return Material(
-      color: AppColors.background,
-      shape: RoundedRectangleBorder(
-        borderRadius: radius,
-        side: const BorderSide(color: AppColors.border),
-      ),
-      child: InkWell(
-        onTap: () => widget.onChanged(!widget.selected),
-        borderRadius: radius,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 16, 6, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: AppCheckbox(checked: widget.selected),
-                  ),
-                  const SizedBox(width: 14),
-                  CardImage(card: card),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(card.name, style: AppTextStyles.bodyStrong),
-                        const SizedBox(height: 5),
-                        Text(
-                          '${card.company.name} · •••• ${card.maskedNumber}',
-                          style: AppTextStyles.caption,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  StatusPill(
-                    label: '${card.type.label} · ${card.analysisStatus.label}',
-                    filled: false,
-                    width: 200,
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    // 와이어프레임 카드 높이(110)에 맞추기 위해 버튼 높이를 칩(28)에 맞춘다.
-                    style: IconButton.styleFrom(
-                      minimumSize: const Size(44, 28),
-                      fixedSize: const Size(44, 28),
-                      padding: EdgeInsets.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: () => setState(() => _expanded = !_expanded),
-                    icon: Icon(
-                      _expanded ? Icons.expand_less : Icons.expand_more,
-                    ),
-                    color: AppColors.textSecondary,
-                    tooltip: _expanded ? '접기' : '혜택 요약 보기',
-                  ),
-                ],
-              ),
-              if (_expanded)
-                const Padding(
-                  padding: EdgeInsets.only(right: 10, top: 4),
-                  child: Text(
-                    '카드 혜택 요약은 준비 중이에요.',
-                    style: AppTextStyles.caption,
-                  ),
+    return _OutlinedTile(
+      height: 79,
+      radius: 17,
+      onTap: () => onChanged(!selected),
+      child: Row(
+        children: [
+          AppCheckbox(checked: selected),
+          const SizedBox(width: 16),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  offset: const Offset(0, 4),
+                  blurRadius: 4,
                 ),
-            ],
+              ],
+            ),
+            child: CardImage(card: card),
           ),
-        ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  card.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${card.type.label} · ${card.maskedNumber}',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

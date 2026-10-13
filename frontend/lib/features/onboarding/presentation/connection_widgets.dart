@@ -43,10 +43,24 @@ class StatusCircle extends StatelessWidget {
 
 /// 가운데 정렬된 화면 제목과 설명.
 class CenteredTitle extends StatelessWidget {
-  const CenteredTitle({super.key, required this.title, this.description});
+  const CenteredTitle({
+    super.key,
+    required this.title,
+    this.description,
+    this.titleSize,
+    this.descriptionSize,
+    this.descriptionGap = 12,
+  });
 
   final String title;
   final String? description;
+
+  /// 제목 글자 크기 (기본은 화면 제목 크기)
+  final double? titleSize;
+
+  /// 설명 글자 크기 (기본 14)
+  final double? descriptionSize;
+  final double descriptionGap;
 
   @override
   Widget build(BuildContext context) {
@@ -55,14 +69,19 @@ class CenteredTitle extends StatelessWidget {
         WordWrapText(
           title,
           textAlign: TextAlign.center,
-          style: AppTextStyles.title.copyWith(height: 1.25),
+          style: AppTextStyles.title.copyWith(
+            height: 1.25,
+            fontSize: titleSize,
+          ),
         ),
         if (description != null) ...[
-          const SizedBox(height: 12),
+          SizedBox(height: descriptionGap),
           WordWrapText(
             description!,
             textAlign: TextAlign.center,
-            style: AppTextStyles.description,
+            style: AppTextStyles.description.copyWith(
+              fontSize: descriptionSize,
+            ),
           ),
         ],
       ],
@@ -70,14 +89,68 @@ class CenteredTitle extends StatelessWidget {
   }
 }
 
-/// 카드사 로고 (30×30).
-class CompanyBadge extends StatelessWidget {
-  const CompanyBadge({super.key, required this.company});
+/// 카드사별 연결 결과 한 줄: 로고, 카드사 이름, 결과 설명, 오른쪽 "완료"/"실패" 표시.
+class ConnectionResultRow extends StatelessWidget {
+  const ConnectionResultRow({super.key, required this.result});
 
-  final CardCompany company;
+  final CardConnectionResult result;
 
   @override
-  Widget build(BuildContext context) => CardCompanyLogo(company: company);
+  Widget build(BuildContext context) {
+    final success = result.isSuccess;
+    final detail = success
+        ? '${result.cardCount}장 연결 완료'
+        : result.failureReason ?? '연결하지 못했어요.';
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 72),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          CardCompanyLogo(company: result.company, size: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  result.company.name,
+                  style: AppTextStyles.bodyStrong.copyWith(fontSize: 15),
+                ),
+                const SizedBox(height: 4),
+                WordWrapText(detail, style: AppTextStyles.caption),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 74,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: success
+                  ? AppColors.primarySubtle
+                  : AppColors.errorBackground,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              success ? '완료' : '실패',
+              style: AppTextStyles.caption.copyWith(
+                fontWeight: FontWeight.w600,
+                height: 1.1,
+                color: success ? AppColors.onPrimarySubtle : AppColors.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// 둥근 상태 표시 (예: "완료", "연결 실패 1").

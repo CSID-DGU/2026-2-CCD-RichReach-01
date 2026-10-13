@@ -97,8 +97,8 @@ void main() {
       for (final name in ['KB My WE:SH', '우리 카드의정석', '신한 Deep Dream']) {
         expect(findText(name), findsOneWidget);
       }
-      expect(findText('신용 · 일부 혜택 제외'), findsOneWidget);
-      expect(findText('우리카드 · •••• 8830'), findsOneWidget);
+      expect(findText('신용 · 0912'), findsOneWidget);
+      expect(findText('체크 · 8830'), findsOneWidget);
       expect(findText('3장 선택'), findsOneWidget);
       expect(_checkedCount(tester), 4); // 전체 선택 + 카드 3장
       expect(findText('선택한 카드 3장으로 분석하기'), findsOneWidget);
@@ -149,15 +149,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(CardCompanySelectScreen), findsOneWidget);
-    });
-
-    testWidgets('펼치기를 누르면 혜택 요약 준비 중 안내를 보여준다', (tester) async {
-      await pumpAppAt(tester, AppRoute.cardSelect);
-
-      await tester.tap(find.byIcon(Icons.expand_more).first);
-      await tester.pump();
-
-      expect(findText('카드 혜택 요약은 준비 중이에요.'), findsOneWidget);
     });
   });
 

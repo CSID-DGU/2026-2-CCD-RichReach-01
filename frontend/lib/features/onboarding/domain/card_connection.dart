@@ -23,16 +23,15 @@ class CardConnectionResult {
   bool get isSuccess => status == ConnectionStatus.success;
 }
 
-/// 카드 연결 진행 단계. 진행 중·대기 문구와 완료 문구가 다르다.
+/// 카드 연결 진행 단계. 연결 진행 화면의 "연결 진행 중" 아래에 [message]를 차례대로 보여준다.
 enum ConnectionStep {
-  companyAuth('카드사 인증 중', '카드사 인증 완료'),
-  cards('보유카드 확인 중', '보유카드 확인 완료'),
-  performance('실적 정보 확인 중', '실적 정보 확인 완료');
+  companyAuth('카드사 인증 중이에요'),
+  companyAuthDone('카드사 인증을 완료했어요'),
+  cardsAndPerformance('보유카드와 실적 정보를 확인하고 있어요');
 
-  const ConnectionStep(this.inProgressLabel, this.doneLabel);
+  const ConnectionStep(this.message);
 
-  final String inProgressLabel;
-  final String doneLabel;
+  final String message;
 }
 
 /// 연결 진행 상황. [results]가 있으면 연결이 끝난 것이다.
