@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_route.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
+import '../../../core/theme/app_images.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/step_header.dart';
@@ -84,7 +85,12 @@ class _ConnectingScreenState extends ConsumerState<ConnectingScreen> {
         body: Column(
           children: [
             const SizedBox(height: 24),
-            const StatusCircle(icon: Icons.refresh, size: 120),
+            Image.asset(
+              AppImages.illustConnectionProgress,
+              width: 251,
+              height: 188,
+              excludeFromSemantics: true,
+            ),
             const SizedBox(height: 36),
             const CenteredTitle(
               title: '카드 정보를\n불러오고 있어요',

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_theme.dart';
 import 'package:frontend/core/widgets/app_checkbox.dart';
+import 'package:frontend/core/widgets/brand_logo.dart';
 import 'package:frontend/core/widgets/labeled_text_field.dart';
 import 'package:frontend/core/widgets/step_header.dart';
 
@@ -147,13 +148,10 @@ void main() {
       expect(find.text('2 / 5'), findsOneWidget);
     });
 
-    testWidgets('로고형은 서비스명을 보라색으로 보여주고 뒤로가기가 없다', (tester) async {
+    testWidgets('로고형은 서비스 로고를 보여주고 뒤로가기가 없다', (tester) async {
       await tester.pumpWidget(_wrap(const StepHeader(logo: true)));
 
-      expect(
-        tester.widget<Text>(find.text('카드루트')).style!.color,
-        AppColors.primary,
-      );
+      expect(find.byType(BrandLogo), findsOneWidget);
       expect(find.byTooltip('뒤로가기'), findsNothing);
     });
   });

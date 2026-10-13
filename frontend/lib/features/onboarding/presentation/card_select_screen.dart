@@ -16,6 +16,7 @@ import '../application/onboarding_data_providers.dart';
 import '../domain/owned_card.dart';
 import 'connection_widgets.dart';
 import 'load_failure_view.dart';
+import 'onboarding_images.dart';
 
 /// ONB-04 분석할 카드 확인 화면. 처음에는 모든 카드가 선택돼 있다.
 class CardSelectScreen extends ConsumerStatefulWidget {
@@ -210,7 +211,7 @@ class _OwnedCardTileState extends State<_OwnedCardTile> {
                     child: AppCheckbox(checked: widget.selected),
                   ),
                   const SizedBox(width: 14),
-                  const _CardThumbnail(),
+                  CardImage(card: card),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -263,31 +264,6 @@ class _OwnedCardTileState extends State<_OwnedCardTile> {
                 ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 카드 이미지 자리 (58×38).
-class _CardThumbnail extends StatelessWidget {
-  const _CardThumbnail();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 58,
-      height: 38,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceStrong,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        'CARD',
-        style: AppTextStyles.caption.copyWith(
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );

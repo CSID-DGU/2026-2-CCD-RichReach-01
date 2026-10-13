@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_text_styles.dart';
+import 'brand_logo.dart';
 
 /// CR/Top bar. 높이 64, 좌우 여백 20.
 ///
 /// - 기본: 왼쪽 뒤로가기(+ [title]), 오른쪽 진행 표시(예: "1 / 5")
-/// - [logo]: 왼쪽에 서비스명 "카드루트"(보라)
+/// - [logo]: 왼쪽에 가로형 서비스 로고
 /// - [showBack]이 false면 뒤로가기를 숨긴다
 class StepHeader extends StatelessWidget {
   const StepHeader({
@@ -44,12 +45,7 @@ class StepHeader extends StatelessWidget {
         child: Row(
           children: [
             if (logo)
-              Text(
-                '카드루트',
-                style: AppTextStyles.topBarTitle.copyWith(
-                  color: AppColors.primary,
-                ),
-              )
+              const BrandLogo()
             else ...[
               if (showBack)
                 SizedBox.square(

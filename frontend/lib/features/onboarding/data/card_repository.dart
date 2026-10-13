@@ -33,7 +33,7 @@ class FakeCardRepository implements CardRepository {
     ),
     CardCompany.woori: OwnedCard(
       id: 'WOORI-8830',
-      name: '우리 NU 카드',
+      name: '우리 카드의정석',
       company: CardCompany.woori,
       maskedNumber: '8830',
       type: CardType.check,

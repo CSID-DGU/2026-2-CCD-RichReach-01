@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_images.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
@@ -46,7 +47,12 @@ class ConnectPartialFailureScreen extends ConsumerWidget {
       body: Column(
         children: [
           const SizedBox(height: 6),
-          const StatusCircle(icon: Icons.priority_high),
+          Image.asset(
+            AppImages.illustConnectionWarning,
+            width: 171,
+            height: 153,
+            excludeFromSemantics: true,
+          ),
           const SizedBox(height: 40),
           const CenteredTitle(title: '일부 카드를\n불러오지 못했어요'),
           const SizedBox(height: 34),

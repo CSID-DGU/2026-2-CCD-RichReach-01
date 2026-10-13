@@ -5,6 +5,7 @@ import '../../../app/app_route.dart';
 import '../../../core/formatters/phone_number_formatter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/consent_tile.dart';
 import '../../../core/widgets/labeled_text_field.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
@@ -83,7 +84,7 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('카드루트', style: AppTextStyles.brand),
+            const BrandLogo(),
             const SizedBox(height: 32),
             const PageTitle(
               title: '회원가입',

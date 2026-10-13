@@ -36,7 +36,7 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         CardCompanyTile(
-          badge: 'KB',
+          logo: const SizedBox(),
           name: 'KB국민카드',
           selected: false,
           onChanged: (value) => changed = value,

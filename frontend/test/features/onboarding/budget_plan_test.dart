@@ -85,7 +85,7 @@ void main() {
     expect(plan.cardTargets.map((t) => t.cardName), [
       '신한 Deep Dream',
       'KB My WE:SH',
-      '우리 NU 카드',
+      '우리 카드의정석',
     ]);
     expect(plan.cardTargets.map((t) => t.targetAmount), [
       350000,

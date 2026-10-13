@@ -38,15 +38,6 @@ abstract final class AppTextStyles {
     color: AppColors.textPrimary,
   );
 
-  /// 상단 서비스명 ("카드루트", 로고 이미지로 바꾸기 전까지 사용)
-  static const brand = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 16,
-    fontWeight: FontWeight.w700,
-    height: 1.5,
-    color: AppColors.primary,
-  );
-
   /// 화면 제목 아래 설명 — `CardRoute/Body/14` (14/20)
   static const description = TextStyle(
     fontFamily: fontFamily,

@@ -7,6 +7,7 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/labeled_text_field.dart';
 import '../../../core/widgets/word_wrap_text.dart';
 import '../domain/card_company.dart';
+import 'onboarding_images.dart';
 
 /// ONB-02B 카드사 계정 인증 팝업을 띄운다. 인증을 마치면 true, 취소하면 false를 돌려준다.
 ///
@@ -214,22 +215,7 @@ class _CompanyProgress extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceStrong,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Text(
-              company.badge,
-              style: AppTextStyles.caption.copyWith(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          CardCompanyLogo(company: company),
           const SizedBox(width: 14),
           Expanded(child: Text(company.name, style: AppTextStyles.bodyStrong)),
           Text(
