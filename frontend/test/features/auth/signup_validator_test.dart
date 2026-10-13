@@ -26,16 +26,16 @@ void main() {
     });
   });
 
-  group('아이디', () {
+  group('이메일', () {
     test('이메일 형식이면 통과 (앞뒤 공백 무시)', () {
-      expect(SignupValidator.loginId('user@example.com'), isNull);
-      expect(SignupValidator.loginId(' user@example.com '), isNull);
+      expect(SignupValidator.email('user@example.com'), isNull);
+      expect(SignupValidator.email(' user@example.com '), isNull);
     });
 
     test('이메일 형식이 아니면 오류', () {
-      expect(SignupValidator.loginId(''), isNotNull);
-      expect(SignupValidator.loginId('user'), isNotNull);
-      expect(SignupValidator.loginId('user@example'), isNotNull);
+      expect(SignupValidator.email(''), isNotNull);
+      expect(SignupValidator.email('user'), isNotNull);
+      expect(SignupValidator.email('user@example'), isNotNull);
     });
   });
 

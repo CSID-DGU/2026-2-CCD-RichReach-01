@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool get _canSubmit => _email.text.isNotEmpty && _password.text.isNotEmpty;
 
   String? get _emailError =>
-      _submitted ? SignupValidator.loginId(_email.text) : null;
+      _submitted ? SignupValidator.email(_email.text) : null;
 
   @override
   void dispose() {
@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _onSubmit() {
     setState(() => _submitted = true);
-    if (SignupValidator.loginId(_email.text) != null) return;
+    if (SignupValidator.email(_email.text) != null) return;
 
     // TODO(#19): 로그인 API 연동 후 요청 결과에 따라 이동한다. 비밀번호는 저장하지 않는다.
     context.go(AppRoute.serviceIntro.path);

@@ -29,13 +29,13 @@ Future<void> _fillForm(
   WidgetTester tester, {
   String name = '박지현',
   String phone = '01012345678',
-  String loginId = 'user@example.com',
+  String email = 'user@example.com',
   String password = 'abcd1234',
   String passwordConfirm = 'abcd1234',
 }) async {
   await tester.enterText(_field('이름을 입력해 주세요'), name);
-  await tester.enterText(_field('010-0000-0000'), phone);
-  await tester.enterText(_field('example@email.com'), loginId);
+  await tester.enterText(_field('전화번호를 입력해 주세요'), phone);
+  await tester.enterText(_field('이메일을 입력해 주세요'), email);
   await tester.enterText(_field('영문·숫자 포함 8자 이상'), password);
   await tester.enterText(_field('비밀번호를 다시 입력해 주세요'), passwordConfirm);
   await tester.pump();
@@ -69,7 +69,7 @@ void main() {
   testWidgets('전화번호는 하이픈이 자동으로 들어간다', (tester) async {
     await _pumpSignup(tester);
 
-    await tester.enterText(_field('010-0000-0000'), '01012345678');
+    await tester.enterText(_field('전화번호를 입력해 주세요'), '01012345678');
     await tester.pump();
 
     expect(findText('010-1234-5678'), findsOneWidget);
@@ -78,7 +78,7 @@ void main() {
   testWidgets('잘못 입력하고 가입하면 오류를 보여주고 이동하지 않는다', (tester) async {
     await _pumpSignup(tester);
 
-    await _fillForm(tester, loginId: 'user', passwordConfirm: 'abcd9999');
+    await _fillForm(tester, email: 'user', passwordConfirm: 'abcd9999');
     await _agreeTerms(tester);
     await _submit(tester);
 

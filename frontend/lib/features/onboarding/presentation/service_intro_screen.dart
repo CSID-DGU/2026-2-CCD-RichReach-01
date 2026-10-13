@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_images.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/brand_logo.dart';
@@ -19,20 +18,21 @@ class ServiceIntroScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return OnboardingScaffold(
-      body: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          BrandLogo(),
-          SizedBox(height: 24),
-          PageTitle(
+          const Align(alignment: Alignment.centerLeft, child: BrandLogo()),
+          const SizedBox(height: 14),
+          const PageTitle(
             title: '같은 소비로,\n카드 혜택은 더 크게',
             description:
-                '보유한 카드와 소비패턴을 분석해 한 달 동안\n'
-                '어떤 카드를 어디에 사용하면 좋은지 알려드려요.',
+                '보유 카드와 소비패턴을 분석해 한 달 동안\n'
+                '어떤 카드를 어디에 쓰면 좋은지 알려드려요.',
             large: true,
+            descriptionGap: 4,
           ),
-          SizedBox(height: 26),
-          Center(
+          const SizedBox(height: 56),
+          const Center(
             child: Image(
               image: AssetImage(AppImages.illustCardStack),
               width: 258,
@@ -40,8 +40,8 @@ class ServiceIntroScreen extends StatelessWidget {
               excludeFromSemantics: true,
             ),
           ),
-          SizedBox(height: 32),
-          InfoTileGrid(
+          const SizedBox(height: 33),
+          const InfoTileGrid(
             tiles: [
               InfoTile(
                 image: AppImages.icon3dTargetAmount,
@@ -65,66 +65,18 @@ class ServiceIntroScreen extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 26),
-          Text('계산 범위', style: AppTextStyles.sectionTitle),
-          SizedBox(height: 11),
-          _ScopeChip(label: '포함', items: '할인 · 캐시백 · 환산 포인트', filled: true),
-          SizedBox(height: 10),
-          _ScopeChip(label: '별도', items: '마일리지 · 라운지 · 바우처'),
-        ],
-      ),
-      bottom: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+          const SizedBox(height: 23),
           PrimaryButton(
             label: '카드 연결하고 시작하기',
             onPressed: () => context.push(AppRoute.codefConsent.path),
           ),
-          const SizedBox(height: 8),
-          WordWrapText(
+          const SizedBox(height: 9),
+          const WordWrapText(
             '추가 소비를 권하지 않고 예상 소비예산 안에서 계획해요.',
-            style: AppTextStyles.caption.copyWith(fontSize: 11),
+            style: AppTextStyles.caption,
             textAlign: TextAlign.center,
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// "계산 범위"의 한 줄 안내 (예: "포함 할인 · 캐시백 · 환산 포인트").
-class _ScopeChip extends StatelessWidget {
-  const _ScopeChip({
-    required this.label,
-    required this.items,
-    this.filled = false,
-  });
-
-  final String label;
-  final String items;
-
-  /// 진한 배경(포함)인지, 연한 배경(별도)인지
-  final bool filled;
-
-  @override
-  Widget build(BuildContext context) {
-    final textColor = filled ? AppColors.onPrimary : AppColors.textSecondary;
-    return Container(
-      height: 28,
-      width: double.infinity,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: filled ? AppColors.primary : AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: filled ? null : Border.all(color: AppColors.border),
-      ),
-      child: Text(
-        '$label  $items',
-        style: AppTextStyles.caption.copyWith(
-          color: textColor,
-          fontWeight: FontWeight.w500,
-          height: 1.1,
-        ),
       ),
     );
   }

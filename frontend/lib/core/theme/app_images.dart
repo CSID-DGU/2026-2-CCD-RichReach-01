@@ -23,6 +23,12 @@ abstract final class AppImages {
       '$_dir/icon3d_prepayment_recommendation.png';
   static const icon3dPerformanceLimit = '$_dir/icon3d_performance_limit.png';
 
+  // 연결되는 정보 아이콘 (CODEF 연결 안내, 연보라 원 포함)
+  static const iconInfoCards = '$_dir/icon_info_cards.png';
+  static const iconInfoTransactions = '$_dir/icon_info_transactions.png';
+  static const iconInfoPerformance = '$_dir/icon_info_performance.png';
+  static const iconInfoPayment = '$_dir/icon_info_payment.png';
+
   // 카드사 로고
   static const companyKb = '$_dir/company_kb.png';
   static const companyHyundai = '$_dir/company_hyundai.png';
@@ -50,6 +56,10 @@ abstract final class AppImages {
     icon3dCategoryRecommendation,
     icon3dPrepaymentRecommendation,
     icon3dPerformanceLimit,
+    iconInfoCards,
+    iconInfoTransactions,
+    iconInfoPerformance,
+    iconInfoPayment,
     companyKb,
     companyHyundai,
     companyNh,
