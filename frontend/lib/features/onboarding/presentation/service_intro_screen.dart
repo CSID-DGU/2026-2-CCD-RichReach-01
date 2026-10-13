@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
-import '../../../core/theme/app_images.dart';
+import '../../../core/assets/app_assets.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/info_tile.dart';
@@ -34,7 +34,7 @@ class ServiceIntroScreen extends StatelessWidget {
           const SizedBox(height: 56),
           const Center(
             child: Image(
-              image: AssetImage(AppImages.illustCardStack),
+              image: AssetImage(AppAssets.onboardingCardStack),
               width: 258,
               height: 128,
               excludeFromSemantics: true,
@@ -44,22 +44,22 @@ class ServiceIntroScreen extends StatelessWidget {
           const InfoTileGrid(
             tiles: [
               InfoTile(
-                image: AppImages.icon3dTargetAmount,
+                image: AppAssets.featureTargetSpending,
                 title: '목표 사용금액',
                 description: '카드별 월간 목표',
               ),
               InfoTile(
-                image: AppImages.icon3dCategoryRecommendation,
+                image: AppAssets.featureCategoryRecommendation,
                 title: '업종별 권장 카드',
                 description: '소비처별 추천',
               ),
               InfoTile(
-                image: AppImages.icon3dPrepaymentRecommendation,
+                image: AppAssets.featurePrePaymentRecommendation,
                 title: '결제 전 카드 추천',
                 description: '금액 구간별 안내',
               ),
               InfoTile(
-                image: AppImages.icon3dPerformanceLimit,
+                image: AppAssets.featurePerformanceLimit,
                 title: '실적·한도 관리',
                 description: '남은 조건 확인',
               ),

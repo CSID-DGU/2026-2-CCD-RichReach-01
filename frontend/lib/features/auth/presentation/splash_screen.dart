@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_images.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/brand_symbol_mark.dart';
 
@@ -35,12 +34,6 @@ class _SplashScreenState extends State<SplashScreen> {
         if (mounted) context.go(AppRoute.login.path);
       });
     });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    precacheImage(const AssetImage(AppImages.logoSymbol), context);
   }
 
   @override

@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_images.dart';
+import '../../../core/assets/app_assets.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../domain/card_company.dart';
 import '../domain/owned_card.dart';
 
 /// 카드사 로고 그림 경로.
 String companyLogoAsset(CardCompany company) => switch (company) {
-  CardCompany.kb => AppImages.companyKb,
-  CardCompany.hyundai => AppImages.companyHyundai,
-  CardCompany.nh => AppImages.companyNh,
-  CardCompany.citi => AppImages.companyCiti,
-  CardCompany.woori => AppImages.companyWoori,
-  CardCompany.bc => AppImages.companyBc,
-  CardCompany.shinhan => AppImages.companyShinhan,
+  CardCompany.kb => AppAssets.cardCompanyKbKookmin,
+  CardCompany.hyundai => AppAssets.cardCompanyHyundai,
+  CardCompany.nh => AppAssets.cardCompanyNh,
+  CardCompany.citi => AppAssets.cardCompanyCiti,
+  CardCompany.woori => AppAssets.cardCompanyWoori,
+  CardCompany.bc => AppAssets.cardCompanyBc,
+  CardCompany.shinhan => AppAssets.cardCompanyShinhan,
 };
 
 /// 카드 이미지 경로. 그림이 없는 카드는 null (API 연동 후에는 서버의 카드 이미지 주소를 쓴다).
 String? cardImageAsset(OwnedCard card) => switch (card.id) {
-  'SHINHAN-2471' => AppImages.cardShinhanDeepDream,
-  'KB-0912' => AppImages.cardKbMyWesh,
-  'WOORI-8830' => AppImages.cardWooriCardUiJeongseok,
+  'SHINHAN-2471' => AppAssets.cardShinhanDeepDream,
+  'KB-0912' => AppAssets.cardKbMyWesh,
+  'WOORI-8830' => AppAssets.cardWooriCardUiJeongseok,
   _ => null,
 };
 
