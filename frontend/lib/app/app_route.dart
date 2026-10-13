@@ -10,7 +10,7 @@ enum AppRoute {
     '/onboarding/card-companies',
     'ONB-02A',
     '연결할 카드사 선택',
-    step: 1,
+    step: 2,
   ),
   connecting(
     '/onboarding/connecting',

@@ -25,6 +25,14 @@ String? cardImageAsset(OwnedCard card) => switch (card.id) {
   _ => null,
 };
 
+/// 흰 바탕 로고에 두르는 브랜드 색 테두리. 바탕이 진한 로고는 null.
+Color? companyLogoBorderColor(CardCompany company) => switch (company) {
+  CardCompany.woori => const Color(0xFF0C73B8),
+  CardCompany.bc => const Color(0xFFE83D45),
+  CardCompany.shinhan => const Color(0xFF0147FF),
+  _ => null,
+};
+
 /// 둥근 사각형 카드사 로고.
 class CardCompanyLogo extends StatelessWidget {
   const CardCompanyLogo({super.key, required this.company, this.size = 30});
@@ -34,14 +42,24 @@ class CardCompanyLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(size * 0.25),
-      child: Image.asset(
-        companyLogoAsset(company),
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        semanticLabel: company.name,
+    final radius = BorderRadius.circular(size * 0.22);
+    final borderColor = companyLogoBorderColor(company);
+    return Container(
+      foregroundDecoration: borderColor == null
+          ? null
+          : BoxDecoration(
+              borderRadius: radius,
+              border: Border.all(color: borderColor),
+            ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Image.asset(
+          companyLogoAsset(company),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          semanticLabel: company.name,
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
+import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
 import 'package:frontend/features/onboarding/presentation/card_company_auth_dialog.dart';
 
@@ -33,6 +34,47 @@ Future<void> _authenticate(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('전체 카드사 선택을 누르면 모두 선택되고, 다시 누르면 모두 해제된다', (tester) async {
+    await pumpAppAt(tester, AppRoute.cardCompanySelect);
+
+    await tester.tap(findText('전체 카드사 선택'));
+    await tester.pump();
+    expect(findText('선택한 카드사 7곳 연결하기'), findsOneWidget);
+
+    await tester.tap(findText('전체 카드사 선택'));
+    await tester.pump();
+    expect(_connectButton(tester).onPressed, isNull);
+  });
+
+  testWidgets('카드사 타일은 76×76이고, 선택하면 보라 테두리가 된다', (tester) async {
+    await pumpAppAt(tester, AppRoute.cardCompanySelect);
+
+    Border border() {
+      final box = tester.widget<Container>(
+        find
+            .ancestor(
+              of: findText(CardCompany.kb.name),
+              matching: find.byType(Container),
+            )
+            .last,
+      );
+      return (box.decoration! as BoxDecoration).border! as Border;
+    }
+
+    final tile = find
+        .ancestor(
+          of: findText(CardCompany.kb.name),
+          matching: find.byType(Container),
+        )
+        .last;
+    expect(tester.getSize(tile), const Size(76, 76));
+    expect(border().top.color, AppColors.border);
+
+    await _select(tester, CardCompany.kb);
+    expect(border().top.color, AppColors.primary);
+    expect(border().top.width, 1.5);
+  });
+
   testWidgets('지원 카드사 7개를 보여주고, 선택 전에는 버튼이 비활성화돼 있다', (tester) async {
     await pumpAppAt(tester, AppRoute.cardCompanySelect);
 
@@ -47,10 +89,10 @@ void main() {
 
     await _select(tester, CardCompany.kb);
     await _select(tester, CardCompany.shinhan);
-    expect(findText('선택한 카드사 2개 연결하기'), findsOneWidget);
+    expect(findText('선택한 카드사 2곳 연결하기'), findsOneWidget);
 
     await _select(tester, CardCompany.kb);
-    expect(findText('선택한 카드사 1개 연결하기'), findsOneWidget);
+    expect(findText('선택한 카드사 1곳 연결하기'), findsOneWidget);
   });
 
   testWidgets('선택한 카드사를 목록 순서대로 하나씩 인증하고 연결을 진행한다', (tester) async {
@@ -60,11 +102,11 @@ void main() {
     await _select(tester, CardCompany.shinhan);
     await _select(tester, CardCompany.kb);
     await _select(tester, CardCompany.woori);
-    await tester.tap(findText('선택한 카드사 3개 연결하기'));
+    await tester.tap(findText('선택한 카드사 3곳 연결하기'));
     await tester.pumpAndSettle();
 
     expect(findText('1 / 3'), findsOneWidget);
-    expect(findText('KB 인증 후 우리카드와 신한카드 인증이 이어집니다.'), findsOneWidget);
+    expect(findText('KB국민카드 계정 인증'), findsOneWidget);
     await _authenticate(tester);
     await tester.tap(findText('인증하고 다음'));
     await tester.pumpAndSettle();
@@ -86,7 +128,7 @@ void main() {
   testWidgets('아이디와 비밀번호를 모두 입력해야 인증 버튼이 활성화된다', (tester) async {
     await pumpAppAt(tester, AppRoute.cardCompanySelect);
     await _select(tester, CardCompany.kb);
-    await tester.tap(findText('선택한 카드사 1개 연결하기'));
+    await tester.tap(findText('선택한 카드사 1곳 연결하기'));
     await tester.pumpAndSettle();
 
     FilledButton submit() => tester.widget<FilledButton>(
@@ -102,43 +144,20 @@ void main() {
     await pumpAppAt(tester, AppRoute.cardCompanySelect);
     await _select(tester, CardCompany.kb);
     await _select(tester, CardCompany.bc);
-    await tester.tap(findText('선택한 카드사 2개 연결하기'));
+    await tester.tap(findText('선택한 카드사 2곳 연결하기'));
     await tester.pumpAndSettle();
 
     await tester.tap(findText('취소'));
     await tester.pumpAndSettle();
 
     expect(find.byType(CardCompanyAuthDialog), findsNothing);
-    expect(findText('선택한 카드사 2개 연결하기'), findsOneWidget);
-  });
-
-  group('다음 카드사 안내 문구', () {
-    const three = [CardCompany.kb, CardCompany.woori, CardCompany.shinhan];
-
-    test('남은 카드사가 둘 이상이면 "A와 B"로 잇는다', () {
-      expect(nextAuthNotice(three, 0), 'KB 인증 후 우리카드와 신한카드 인증이 이어집니다.');
-    });
-
-    test('남은 카드사가 하나면 그 이름만 쓴다', () {
-      expect(nextAuthNotice(three, 1), 'WR 인증 후 신한카드 인증이 이어집니다.');
-    });
-
-    test('셋 이상 남으면 쉼표로 잇고 마지막만 "와"로 잇는다', () {
-      expect(
-        nextAuthNotice(CardCompany.values.take(4).toList(), 0),
-        'KB 인증 후 현대카드, NH농협카드와 씨티카드 인증이 이어집니다.',
-      );
-    });
-
-    test('마지막 카드사면 안내하지 않는다', () {
-      expect(nextAuthNotice(three, 2), isNull);
-    });
+    expect(findText('선택한 카드사 2곳 연결하기'), findsOneWidget);
   });
 
   testWidgets('마지막 카드사의 버튼 문구 "인증하고 연결하기"가 한 줄로 보인다', (tester) async {
     await pumpAppAt(tester, AppRoute.cardCompanySelect);
     await _select(tester, CardCompany.kb);
-    await tester.tap(findText('선택한 카드사 1개 연결하기'));
+    await tester.tap(findText('선택한 카드사 1곳 연결하기'));
     await tester.pumpAndSettle();
 
     final label = find.descendant(
