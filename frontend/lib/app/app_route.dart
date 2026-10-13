@@ -1,5 +1,8 @@
 /// 앱의 화면 목록. [screenId]는 Figma 와이어프레임의 화면 ID다.
+/// (로딩창·로그인은 Figma에 화면 ID가 없어 이름을 대신 쓴다.)
 enum AppRoute {
+  splash('/', 'SPLASH', '로딩창', showBack: false),
+  login('/login', 'LOGIN', '로그인', showBack: false),
   signup('/signup', 'AUTH-01', '회원가입', showBack: false),
   serviceIntro('/onboarding/intro', 'ONB-01', '서비스 안내', showBack: false),
   codefConsent('/onboarding/codef-consent', 'ONB-02', 'CODEF 연결 안내', step: 1),

@@ -38,18 +38,20 @@ API 주소는 [lib/core/config/api_config.dart](lib/core/config/api_config.dart)
 
 ## 특정 화면부터 실행 (개발용)
 
-회원가입부터 매번 입력하지 않고 원하는 화면에서 바로 시작할 수 있습니다. **debug 빌드에서만** 동작하고, release 빌드는 항상 회원가입부터 시작합니다.
+로딩창·회원가입부터 매번 거치지 않고 원하는 화면에서 바로 시작할 수 있습니다. **debug 빌드에서만** 동작하고, release 빌드는 항상 로딩창부터 시작합니다.
 
 ```bash
 flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 ```
 
 - 경로 대신 화면 이름(`codefConsent`)을 넣어도 됩니다.
-- 없는 경로를 넣으면 로그에 경고를 남기고 회원가입부터 시작합니다.
+- 없는 경로를 넣으면 로그에 경고를 남기고 로딩창부터 시작합니다.
 - Android Studio: 실행 설정(Run → Edit Configurations)의 **Additional run args**에 `--dart-define=INITIAL_ROUTE=...`를 넣고, 화면별로 설정을 복사해 두면 편합니다.
 
 | 화면 ID | 화면 | 경로 | 화면 이름 |
 |---|---|---|---|
+| - | 로딩창 | `/` | `splash` |
+| - | 로그인 | `/login` | `login` |
 | AUTH-01 | 회원가입 | `/signup` | `signup` |
 | ONB-01 | 서비스 안내 | `/onboarding/intro` | `serviceIntro` |
 | ONB-02 | CODEF 연결 안내 | `/onboarding/codef-consent` | `codefConsent` |

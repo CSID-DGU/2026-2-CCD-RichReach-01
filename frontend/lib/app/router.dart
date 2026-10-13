@@ -1,7 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/signup_screen.dart';
+import '../features/auth/presentation/splash_screen.dart';
 import '../features/onboarding/presentation/budget_screen.dart';
 import '../features/onboarding/presentation/card_company_select_screen.dart';
 import '../features/onboarding/presentation/card_select_screen.dart';
@@ -17,7 +19,7 @@ import 'app_route.dart';
 
 GoRouter createRouter({String? initialLocation}) {
   return GoRouter(
-    initialLocation: initialLocation ?? AppRoute.signup.path,
+    initialLocation: initialLocation ?? AppRoute.splash.path,
     routes: [
       for (final route in AppRoute.values)
         GoRoute(
@@ -32,6 +34,8 @@ GoRouter createRouter({String? initialLocation}) {
 /// 경로별 화면.
 Widget _screenFor(AppRoute route) {
   return switch (route) {
+    AppRoute.splash => const SplashScreen(),
+    AppRoute.login => const LoginScreen(),
     AppRoute.signup => const SignupScreen(),
     AppRoute.serviceIntro => const ServiceIntroScreen(),
     AppRoute.codefConsent => const CodefConsentScreen(),

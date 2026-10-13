@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/app/app_route.dart';
 import 'package:frontend/app/router.dart';
 import 'package:frontend/core/theme/app_theme.dart';
+import 'package:frontend/features/auth/presentation/login_screen.dart';
 import 'package:frontend/features/onboarding/presentation/service_intro_screen.dart';
 
 import '../../helpers/finders.dart';
@@ -13,7 +15,10 @@ Future<void> _pumpSignup(WidgetTester tester) async {
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
-    MaterialApp.router(theme: AppTheme.light, routerConfig: createRouter()),
+    MaterialApp.router(
+      theme: AppTheme.light,
+      routerConfig: createRouter(initialLocation: AppRoute.signup.path),
+    ),
   );
   await tester.pumpAndSettle();
 }
@@ -92,12 +97,12 @@ void main() {
     expect(find.byType(ServiceIntroScreen), findsOneWidget);
   });
 
-  testWidgets('로그인을 누르면 준비 중 안내를 보여준다', (tester) async {
+  testWidgets('로그인을 누르면 로그인 화면으로 이동한다', (tester) async {
     await _pumpSignup(tester);
 
     await tester.tap(find.widgetWithText(TextButton, '로그인'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(findText('로그인 화면은 준비 중이에요.'), findsOneWidget);
+    expect(find.byType(LoginScreen), findsOneWidget);
   });
 }
