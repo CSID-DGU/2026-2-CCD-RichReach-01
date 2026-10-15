@@ -24,6 +24,9 @@ abstract final class AppColors {
   /// 연한 보라 강조 배경 (선택된 항목, 안내 아이콘 배경) — `--cr-action-subtle`
   static const primarySubtle = Color(0xFFE3DFFF);
 
+  /// 중간 보라 (예: 플랜 완료 화면의 두 번째 이후 카드 막대) — `CardRoute/Primary/80`
+  static const primaryLight = Color(0xFFA38CFB);
+
   /// [primarySubtle] 위의 진한 보라 글자 (예: "완료" 표시) — `CardRoute/Primary/20`
   static const onPrimarySubtle = Color(0xFF250058);
 
