@@ -89,7 +89,12 @@ void main() {
       270000,
       200000,
     ]);
-    expect(plan.cardTargets.first.progressRatio, closeTo(0.78, 0.001));
+    // 막대: 가장 큰 카드가 가득, 나머지는 금액 비율대로
+    expect(plan.cardTargets.map((t) => t.progressRatio), [
+      1.0,
+      closeTo(270 / 350, 0.001),
+      closeTo(200 / 350, 0.001),
+    ]);
   });
 
   group('ONB-06 소비패턴·월간 예산', () {
@@ -151,7 +156,7 @@ void main() {
     });
   });
 
-  testWidgets('ONB-07A 플랜 생성 화면은 단계와 요약을 보여주고 뒤로가기를 막는다', (tester) async {
+  testWidgets('ONB-07A 플랜 생성 화면은 그림과 진행 막대를 보여주고 뒤로가기를 막는다', (tester) async {
     await pumpAppAt(
       tester,
       AppRoute.planGenerating,
@@ -160,7 +165,8 @@ void main() {
     );
 
     expect(find.byType(PlanGeneratingScreen), findsOneWidget);
-    expect(findText('카드 3장 · 예산 820,000원 · 주요 업종 5개'), findsOneWidget);
+    expect(findText('가장 유리한 카드 사용계획을\n만들고 있어요'), findsOneWidget);
+    expect(find.bySemanticsLabel('플랜 생성 진행률'), findsOneWidget);
     expect(
       find.byWidgetPredicate((w) => w is PopScope && !w.canPop),
       findsOneWidget,
@@ -175,19 +181,21 @@ void main() {
     testWidgets('예상 혜택과 카드별 목표 사용금액을 보여준다', (tester) async {
       await pumpAppAt(tester, AppRoute.planGenerating, budget: _budget());
 
-      expect(findText('10월 카드 사용계획이\n준비됐어요'), findsOneWidget);
+      expect(findText('이번달 카드 사용계획이 준비됐어요'), findsOneWidget);
       expect(findText('32,400원'), findsOneWidget);
       expect(findText('21,600원'), findsOneWidget);
-      expect(findText('+10,800원'), findsOneWidget);
+      expect(findText('＋10,800원'), findsOneWidget);
       expect(findText('신한 Deep Dream'), findsOneWidget);
+      expect(findText('신용 · 2471'), findsOneWidget);
       expect(findText('350,000원'), findsOneWidget);
       expect(findText('200,000원'), findsOneWidget);
+      expect(findText('혜택 계산 기준'), findsOneWidget);
     });
 
-    testWidgets('월간 플랜 시작하기는 준비 중 안내를 보여준다', (tester) async {
+    testWidgets('시작하기는 준비 중 안내를 보여준다', (tester) async {
       await pumpAppAt(tester, AppRoute.planGenerating, budget: _budget());
 
-      await tester.tap(findText('월간 플랜 시작하기'));
+      await tester.tap(findText('시작하기'));
       await tester.pump();
 
       expect(findText('월간 플랜 화면은 준비 중이에요.'), findsOneWidget);

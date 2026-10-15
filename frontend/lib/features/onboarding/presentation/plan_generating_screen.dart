@@ -5,17 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
-import '../../../core/formatters/money_formatter.dart';
+import '../../../core/assets/app_assets.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/step_header.dart';
 import '../application/budget_plan_providers.dart';
-import '../domain/budget.dart';
-import '../domain/owned_card.dart';
 import '../domain/plan.dart';
-import 'connection_widgets.dart';
 import 'load_failure_view.dart';
 
 /// ONB-07A 최초 플랜 생성 중 화면. 생성 중에는 뒤로가기를 막고, 끝나면 생성 완료(ONB-07B)로 이동한다.
@@ -30,8 +26,6 @@ class PlanGeneratingScreen extends ConsumerStatefulWidget {
 class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
   StreamSubscription<PlanProgress>? _subscription;
   int _completedSteps = 0;
-  MonthlyBudget? _budget;
-  List<OwnedCard>? _cards;
   Object? _error;
 
   @override
@@ -45,11 +39,7 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
       final budget = await ref.read(monthlyBudgetProvider.future);
       final cards = await ref.read(planCardsProvider.future);
       if (!mounted) return;
-      setState(() {
-        _budget = budget;
-        _cards = cards;
-        _error = null;
-      });
+      setState(() => _error = null);
       _subscription = ref
           .read(planRepositoryProvider)
           .generate(budget, cards)
@@ -81,23 +71,22 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final budget = _budget;
-    final cards = _cards;
+    // 단계마다 한 칸씩 채우고, 플랜이 나오면 가득 채운다.
+    final progress = (_completedSteps + 1) / (PlanStep.values.length + 1);
 
     return PopScope(
       canPop: false,
       child: OnboardingScaffold(
-        header: const StepHeader(showBack: false),
+        header: const StepHeader(step: 5, showBack: false),
         body: Column(
           children: [
-            const SizedBox(height: 16),
-            const StatusCircle(icon: Icons.north_east, size: 150),
-            const SizedBox(height: 44),
-            const CenteredTitle(
-              title: '가장 유리한 카드\n사용계획을 만들고 있어요',
-              description: '실적과 혜택 한도, 소비예산을 함께 계산하고 있어요.',
+            const SizedBox(height: 168),
+            Image.asset(
+              AppAssets.firstPlanGeneration,
+              width: 289,
+              height: 209,
+              excludeFromSemantics: true,
             ),
-            const SizedBox(height: 40),
             if (_error != null)
               LoadFailureView(
                 message: '플랜을 만들지 못했어요.',
@@ -108,25 +97,13 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
                 },
               )
             else ...[
-              for (final step in PlanStep.values)
-                _PlanStepRow(step: step, completedSteps: _completedSteps),
-              if (budget != null && cards != null) ...[
-                const SizedBox(height: 40),
-                Container(
-                  width: 306,
-                  height: 64,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppDimens.radiusBox),
-                  ),
-                  child: Text(
-                    '카드 ${cards.length}장 · 예산 ${formatWon(budget.total)} · '
-                    '주요 업종 ${budget.activeCategoryCount}개',
-                    style: AppTextStyles.label.copyWith(fontSize: 12),
-                  ),
-                ),
-              ],
+              _ProgressBar(value: progress),
+              const SizedBox(height: 33),
+              Text(
+                '가장 유리한 카드 사용계획을\n만들고 있어요',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500),
+              ),
             ],
           ],
         ),
@@ -135,43 +112,41 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
   }
 }
 
-/// 진행 단계 한 줄. 완료 ✓, 진행 중 ●, 대기 ○.
-class _PlanStepRow extends StatelessWidget {
-  const _PlanStepRow({required this.step, required this.completedSteps});
+/// 연보라 바탕 위에 보라로 채워지는 진행 막대 (222×9).
+class _ProgressBar extends StatelessWidget {
+  const _ProgressBar({required this.value});
 
-  final PlanStep step;
-  final int completedSteps;
+  final double value;
+
+  static const _width = 222.0;
+  static const _height = 9.0;
 
   @override
   Widget build(BuildContext context) {
-    final done = step.index < completedSteps;
-    final inProgress = step.index == completedSteps;
-    final active = done || inProgress;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 13, 32, 13),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 28,
-            child: Icon(
-              done
-                  ? Icons.check
-                  : inProgress
-                  ? Icons.circle
-                  : Icons.radio_button_unchecked,
-              size: inProgress ? 12 : 16,
-              color: active ? AppColors.primary : AppColors.textSecondary,
+    final radius = BorderRadius.circular(5);
+    return Semantics(
+      label: '플랜 생성 진행률',
+      value: '${(value * 100).round()}%',
+      child: Container(
+        width: _width,
+        height: _height,
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          color: AppColors.primarySubtle,
+          borderRadius: radius,
+        ),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(end: value),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+          builder: (context, value, _) => Container(
+            width: _width * value,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: radius,
             ),
           ),
-          const SizedBox(width: 10),
-          Text(
-            step.label,
-            style: active
-                ? AppTextStyles.bodyStrong.copyWith(fontWeight: FontWeight.w500)
-                : AppTextStyles.description,
-          ),
-        ],
+        ),
       ),
     );
   }

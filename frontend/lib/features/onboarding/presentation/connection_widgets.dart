@@ -8,39 +8,6 @@ import '../domain/card_company.dart';
 import '../domain/card_connection.dart';
 import 'onboarding_images.dart';
 
-/// 화면 위쪽의 둥근 상태 아이콘 (연결 중 ↻, 완료 ✓, 실패 !).
-class StatusCircle extends StatelessWidget {
-  const StatusCircle({
-    super.key,
-    required this.icon,
-    this.size = 100,
-    this.filled = false,
-  });
-
-  final IconData icon;
-  final double size;
-
-  /// 진한 배경(완료)인지, 연한 배경(진행·실패)인지
-  final bool filled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: filled ? AppColors.primary : AppColors.surface,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        icon,
-        size: size * 0.42,
-        color: filled ? AppColors.onPrimary : AppColors.primary,
-      ),
-    );
-  }
-}
-
 /// 가운데 정렬된 화면 제목과 설명.
 class CenteredTitle extends StatelessWidget {
   const CenteredTitle({
