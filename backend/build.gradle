@@ -25,6 +25,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.flywaydb:flyway-mysql'
+    // Spring Security 전체(starter-security)는 안 쓴다 - 인증 필터체인까지 자동 적용돼서
+    // 지금 있는 API들이 전부 로그인 요구받게 되는 부작용이 생긴다.
+    // BCryptPasswordEncoder 같은 암호화 유틸리티만 필요하므로 crypto 모듈만 가져온다.
+    implementation 'org.springframework.security:spring-security-crypto'
     // Swagger UI (Spring Boot 4.0.x 대응 버전. Boot 버전을 올릴 때 호환 여부 확인)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
     compileOnly 'org.projectlombok:lombok'
