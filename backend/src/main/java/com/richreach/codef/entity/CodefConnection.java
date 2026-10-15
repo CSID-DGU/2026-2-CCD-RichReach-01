@@ -1,7 +1,9 @@
 package com.richreach.codef.entity;
 
+import com.richreach.codef.crypto.ConnectedIdConverter;
 import com.richreach.user.entity.User;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -30,7 +32,9 @@ public class CodefConnection {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(name = "connected_id", nullable = false, unique = true, length = 100)
+    /** AES-GCM으로 암호화해서 저장 (DB 레벨 UNIQUE 없음 - ConnectedIdConverter 참고) */
+    @Convert(converter = ConnectedIdConverter.class)
+    @Column(name = "connected_id", nullable = false, length = 255)
     private String connectedId;
 
     /** SANDBOX, DEMO, PROD */
