@@ -24,6 +24,7 @@ class FakeBudgetRepository implements BudgetRepository {
   /// 와이어프레임: 외식 28%, 쇼핑 22%, 교통 15%, 편의점 12%, 기타 23%
   static const _ratios = {
     SpendingCategory.dining: 28,
+    SpendingCategory.cafe: 0,
     SpendingCategory.shopping: 22,
     SpendingCategory.transport: 15,
     SpendingCategory.convenienceStore: 12,
@@ -33,6 +34,7 @@ class FakeBudgetRepository implements BudgetRepository {
   /// 와이어프레임: 외식 230,000 · 쇼핑 180,000 · 교통 120,000 · 편의점 100,000 · 기타 190,000
   static const _suggestedByCategory = {
     SpendingCategory.dining: 230000,
+    SpendingCategory.cafe: 0,
     SpendingCategory.shopping: 180000,
     SpendingCategory.transport: 120000,
     SpendingCategory.convenienceStore: 100000,

@@ -55,7 +55,7 @@ class FakePlanRepository implements PlanRepository {
       amounts[0] += budget.total - amounts.fold(0, (sum, a) => sum + a);
     }
 
-    // 와이어프레임 막대: 가장 큰 카드가 78%
+    // 디자인 막대: 가장 큰 카드가 가득, 나머지는 금액 비율대로
     final maxAmount = amounts.fold(0, (max, a) => a > max ? a : max);
     final expected = (budget.total * 324 / 8200 / 100).round() * 100;
 
@@ -69,7 +69,7 @@ class FakePlanRepository implements PlanRepository {
             cardId: card.id,
             cardName: card.name,
             targetAmount: amounts[i],
-            progressRatio: maxAmount == 0 ? 0 : amounts[i] / maxAmount * 0.78,
+            progressRatio: maxAmount == 0 ? 0 : amounts[i] / maxAmount,
           ),
       ],
     );

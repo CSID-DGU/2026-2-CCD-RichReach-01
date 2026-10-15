@@ -4,11 +4,19 @@ import '../theme/app_colors.dart';
 
 /// 둥근 진행 막대 (배경 + 채움).
 class ProgressTrack extends StatelessWidget {
-  const ProgressTrack({super.key, required this.fraction, this.height = 9});
+  const ProgressTrack({
+    super.key,
+    required this.fraction,
+    this.height = 9,
+    this.color = AppColors.primary,
+  });
 
   /// 0~1
   final double fraction;
   final double height;
+
+  /// 채움 색
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -23,10 +31,7 @@ class ProgressTrack extends StatelessWidget {
       child: FractionallySizedBox(
         widthFactor: fraction.clamp(0.0, 1.0),
         child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: radius,
-          ),
+          decoration: BoxDecoration(color: color, borderRadius: radius),
         ),
       ),
     );

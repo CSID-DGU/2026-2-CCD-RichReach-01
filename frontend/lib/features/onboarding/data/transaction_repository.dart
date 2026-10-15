@@ -1,4 +1,5 @@
 import '../domain/card_company.dart';
+import 'card_repository.dart';
 import '../domain/transaction.dart';
 
 /// 거래내역 조회. API 연동 시 실제 구현을 만들어 바꿔 끼운다.
@@ -8,9 +9,6 @@ abstract interface class TransactionRepository {
     TransactionPeriod period,
     List<CardCompany> companies,
   );
-
-  /// 카드사에서 거래내역을 다시 가져온다. ("거래내역 다시 불러오기")
-  Future<void> refresh(List<CardCompany> companies);
 }
 
 /// API가 나오기 전까지 쓰는 가짜 구현.
@@ -32,10 +30,10 @@ class FakeTransactionRepository implements TransactionRepository {
   };
   static const _defaultBase = (50, 700000);
 
-  /// 와이어프레임의 최근 거래. 연결되지 않은 카드사 거래는 다른 카드사로 바꿔 보여준다.
+  /// 디자인의 최근 거래. 연결되지 않은 카드사 거래는 다른 카드사로 바꿔 보여준다.
   static const _recentTemplates = [
-    (CardCompany.shinhan, '아웃백', SpendingCategory.dining, 68000),
-    (CardCompany.kb, 'GS25', SpendingCategory.convenienceStore, 8400),
+    (CardCompany.shinhan, '스타벅스', SpendingCategory.cafe, 6500),
+    (CardCompany.kb, 'GS25', SpendingCategory.convenienceStore, 12400),
     (CardCompany.woori, '카카오T', SpendingCategory.transport, 12300),
   ];
 
@@ -86,23 +84,24 @@ class FakeTransactionRepository implements TransactionRepository {
     DateTime endDate,
   ) {
     if (companies.isEmpty) return const [];
+    final cardNames = {
+      for (final card in FakeCardRepository.sampleCards(companies))
+        card.company: card.name,
+    };
+    CardCompany pick(int i, CardCompany wanted) =>
+        companies.contains(wanted) ? wanted : companies[i % companies.length];
+
     return [
-      for (final (i, (company, merchant, category, amount))
+      for (final (i, (wanted, merchant, category, amount))
           in _recentTemplates.indexed)
         Transaction(
           merchantName: merchant,
           category: category,
-          company: companies.contains(company)
-              ? company
-              : companies[i % companies.length],
+          company: pick(i, wanted),
+          cardName: cardNames[pick(i, wanted)]!,
           amount: amount,
           approvedAt: endDate.subtract(Duration(days: i)),
         ),
     ];
-  }
-
-  @override
-  Future<void> refresh(List<CardCompany> companies) async {
-    await Future<void>.delayed(delay);
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frontend/core/theme/app_images.dart';
+import 'package:frontend/core/assets/app_assets.dart';
 import 'package:frontend/core/theme/app_theme.dart';
 import 'package:frontend/core/widgets/info_tile.dart';
 import 'package:frontend/core/widgets/notice_box.dart';
@@ -23,22 +23,22 @@ void main() {
         const InfoTileGrid(
           tiles: [
             InfoTile(
-              image: AppImages.icon3dTargetAmount,
+              image: AppAssets.featureTargetSpending,
               title: 'A',
               description: 'a',
             ),
             InfoTile(
-              image: AppImages.icon3dTargetAmount,
+              image: AppAssets.featureTargetSpending,
               title: 'B',
               description: 'b',
             ),
             InfoTile(
-              image: AppImages.icon3dTargetAmount,
+              image: AppAssets.featureTargetSpending,
               title: 'C',
               description: 'c',
             ),
             InfoTile(
-              image: AppImages.icon3dTargetAmount,
+              image: AppAssets.featureTargetSpending,
               title: 'D',
               description: 'd',
             ),

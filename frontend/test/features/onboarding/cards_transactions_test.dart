@@ -20,21 +20,6 @@ FakeTransactionRepository _transactions() => FakeTransactionRepository(
   now: () => DateTime(2026, 10, 11),
 );
 
-/// 거래내역 다시 불러오기 횟수를 세는 저장소.
-class _CountingTransactions implements TransactionRepository {
-  final _inner = _transactions();
-  int refreshCount = 0;
-
-  @override
-  Future<TransactionSummary> fetchSummary(
-    TransactionPeriod period,
-    List<CardCompany> companies,
-  ) => _inner.fetchSummary(period, companies);
-
-  @override
-  Future<void> refresh(List<CardCompany> companies) async => refreshCount++;
-}
-
 FilledButton _bottomButton(WidgetTester tester) =>
     tester.widget<FilledButton>(find.byType(FilledButton).last);
 
@@ -163,12 +148,14 @@ void main() {
       expect(findText('2026.07.01 – 2026.09.30'), findsOneWidget);
       expect(findText('총 184건'), findsOneWidget);
       expect(findText('2,480,000원'), findsOneWidget);
-      expect(findText('연결 카드 3장 · 업종 분류 96%'), findsOneWidget);
+      expect(findText('카드 3장'), findsOneWidget);
       expect(findText('62건 연결 완료'), findsOneWidget);
       expect(findText('80건 연결 완료'), findsOneWidget);
-      expect(findText('아웃백'), findsOneWidget);
-      expect(findText('외식 · 신한'), findsOneWidget);
-      expect(findText('68,000원'), findsOneWidget);
+      expect(findText('스타벅스'), findsOneWidget);
+      expect(findText('카페 · 신한 Deep Dream'), findsOneWidget);
+      expect(findText('-6,500원'), findsOneWidget);
+      expect(findText('편의점 · KB My WE:SH'), findsOneWidget);
+      expect(findText('거래내역 다시 불러오기'), findsNothing);
     });
 
     testWidgets('조회 기간을 바꾸면 해당 기간 요약을 보여준다', (tester) async {
@@ -185,21 +172,6 @@ void main() {
       expect(findText('총 62건'), findsOneWidget);
     });
 
-    testWidgets('거래내역 다시 불러오기를 누르면 카드사에서 다시 가져온다', (tester) async {
-      final transactions = _CountingTransactions();
-      await pumpAppAt(
-        tester,
-        AppRoute.transactions,
-        transactions: transactions,
-      );
-
-      await tester.tap(findText('거래내역 다시 불러오기'));
-      await tester.pumpAndSettle();
-
-      expect(transactions.refreshCount, 1);
-      expect(findText('총 184건'), findsOneWidget);
-    });
-
     testWidgets('분석하기를 누르면 소비패턴·예산 화면으로 이동한다', (tester) async {
       await pumpAppAt(
         tester,
@@ -207,29 +179,10 @@ void main() {
         transactions: _transactions(),
       );
 
-      await tester.tap(findText('이 거래내역으로 분석하기'));
+      await tester.tap(findText('이 거래 내역으로 분석하기'));
       await tester.pumpAndSettle();
 
       expect(find.byType(BudgetScreen), findsOneWidget);
-    });
-
-    testWidgets('다시 불러오기는 분석하기 버튼 바로 위에 겹치지 않게 항상 보인다', (tester) async {
-      await pumpAppAt(
-        tester,
-        AppRoute.transactions,
-        transactions: _transactions(),
-      );
-
-      final link = tester.getRect(findText('거래내역 다시 불러오기'));
-      final button = tester.getRect(
-        find.widgetWithText(FilledButton, '이 거래내역으로 분석하기'),
-      );
-      final screen = tester.getRect(find.byType(TransactionsScreen));
-
-      expect(link.bottom, lessThanOrEqualTo(button.top));
-      expect(button.top - link.bottom, lessThan(24));
-      expect(link.top, greaterThanOrEqualTo(screen.top));
-      expect(button.bottom, lessThanOrEqualTo(screen.bottom));
     });
   });
 }

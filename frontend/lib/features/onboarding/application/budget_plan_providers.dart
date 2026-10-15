@@ -38,8 +38,6 @@ final monthlyBudgetProvider =
     );
 
 class MonthlyBudgetNotifier extends AsyncNotifier<MonthlyBudget> {
-  var _nextExpenseId = 0;
-
   @override
   Future<MonthlyBudget> build() async =>
       (await ref.watch(spendingAnalysisProvider.future)).suggestedBudget;
@@ -52,36 +50,9 @@ class MonthlyBudgetNotifier extends AsyncNotifier<MonthlyBudget> {
   /// 총액을 바꾸고 업종별 예산을 지금 비율대로 다시 나눈다.
   void changeTotal(int total) => _update((b) => b.withTotal(total));
 
-  void addPlannedExpense({
-    required String name,
-    required int amount,
-    required SpendingCategory category,
-  }) {
-    _update(
-      (b) => b.copyWith(
-        plannedExpenses: [
-          ...b.plannedExpenses,
-          PlannedExpense(
-            id: 'planned-${_nextExpenseId++}',
-            name: name,
-            amount: amount,
-            category: category,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void removePlannedExpense(String id) {
-    _update(
-      (b) => b.copyWith(
-        plannedExpenses: [
-          for (final e in b.plannedExpenses)
-            if (e.id != id) e,
-        ],
-      ),
-    );
-  }
+  /// 업종별 예산을 바꾸고 총액을 그 합으로 맞춘다.
+  void changeCategoryBudgets(Map<SpendingCategory, int> amounts) =>
+      _update((b) => b.withCategoryBudgets(amounts));
 }
 
 /// 생성된 월간 플랜.
