@@ -10,10 +10,11 @@ import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/page_title.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
+import '../../../core/widgets/summary_card.dart';
 import '../application/onboarding_data_providers.dart';
 import '../domain/transaction.dart';
-import 'connection_widgets.dart';
 import 'load_failure_view.dart';
+import 'onboarding_images.dart';
 
 /// ONB-05 거래내역 확인 화면. 기본 조회 기간은 3개월이다.
 class TransactionsScreen extends ConsumerStatefulWidget {
@@ -25,19 +26,6 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   TransactionPeriod _period = TransactionPeriod.threeMonths;
-  bool _refreshing = false;
-
-  Future<void> _refresh() async {
-    setState(() => _refreshing = true);
-    try {
-      await ref
-          .read(transactionRepositoryProvider)
-          .refresh(ref.read(connectedCompaniesProvider));
-      ref.invalidate(transactionSummaryProvider);
-    } finally {
-      if (mounted) setState(() => _refreshing = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,99 +34,112 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     return OnboardingScaffold(
       header: const StepHeader(step: 4),
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const PageTitle(title: '소비내역을\n확인해 주세요'),
-          const SizedBox(height: 22),
-          const Text('조회 기간', style: AppTextStyles.label),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              for (final period in TransactionPeriod.values) ...[
-                _PeriodChip(
-                  period: period,
-                  selected: period == _period,
-                  onTap: () => setState(() => _period = period),
-                ),
-                if (period != TransactionPeriod.values.last)
-                  const SizedBox(width: 8),
-              ],
-            ],
+          const PageTitle(
+            title: '소비내역을 확인해 주세요',
+            description: '카드사에서 제공하는 범위 안에서 거래내역을 불러와요.',
+            descriptionGap: 8,
           ),
-          const SizedBox(height: 24),
-          if (_refreshing)
-            const _Loading()
-          else
-            switch (summaryAsync) {
-              AsyncData(value: final summary) => _SummaryContent(
-                summary: summary,
-              ),
-              AsyncError() => LoadFailureView(
-                message: '거래내역을 불러오지 못했어요.',
-                onRetry: () =>
-                    ref.invalidate(transactionSummaryProvider(_period)),
-              ),
-              _ => const _Loading(),
-            },
+          const SizedBox(height: 25),
+          _PeriodTabs(
+            selected: _period,
+            onChanged: (period) => setState(() => _period = period),
+          ),
+          const SizedBox(height: 20),
+          switch (summaryAsync) {
+            AsyncData(value: final summary) => _SummaryContent(
+              summary: summary,
+            ),
+            AsyncError() => LoadFailureView(
+              message: '거래내역을 불러오지 못했어요.',
+              onRetry: () =>
+                  ref.invalidate(transactionSummaryProvider(_period)),
+            ),
+            _ => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          },
         ],
       ),
-      // "다시 불러오기"는 내용 길이와 상관없이 항상 보이도록 하단 버튼 바로 위에 고정한다.
-      bottom: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextButton(
-            onPressed: _refreshing ? null : _refresh,
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.textSecondary,
-              textStyle: AppTextStyles.label.copyWith(fontSize: 12),
-            ),
-            child: const Text('거래내역 다시 불러오기'),
-          ),
-          const SizedBox(height: 6),
-          PrimaryButton(
-            label: '이 거래내역으로 분석하기',
-            onPressed: summaryAsync.hasValue && !_refreshing
-                ? () => context.push(AppRoute.budget.path)
-                : null,
-          ),
-        ],
+      bottom: PrimaryButton(
+        label: '이 거래 내역으로 분석하기',
+        onPressed: summaryAsync.hasValue
+            ? () => context.push(AppRoute.budget.path)
+            : null,
       ),
     );
   }
 }
 
-class _Loading extends StatelessWidget {
-  const _Loading();
+/// 조회 기간 탭 (1개월 / 3개월 / 6개월).
+class _PeriodTabs extends StatelessWidget {
+  const _PeriodTabs({required this.selected, required this.onChanged});
+
+  final TransactionPeriod selected;
+  final ValueChanged<TransactionPeriod> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 48),
-      child: Center(child: CircularProgressIndicator()),
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          for (final period in TransactionPeriod.values)
+            Expanded(
+              child: _PeriodTab(
+                label: period.label,
+                selected: period == selected,
+                onTap: () => onChanged(period),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
 
-/// 조회 기간 선택 칩.
-class _PeriodChip extends StatelessWidget {
-  const _PeriodChip({
-    required this.period,
+class _PeriodTab extends StatelessWidget {
+  const _PeriodTab({
+    required this.label,
     required this.selected,
     required this.onTap,
   });
 
-  final TransactionPeriod period;
+  final String label;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(10);
     return Semantics(
       button: true,
       selected: selected,
-      child: GestureDetector(
-        onTap: onTap,
-        child: StatusPill(label: period.label, filled: selected, width: 94),
+      child: Material(
+        color: selected ? AppColors.primarySurface : Colors.transparent,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: Center(
+            child: Text(
+              label,
+              style: AppTextStyles.body.copyWith(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -156,87 +157,108 @@ class _SummaryContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-          ),
+        SummaryCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 '${_date(summary.startDate)} – ${_date(summary.endDate)}',
-                style: AppTextStyles.label,
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: SummaryCard.labelColor,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
+              Text(
+                '총 ${formatNumber(summary.totalCount)}건',
+                style: AppTextStyles.title.copyWith(
+                  fontSize: 22,
+                  color: AppColors.onPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    '총 ${formatNumber(summary.totalCount)}건',
-                    style: AppTextStyles.bodyStrong.copyWith(fontSize: 16),
-                  ),
-                  const Spacer(),
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        formatWon(summary.totalAmount),
-                        style: AppTextStyles.title.copyWith(fontSize: 22),
+                  Expanded(
+                    child: Text(
+                      formatWon(summary.totalAmount),
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        fontSize: 18,
+                        color: AppColors.onPrimary,
                       ),
                     ),
                   ),
+                  SummaryPill(label: '카드 ${summary.connectedCardCount}장'),
                 ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '연결 카드 ${summary.connectedCardCount}장 · '
-                '업종 분류 ${summary.categorizedRate}%',
-                style: AppTextStyles.caption,
               ),
             ],
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 28),
         const Text('카드별 조회 결과', style: AppTextStyles.sectionTitle),
-        const SizedBox(height: 14),
-        for (final item in summary.byCompany)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.company.name,
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${formatNumber(item.count)}건 연결 완료',
-                  style: AppTextStyles.caption,
-                ),
-              ],
-            ),
-          ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
+        for (final item in summary.byCompany) ...[
+          if (item != summary.byCompany.first) const SizedBox(height: 5),
+          _CompanyCountRow(item: item),
+        ],
+        const SizedBox(height: 30),
         const Text('최근 거래', style: AppTextStyles.sectionTitle),
-        const SizedBox(height: 6),
+        const SizedBox(height: 10),
         for (final transaction in summary.recentTransactions) ...[
+          if (transaction != summary.recentTransactions.first)
+            const SizedBox(height: 8),
           _TransactionRow(transaction: transaction),
-          const Divider(),
         ],
       ],
     );
   }
 }
 
-/// 최근 거래 한 줄 (가맹점, 업종 · 카드사, 금액).
+/// 카드사별 조회 결과 한 줄 (로고, 카드사 이름, "N건 연결 완료").
+class _CompanyCountRow extends StatelessWidget {
+  const _CompanyCountRow({required this.item});
+
+  final CompanyTransactionCount item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.only(left: 9, right: 20),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          CardCompanyLogo(company: item.company, size: 28),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(
+              item.company.name,
+              style: AppTextStyles.body.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            '${formatNumber(item.count)}건 연결 완료',
+            style: AppTextStyles.caption.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.success,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 최근 거래 한 줄 (업종 아이콘, 가맹점, "업종 · 카드 이름", 금액).
 class _TransactionRow extends StatelessWidget {
   const _TransactionRow({required this.transaction});
 
@@ -244,27 +266,40 @@ class _TransactionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strong = AppTextStyles.body.copyWith(fontWeight: FontWeight.w500);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+    final strong = AppTextStyles.bodyStrong;
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.only(left: 16, right: 20),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Row(
         children: [
-          SizedBox(
-            width: 118,
-            child: Text(
-              transaction.merchantName,
-              style: strong,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          CategoryIcon(category: transaction.category),
+          const SizedBox(width: 18),
           Expanded(
-            child: Text(
-              '${transaction.category.label} · '
-              '${transaction.company.shortName}',
-              style: AppTextStyles.caption,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction.merchantName,
+                  style: strong,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${transaction.category.label} · ${transaction.cardName}',
+                  style: AppTextStyles.caption.copyWith(fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
-          Text(formatWon(transaction.amount), style: strong),
+          const SizedBox(width: 12),
+          Text('-${formatWon(transaction.amount)}', style: strong),
         ],
       ),
     );

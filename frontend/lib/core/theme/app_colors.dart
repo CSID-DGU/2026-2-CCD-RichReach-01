@@ -30,6 +30,9 @@ abstract final class AppColors {
   /// 아주 연한 보라 배경 (안내 박스) — `CardRoute/Primary/98`
   static const primarySurface = Color(0xFFF3F2FF);
 
+  /// 가장 연한 보라 배경 (예: 이번 달 소비예산 상자) — `CardRoute/Primary/99`
+  static const primaryFaint = Color(0xFFF9F8FF);
+
   /// 주요 버튼 위의 글자색 — `--cr-text-on-primary`
   static const onPrimary = Color(0xFFFFFFFF);
 
@@ -53,4 +56,7 @@ abstract final class AppColors {
 
   /// 오류 배경 (실패 표시) — `--cr-feedback-error-bg`
   static const errorBackground = Color(0xFFFFF1F2);
+
+  /// 성공 글자 (예: "62건 연결 완료")
+  static const success = Color(0xFF1F9D68);
 }

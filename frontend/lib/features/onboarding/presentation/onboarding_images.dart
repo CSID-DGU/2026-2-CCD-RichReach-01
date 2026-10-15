@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../domain/card_company.dart';
 import '../domain/owned_card.dart';
+import '../domain/transaction.dart';
 
 /// 카드사 로고 그림 경로.
 String companyLogoAsset(CardCompany company) => switch (company) {
@@ -107,6 +109,45 @@ class CardImage extends StatelessWidget {
           fontSize: 9,
           fontWeight: FontWeight.w600,
         ),
+      ),
+    );
+  }
+}
+
+/// 업종 아이콘 그림 경로.
+String categoryIconAsset(SpendingCategory category) => switch (category) {
+  SpendingCategory.dining => AppAssets.iconRestaurant,
+  SpendingCategory.cafe => AppAssets.iconCafe,
+  SpendingCategory.shopping => AppAssets.iconShopping,
+  SpendingCategory.transport => AppAssets.iconTransportation,
+  SpendingCategory.convenienceStore => AppAssets.iconConvenienceStore,
+  SpendingCategory.etc => AppAssets.iconEtc,
+};
+
+/// 연보라 원 안의 업종 아이콘 (원 32, 아이콘 20).
+class CategoryIcon extends StatelessWidget {
+  const CategoryIcon({super.key, required this.category});
+
+  final SpendingCategory category;
+
+  static const _size = 32.0;
+  static const _iconSize = 20.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: _size,
+      height: _size,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: AppColors.primarySubtle,
+        shape: BoxShape.circle,
+      ),
+      child: SvgPicture.asset(
+        categoryIconAsset(category),
+        width: _iconSize,
+        height: _iconSize,
+        semanticsLabel: category.label,
       ),
     );
   }

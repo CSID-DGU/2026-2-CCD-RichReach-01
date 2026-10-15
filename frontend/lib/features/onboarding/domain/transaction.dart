@@ -1,8 +1,9 @@
 import 'card_company.dart';
 
-/// 거래 업종. 와이어프레임에 보이는 5개이며, 세분화 여부는 데이터 규약 문서 Q5 답변 후 확정한다.
+/// 거래 업종. 디자인에 보이는 6개이며, 세분화 여부는 데이터 규약 문서 Q5 답변 후 확정한다.
 enum SpendingCategory {
   dining('DINING', '외식'),
+  cafe('CAFE', '카페'),
   shopping('SHOPPING', '쇼핑'),
   transport('TRANSPORT', '교통'),
   convenienceStore('CONVENIENCE_STORE', '편의점'),
@@ -33,6 +34,7 @@ class Transaction {
     required this.merchantName,
     required this.category,
     required this.company,
+    required this.cardName,
     required this.amount,
     required this.approvedAt,
   });
@@ -40,6 +42,9 @@ class Transaction {
   final String merchantName;
   final SpendingCategory category;
   final CardCompany company;
+
+  /// 결제한 카드 이름 (예: "신한 Deep Dream")
+  final String cardName;
 
   /// 원 단위 금액
   final int amount;
