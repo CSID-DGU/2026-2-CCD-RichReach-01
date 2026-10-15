@@ -7,7 +7,6 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/labeled_text_field.dart';
 import '../domain/transaction.dart';
-import 'connection_widgets.dart';
 
 /// 이번 달 예산 총액 수정 팝업. 확인하면 새 총액, 취소하면 null.
 Future<int?> showEditBudgetDialog(BuildContext context, {required int total}) {
@@ -17,12 +16,14 @@ Future<int?> showEditBudgetDialog(BuildContext context, {required int total}) {
   );
 }
 
-/// 예정지출 추가 팝업. 확인하면 입력값, 취소하면 null.
-Future<({String name, int amount, SpendingCategory category})?>
-showAddPlannedExpenseDialog(BuildContext context) {
+/// 업종별 예산 수정 팝업. 확인하면 업종별 새 금액, 취소하면 null.
+Future<Map<SpendingCategory, int>?> showEditCategoryBudgetDialog(
+  BuildContext context, {
+  required Map<SpendingCategory, int> byCategory,
+}) {
   return showDialog(
     context: context,
-    builder: (context) => const _AddPlannedExpenseDialog(),
+    builder: (context) => _EditCategoryBudgetDialog(initial: byCategory),
   );
 }
 
@@ -109,7 +110,7 @@ class _EditBudgetDialogState extends State<_EditBudgetDialog> {
   @override
   Widget build(BuildContext context) {
     return _BudgetDialogFrame(
-      title: '이번 달 예산 수정',
+      title: '이번 달 소비예산 수정',
       confirmLabel: '수정하기',
       onConfirm: _value > 0 ? () => Navigator.of(context).pop(_value) : null,
       child: Column(
@@ -131,83 +132,69 @@ class _EditBudgetDialogState extends State<_EditBudgetDialog> {
   }
 }
 
-class _AddPlannedExpenseDialog extends StatefulWidget {
-  const _AddPlannedExpenseDialog();
+class _EditCategoryBudgetDialog extends StatefulWidget {
+  const _EditCategoryBudgetDialog({required this.initial});
+
+  final Map<SpendingCategory, int> initial;
 
   @override
-  State<_AddPlannedExpenseDialog> createState() =>
-      _AddPlannedExpenseDialogState();
+  State<_EditCategoryBudgetDialog> createState() =>
+      _EditCategoryBudgetDialogState();
 }
 
-class _AddPlannedExpenseDialogState extends State<_AddPlannedExpenseDialog> {
-  final _name = TextEditingController();
-  final _amount = TextEditingController();
-  SpendingCategory _category = SpendingCategory.etc;
+class _EditCategoryBudgetDialogState extends State<_EditCategoryBudgetDialog> {
+  late final _controllers = {
+    for (final category in SpendingCategory.values)
+      category: TextEditingController(
+        text: formatNumber(widget.initial[category] ?? 0),
+      ),
+  };
 
-  int get _amountValue => AmountInputFormatter.parse(_amount.text);
+  Map<SpendingCategory, int> get _values => {
+    for (final MapEntry(key: category, value: controller)
+        in _controllers.entries)
+      category: AmountInputFormatter.parse(controller.text),
+  };
 
-  bool get _canSubmit => _name.text.trim().isNotEmpty && _amountValue > 0;
+  int get _total => _values.values.fold(0, (sum, a) => sum + a);
 
   @override
   void dispose() {
-    _name.dispose();
-    _amount.dispose();
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return _BudgetDialogFrame(
-      title: '이번 달 예정지출 추가',
-      confirmLabel: '추가하기',
-      onConfirm: _canSubmit
-          ? () => Navigator.of(context).pop((
-              name: _name.text.trim(),
-              amount: _amountValue,
-              category: _category,
-            ))
-          : null,
+      title: '업종별 예산 수정',
+      confirmLabel: '수정하기',
+      onConfirm: _total > 0 ? () => Navigator.of(context).pop(_values) : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LabeledTextField(
-            label: '내용',
-            hint: '예: 친구 결혼식 축의금',
-            controller: _name,
-            textInputAction: TextInputAction.next,
-            onChanged: (_) => setState(() {}),
+          for (final MapEntry(key: category, value: controller)
+              in _controllers.entries) ...[
+            LabeledTextField(
+              label: '${category.label} (원)',
+              hint: '0',
+              controller: controller,
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.next,
+              inputFormatters: const [AmountInputFormatter()],
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 8),
+          ],
+          const SizedBox(height: 4),
+          Text(
+            '이번 달 소비예산 ${formatWon(_total)}',
+            style: AppTextStyles.bodyStrong,
           ),
-          const SizedBox(height: 12),
-          LabeledTextField(
-            label: '금액 (원)',
-            hint: '금액을 입력해 주세요',
-            controller: _amount,
-            keyboardType: TextInputType.number,
-            inputFormatters: const [AmountInputFormatter()],
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 16),
-          const Text('업종', style: AppTextStyles.label),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final category in SpendingCategory.values)
-                Semantics(
-                  button: true,
-                  selected: category == _category,
-                  child: GestureDetector(
-                    onTap: () => setState(() => _category = category),
-                    child: StatusPill(
-                      label: category.label,
-                      filled: category == _category,
-                      width: 64,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          const SizedBox(height: 4),
+          const Text('이번 달 소비예산은 업종별 예산의 합이에요.', style: AppTextStyles.caption),
         ],
       ),
     );

@@ -52,14 +52,14 @@ abstract final class AppAssets {
   static const infoPerformance = '$_onboarding/info_performance.png';
   static const infoPayment = '$_onboarding/info_payment.png';
 
-  // Category icons (업종)
-  static const iconCafe = '$_icons/cafe.png';
-  static const iconConvenienceStore = '$_icons/convenience store.png';
-  static const iconEtc = '$_icons/etc.png';
-  static const iconPencil = '$_icons/pencil.png';
-  static const iconRestaurant = '$_icons/restaurant.png';
-  static const iconShopping = '$_icons/shopping.png';
-  static const iconTransportation = '$_icons/transportation.png';
+  // Category icons (업종, SVG)
+  static const iconCafe = '$_icons/cafe.svg';
+  static const iconConvenienceStore = '$_icons/convenience_store.svg';
+  static const iconEtc = '$_icons/etc.svg';
+  static const iconPencil = '$_icons/pencil.svg';
+  static const iconRestaurant = '$_icons/restaurant.svg';
+  static const iconShopping = '$_icons/shopping.svg';
+  static const iconTransportation = '$_icons/transportation.svg';
 
   /// 모든 에셋 (파일 누락·미등록 확인용)
   static const all = [

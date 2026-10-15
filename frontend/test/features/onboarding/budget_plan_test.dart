@@ -38,19 +38,16 @@ void main() {
       expect(changed.byCategory.values.fold<int>(0, (s, a) => s + a), 1000000);
     });
 
-    test('예정지출은 그대로 둔다', () {
-      final budget = _sampleBudget().copyWith(
-        plannedExpenses: const [
-          PlannedExpense(
-            id: 'a',
-            name: '축의금',
-            amount: 100000,
-            category: SpendingCategory.etc,
-          ),
-        ],
-      );
+    test('업종별 예산을 바꾸면 총액은 업종별 예산의 합이 된다', () {
+      final changed = _sampleBudget().withCategoryBudgets({
+        SpendingCategory.dining: 300000,
+        SpendingCategory.cafe: 50000,
+      });
 
-      expect(budget.withTotal(500000).plannedExpenses, hasLength(1));
+      expect(changed.byCategory[SpendingCategory.dining], 300000);
+      expect(changed.byCategory[SpendingCategory.cafe], 50000);
+      expect(changed.byCategory[SpendingCategory.shopping], 180000);
+      expect(changed.total, 820000 + 70000 + 50000);
     });
   });
 
@@ -100,64 +97,48 @@ void main() {
       await pumpAppAt(tester, AppRoute.budget, budget: _budget());
 
       expect(findText('최근 3개월의 소비내역을 분석했어요.'), findsOneWidget);
-      expect(findText('820,000원'), findsNWidgets(2)); // 월평균 소비, 이번 달 예산
-      expect(findText('가장 많은 업종  외식'), findsOneWidget);
-      expect(findText('주 사용 카드  신한 Deep Dream'), findsOneWidget);
+      expect(findText('820,000원'), findsOneWidget); // 월평균 소비
+      expect(findText('외식 비중 1위'), findsOneWidget);
       expect(findText('28%'), findsOneWidget);
-      expect(
-        findText(
-          '외식 230,000 · 쇼핑 180,000 · 교통 120,000 · 편의점 100,000 · 기타 190,000',
-        ),
-        findsOneWidget,
-      );
+      // "기타"는 소비패턴에 보여주지 않는다.
+      expect(findText('23%'), findsNothing);
+      expect(findText('820,000'), findsOneWidget); // 이번 달 소비예산
+      expect(findText('230,000원'), findsOneWidget);
+      expect(findText('190,000원'), findsOneWidget);
+      expect(findText('＋ 이번 달 예정지출 추가'), findsNothing);
     });
 
-    testWidgets('예산을 수정하면 업종별 예산이 비율대로 바뀐다', (tester) async {
+    testWidgets('소비예산을 수정하면 업종별 예산이 비율대로 바뀐다', (tester) async {
       await pumpAppAt(tester, AppRoute.budget, budget: _budget());
 
-      await tester.tap(findText('수정'));
+      await tester.tap(find.byTooltip('이번 달 소비예산 수정'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), '1000000');
       await tester.pump();
       await tester.tap(findText('수정하기'));
       await tester.pumpAndSettle();
 
-      expect(findText('1,000,000원'), findsOneWidget);
-      expect(
-        findText(
-          '외식 280,000 · 쇼핑 210,000 · 교통 140,000 · 편의점 120,000 · 기타 250,000',
-        ),
-        findsOneWidget,
-      );
+      expect(findText('1,000,000'), findsOneWidget);
+      expect(findText('280,000원'), findsOneWidget);
+      expect(findText('250,000원'), findsOneWidget);
     });
 
-    testWidgets('예정지출을 추가하고 삭제할 수 있다', (tester) async {
+    testWidgets('업종별 예산을 수정하면 소비예산이 그 합으로 바뀐다', (tester) async {
       await pumpAppAt(tester, AppRoute.budget, budget: _budget());
 
-      await tester.ensureVisible(findText('＋ 이번 달 예정지출 추가'));
-      await tester.tap(findText('＋ 이번 달 예정지출 추가'));
+      await tester.ensureVisible(find.byTooltip('업종별 예산 수정'));
+      await tester.tap(find.byTooltip('업종별 예산 수정'));
       await tester.pumpAndSettle();
       await tester.enterText(
-        find.widgetWithText(TextField, '예: 친구 결혼식 축의금'),
-        '축의금',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextField, '금액을 입력해 주세요'),
-        '100000',
-      );
-      await tester.tap(
-        find.descendant(of: find.byType(Dialog), matching: findText('외식')),
+        find.widgetWithText(TextField, '230,000'),
+        '330000',
       );
       await tester.pump();
-      await tester.tap(findText('추가하기'));
+      await tester.tap(findText('수정하기'));
       await tester.pumpAndSettle();
 
-      expect(findText('축의금 · 외식'), findsOneWidget);
-      expect(findText('100,000원'), findsOneWidget);
-
-      await tester.tap(find.byTooltip('축의금 삭제'));
-      await tester.pump();
-      expect(findText('축의금 · 외식'), findsNothing);
+      expect(findText('920,000'), findsOneWidget);
+      expect(findText('330,000원'), findsOneWidget);
     });
 
     testWidgets('플랜 만들기를 누르면 플랜을 만들고 완료 화면으로 이동한다', (tester) async {

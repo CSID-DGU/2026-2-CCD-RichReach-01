@@ -31,30 +31,12 @@ class SpendingAnalysis {
   final MonthlyBudget suggestedBudget;
 }
 
-/// 이번 달에 쓸 예정인 지출 (예: 여행, 경조사).
-class PlannedExpense {
-  const PlannedExpense({
-    required this.id,
-    required this.name,
-    required this.amount,
-    required this.category,
-  });
-
-  final String id;
-  final String name;
-
-  /// 원 단위 금액
-  final int amount;
-  final SpendingCategory category;
-}
-
 /// 한 달 예산. 업종별 예산은 업종 순서([SpendingCategory.values])대로 다룬다.
 class MonthlyBudget {
   const MonthlyBudget({
     required this.month,
     required this.total,
     required this.byCategory,
-    this.plannedExpenses = const [],
   });
 
   /// 예산 월 (일은 1일로 둔다)
@@ -63,21 +45,25 @@ class MonthlyBudget {
   /// 원 단위 총액
   final int total;
   final Map<SpendingCategory, int> byCategory;
-  final List<PlannedExpense> plannedExpenses;
 
   /// 예산이 있는 업종 수 (플랜 생성 화면의 "주요 업종 N개")
   int get activeCategoryCount => byCategory.values.where((a) => a > 0).length;
 
-  MonthlyBudget copyWith({
-    int? total,
-    Map<SpendingCategory, int>? byCategory,
-    List<PlannedExpense>? plannedExpenses,
-  }) {
+  MonthlyBudget copyWith({int? total, Map<SpendingCategory, int>? byCategory}) {
     return MonthlyBudget(
       month: month,
       total: total ?? this.total,
       byCategory: byCategory ?? this.byCategory,
-      plannedExpenses: plannedExpenses ?? this.plannedExpenses,
+    );
+  }
+
+  /// 업종별 예산을 [amounts]로 바꾸고, 총액은 업종별 예산의 합으로 맞춘다.
+  /// [amounts]에 없는 업종은 지금 금액을 그대로 둔다.
+  MonthlyBudget withCategoryBudgets(Map<SpendingCategory, int> amounts) {
+    final next = {...byCategory, ...amounts};
+    return copyWith(
+      total: next.values.fold<int>(0, (sum, a) => sum + a),
+      byCategory: next,
     );
   }
 
