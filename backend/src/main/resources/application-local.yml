@@ -11,6 +11,12 @@ richreach:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
+app:
+  encryption:
+    # CODEF connected_id 같은 민감정보 암호화에 쓰는 AES-256 키 (Base64, 32바이트).
+    # 기본값을 두지 않는다 - 비어있으면 앱이 바로 실패해서 실수로 평문 저장되는 걸 막는다.
+    key: ${DATA_ENCRYPTION_KEY}
+
 logging:
   level:
     org.hibernate.SQL: debug

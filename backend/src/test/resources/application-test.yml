@@ -4,6 +4,11 @@ spring:
   jpa:
     show-sql: false
 
+# app.encryption.key는 여기 두지 않는다. ConnectedIdConverter가 @Component라
+# 컨텍스트 로딩 시 빈 생성을 시도하므로 값이 필요한데, 레포에 키 문자열을
+# 남기지 않기 위해 RichReachApplicationTests의 @DynamicPropertySource에서
+# 테스트 실행마다 랜덤하게 생성해서 주입한다.
+
 logging:
   level:
     org.hibernate.SQL: warn
