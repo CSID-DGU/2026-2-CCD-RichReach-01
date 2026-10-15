@@ -28,7 +28,13 @@ public class ConnectedIdConverter implements AttributeConverter<String, String> 
     private final SecureRandom secureRandom = new SecureRandom();
 
     public ConnectedIdConverter(@Value("${app.encryption.key}") String base64Key) {
-        this.key = new SecretKeySpec(Base64.getDecoder().decode(base64Key), "AES");
+        byte[] decoded = Base64.getDecoder().decode(base64Key);
+        if (decoded.length != 16 && decoded.length != 24 && decoded.length != 32) {
+            throw new IllegalStateException(
+                "app.encryption.key는 Base64로 인코딩된 AES 키(16/24/32바이트)여야 합니다. 현재 길이: "
+                    + decoded.length + "바이트");
+        }
+        this.key = new SecretKeySpec(decoded, "AES");
     }
 
     @Override
