@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
+import com.richreach.card.service.CardPromotionService;
 import com.richreach.card.staging.CsvStagingLoader.LoadResult;
 import com.richreach.card.staging.StagingService.MvpResult;
 import com.richreach.card.staging.StagingService.Report;
@@ -46,6 +47,7 @@ class StagingServiceTest {
     static StagingService service;
     static CsvStagingLoader loader;
     static StagingValidator validator;
+    static CardPromotionService promotion;
 
     @BeforeAll
     static void migrateAndWire() throws IOException {
@@ -61,10 +63,19 @@ class StagingServiceTest {
         loader = new CsvStagingLoader(jdbc, txManager);
         validator = new StagingValidator(jdbc);
         service = new StagingService(loader, validator, jdbc, txManager);
+        promotion = new CardPromotionService(jdbc, txManager);
     }
 
     @BeforeEach
     void clearStagingTables() {
+        // 최종 테이블은 FK가 있어서 자식부터 지운다. 원문 테이블은 시드(V2)를 두고 연결 표시만 되돌린다.
+        jdbc.update("DELETE FROM performance_tiers");
+        jdbc.update("DELETE FROM performance_exclusions");
+        jdbc.update("DELETE FROM benefit_rules");
+        jdbc.update("DELETE FROM card_products");
+        jdbc.update("DELETE FROM card_catalog_raw WHERE issuer LIKE 'v%'");
+        jdbc.update("UPDATE card_catalog_raw SET structured_product_id = NULL, review_status = 'raw_collected' "
+            + "WHERE structured_product_id IS NOT NULL");
         for (StagingTable table : StagingTables.ALL) {
             jdbc.execute("TRUNCATE TABLE `" + table.table() + "`");
         }
@@ -195,6 +206,75 @@ class StagingServiceTest {
             .singleElement().extracting(CheckResult::count).isEqualTo(3L);
     }
 
+    @Test
+    void promotesOnlyMvpCardsWithTheirBenefitsTiersAndExclusions(@TempDir Path dir) throws IOException {
+        service.loadAll(fixtures);
+        service.selectMvpCards(writeMvp(dir, "v1,00001\nv2,00002")); // 3번 카드는 MVP가 아니다
+
+        CardPromotionService.Result result = promotion.promote();
+
+        assertThat(result.mvpSelected()).isEqualTo(2);
+        assertThat(result.cardProducts()).isEqualTo(2);
+        assertThat(result.benefitRules()).isEqualTo(2);
+        assertThat(result.performanceTiers()).isEqualTo(2); // 실적 조건이 있는 혜택마다 한 행
+        assertThat(result.performanceExclusions()).isEqualTo(1); // 조건 3개 중 EXCLUSION이 있고 MVP 카드인 것은 1개
+        assertThat(count("SELECT COUNT(*) FROM card_products WHERE card_id = '00003'")).isZero();
+        assertThat(count("SELECT COUNT(*) FROM performance_exclusions WHERE applies_to = 'PERFORMANCE'")).isEqualTo(1);
+    }
+
+    @Test
+    void marksSuspendedCardsAsNotRecommendableButStillPromotesThem(@TempDir Path dir) throws IOException {
+        service.loadAll(fixtures);
+        service.selectMvpCards(writeMvp(dir, "v1,00001\nv2,00002"));
+
+        promotion.promote();
+
+        assertThat(count("SELECT COUNT(*) FROM card_products WHERE card_id = '00001' AND recommendable = 1")).isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM card_products WHERE card_id = '00002' AND recommendable = 0")).isEqualTo(1);
+    }
+
+    @Test
+    void promotingAgainKeepsHumanApprovalAndRefreshesOtherValues(@TempDir Path dir) throws IOException {
+        service.loadAll(fixtures);
+        service.selectMvpCards(writeMvp(dir, "v1,00001"));
+        promotion.promote();
+        jdbc.update("UPDATE benefit_rules SET rule_engine_ready = 1"); // 사람이 원문과 대조해 확인했다고 표시
+        jdbc.update("UPDATE stg_card_benefit SET rate_percent = 9.90 WHERE benefit_id = 'v1'");
+
+        CardPromotionService.Result second = promotion.promote();
+
+        assertThat(second.benefitRules()).isEqualTo(1); // 중복 없음
+        assertThat(second.cardProducts()).isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM benefit_rules WHERE rule_engine_ready = 1")).isEqualTo(1); // 확인 표시 유지
+        assertThat(count("SELECT COUNT(*) FROM benefit_rules WHERE rate_percent = 9.90")).isEqualTo(1); // 값은 갱신
+    }
+
+    @Test
+    void linksPromotedCardsBackToRawCatalog(@TempDir Path dir) throws IOException {
+        jdbc.update("INSERT INTO card_catalog_raw (issuer, card_id, card_name, card_type, status, raw_text, collected_at) "
+            + "VALUES ('v1', '00001', 'x', 'credit', 'listed', 'text', NOW())");
+        service.loadAll(fixtures);
+        service.selectMvpCards(writeMvp(dir, "v1,00001"));
+
+        CardPromotionService.Result result = promotion.promote();
+
+        assertThat(result.rawCatalogLinked()).isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM card_catalog_raw r JOIN card_products p ON p.id = r.structured_product_id "
+            + "WHERE r.issuer = 'v1' AND r.review_status = 'structured'")).isEqualTo(1);
+    }
+
+    @Test
+    void promotesNothingWhenNoCardIsSelected() {
+        service.loadAll(fixtures);
+
+        CardPromotionService.Result result = promotion.promote();
+
+        assertThat(result.mvpSelected()).isZero();
+        assertThat(result.cardProducts()).isZero();
+        assertThat(result.benefitRules()).isZero();
+        assertThat(result.performanceExclusions()).isZero();
+    }
+
     /**
      * 실제 CSV 전체를 넣어 건수를 확인한다. STAGING_CSV_DIR이 설정된 경우에만 실행한다. (평소 CI에서는 건너뜀)
      * 실행: STAGING_CSV_DIR=C:\경로\319종_카드혜택_전체자료 ./gradlew test --tests "*StagingServiceTest.loadsRealCsvFiles"
@@ -215,6 +295,23 @@ class StagingServiceTest {
                 tuple("stg_target_name", 1046, 1046L, 0),
                 tuple("stg_review_queue", 311, 311L, 0),
                 tuple("stg_special_case", 129, 129L, 0));
+    }
+
+    /** 실제 CSV로 MVP 카드 1장(NH 올바른NEW HAVE체크카드)을 승격한다. STAGING_CSV_DIR이 있을 때만 실행한다. */
+    @Test
+    @EnabledIfEnvironmentVariable(named = "STAGING_CSV_DIR", matches = ".+")
+    void promotesARealMvpCard(@TempDir Path dir) throws IOException {
+        service.loadAll(Path.of(System.getenv("STAGING_CSV_DIR")));
+        service.selectMvpCards(writeMvp(dir, "nh,90010036"));
+
+        CardPromotionService.Result result = promotion.promote();
+
+        assertThat(result.cardProducts()).isEqualTo(1);
+        assertThat(result.benefitRules()).isEqualTo(5); // 혜택 5행
+        assertThat(result.performanceExclusions()).isPositive();
+        assertThat(result.rawCatalogLinked()).isEqualTo(1); // V2로 들어간 원문 행과 연결
+        assertThat(count("SELECT COUNT(*) FROM card_products WHERE recommendable = 1")).isEqualTo(1); // 발급 중인 결제 카드
+        assertThat(count("SELECT COUNT(*) FROM benefit_rules WHERE rule_engine_ready = 1")).isZero(); // 사람 확인 전
     }
 
     /**
@@ -238,6 +335,9 @@ class StagingServiceTest {
     private static String cell(StagingTable table, String column, int row) {
         return switch (column) {
             case "card_id" -> "0000" + row; // 앞자리 0이 유지되는지 확인
+            case "card_status" -> row == 2 ? "issuance_suspended" : "listed"; // 2번 카드는 발급 중단
+            case "product_class" -> "PAYMENT_CARD";
+            case "condition_type" -> row == 1 ? "PERFORMANCE|EXCLUSION" : "LIMIT"; // 제외 조건은 1번 카드만
             case "per_transaction_min_krw", "merchants" -> ""; // 전 행 빈칸 -> NULL
             case "source_alias_pattern" -> row == 1 ? "alias-1" : ""; // 일부만 빈칸
             case "conditions" -> "\"따옴표 \"\"포함\"\" 와\n줄바꿈 " + row + "\""; // CSV 따옴표/줄바꿈 규칙
