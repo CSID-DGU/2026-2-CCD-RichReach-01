@@ -25,6 +25,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.flywaydb:flyway-mysql'
+    // 스테이징 CSV 적재용. 값 안에 줄바꿈/따옴표가 있어서 직접 split하면 안 된다.
+    implementation 'org.apache.commons:commons-csv:1.12.0'
     // Spring Security 전체(starter-security)는 안 쓴다 - 인증 필터체인까지 자동 적용돼서
     // 지금 있는 API들이 전부 로그인 요구받게 되는 부작용이 생긴다.
     // BCryptPasswordEncoder 같은 암호화 유틸리티만 필요하므로 crypto 모듈만 가져온다.
