@@ -17,6 +17,12 @@ spring:
   flyway:
     enabled: true
 
+# 카드 혜택 CSV 스테이징 적재. 평소에는 꺼 두고, 적재할 때만 환경변수로 켠다. (StagingRunner 참고)
+richreach:
+  staging:
+    load-on-startup: ${STAGING_LOAD_ON_STARTUP:false}
+    csv-dir: ${STAGING_CSV_DIR:}
+
 # DB 접속 정보(spring.datasource.*)는 프로파일별 설정(application-local.yml 등)에서 환경변수로 주입한다.
 
 management:
