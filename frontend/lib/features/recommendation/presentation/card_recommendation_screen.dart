@@ -48,7 +48,10 @@ class CardRecommendationScreen extends ConsumerWidget {
             Expanded(
               child: messages.isEmpty
                   ? _StartView(onAsk: chat.send)
-                  : _ChatView(messages: messages),
+                  : _ChatView(
+                      messages: messages,
+                      onAsk: waiting ? null : chat.send,
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -167,9 +170,12 @@ class _StartView extends StatelessWidget {
 
 /// 질문과 답변 목록. 새 말이 오면 맨 아래로 내린다.
 class _ChatView extends StatefulWidget {
-  const _ChatView({required this.messages});
+  const _ChatView({required this.messages, required this.onAsk});
 
   final List<ChatMessage> messages;
+
+  /// 브랜드 버튼으로 다시 물어볼 때. 답변을 기다리는 중이면 null.
+  final ValueChanged<String>? onAsk;
 
   @override
   State<_ChatView> createState() => _ChatViewState();
@@ -241,7 +247,31 @@ class _ChatViewState extends State<_ChatView> {
       switch (recommendation) {
         CardRecommendation() => Padding(
           padding: const EdgeInsets.only(top: 10),
-          child: CardRecommendationView(recommendation: recommendation),
+          child: CardRecommendationView(
+            recommendation: recommendation,
+            onOpenCard: (card) => context.pushNamed(
+              AppRoute.recommendationCardDetail.name,
+              pathParameters: {'cardId': card.id},
+            ),
+          ),
+        ),
+        FollowUpQuestion(:final options) => Padding(
+          padding: const EdgeInsets.only(top: 12, left: 14),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final option in options)
+                QuickQuestionChip(
+                  label: option.label,
+                  semanticLabel: '${option.label} 고르기',
+                  onPressed: switch (widget.onAsk) {
+                    final ask? => () => ask(option.question),
+                    null => null,
+                  },
+                ),
+            ],
+          ),
         ),
         AmountRangeRecommendation() => Padding(
           padding: const EdgeInsets.only(top: 28),

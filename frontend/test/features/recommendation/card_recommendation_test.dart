@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/features/onboarding/domain/transaction.dart';
+import 'package:frontend/features/plan/presentation/card_plan_detail_screen.dart';
 import 'package:frontend/features/recommendation/data/recommendation_repository.dart';
 import 'package:frontend/features/recommendation/domain/recommendation.dart';
 import 'package:frontend/features/recommendation/presentation/card_recommendation_screen.dart';
@@ -70,17 +71,32 @@ void main() {
       expect(r.reasons.first, '남은 혜택 한도만큼 14,000원이 적용돼요.');
     });
 
-    test('금액이 없으면 금액 구간별로 추천하고 플랜의 우선 카드를 현재 최적으로 표시한다', () {
-      final r = _answer('편의점 갈 건데 카드 뭐 써?') as AmountRangeRecommendation;
+    test('금액이 없으면 금액 구간별로 추천하고 평소 결제 금액 구간을 현재 최적으로 표시한다', () {
+      final r = _answer('GS25 갈 건데 카드 뭐 써?') as AmountRangeRecommendation;
 
       expect(r.options.map((o) => o.card.name), [
         'KB My WE:SH',
-        'KB My WE:SH',
         '신한 Deep Dream',
+        '우리 카드의정석',
       ]);
-      expect(r.options[1].note, '최대 1,000원 할인');
-      expect(r.options.map((o) => o.isBest), [true, false, false]);
+      expect(r.options.map((o) => o.note), [
+        '최대 1,000원 할인',
+        '5% 할인 · 한도 여유',
+        '정액 할인 후 적립 유리',
+      ]);
+      expect(r.options.map((o) => o.isBest), [false, true, false]);
       expect(r.summary, '금액 구간별로 3장을 안내했어요');
+    });
+
+    test('편의점·카페만 말하면 브랜드를 되묻고, 고르면 업종 이름을 브랜드로 바꿔 묻는다', () {
+      final r = _answer('편의점 갈 건데 카드 뭐 써?') as FollowUpQuestion;
+
+      expect(r.message, '어느 편의점에 가시나요? 편의점 브랜드마다 카드 혜택이 달라요.');
+      expect(r.options.map((o) => o.label), ['GS25', 'CU', '세븐일레븐', '이마트24']);
+      expect(r.options.first.question, 'GS25 갈 건데 카드 뭐 써?');
+      expect(_answer('커피 마실 건데'), isA<FollowUpQuestion>());
+      expect(_answer('스타벅스에서 5천원'), isA<CardRecommendation>());
+      expect(_answer('CU 3천원'), isA<CardRecommendation>());
     });
 
     test('업종을 모르면 다시 물어본다', () {
@@ -153,7 +169,7 @@ void main() {
 
     testWidgets('새 대화를 시작하면 지난 대화가 기록 맨 위에 남는다', (tester) async {
       await pumpAppAt(tester, AppRoute.cardRecommendation);
-      await tester.tap(find.bySemanticsLabel('빠른 질문 카페'));
+      await tester.tap(find.bySemanticsLabel('빠른 질문 외식'));
       await tester.pumpAndSettle();
 
       await tester.tap(findText('새 대화'));
@@ -164,7 +180,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ChatHistoryScreen), findsOneWidget);
-      expect(findText('카페 결제할 때 카드 뭐 써?'), findsOneWidget);
+      expect(findText('외식 결제할 때 카드 뭐 써?'), findsOneWidget);
       expect(findText('오늘'), findsNWidgets(2));
       expect(findText('10월 18일'), findsOneWidget);
       expect(findText('10월 15일'), findsOneWidget);
@@ -181,6 +197,42 @@ void main() {
 
       expect(find.byType(CardRecommendationScreen), findsOneWidget);
       expect(findText('온라인 쇼핑 5만 원이면?'), findsOneWidget);
+      expect(findText('추천 이유'), findsOneWidget);
+    });
+
+    testWidgets('편의점을 물으면 브랜드를 되묻고, 브랜드를 고르면 구간별로 추천한다', (tester) async {
+      await pumpAppAt(tester, AppRoute.cardRecommendation);
+
+      await tester.tap(findText('“편의점 갈 건데 카드 뭐 써?”'));
+      await tester.pumpAndSettle();
+
+      expect(findText('어느 편의점에 가시나요? 편의점 브랜드마다 카드 혜택이 달라요.'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('GS25 고르기'));
+      await tester.pumpAndSettle();
+
+      expect(findText('GS25 갈 건데 카드 뭐 써?'), findsOneWidget);
+      expect(findText('금액 구간별 추천'), findsOneWidget);
+    });
+
+    testWidgets('다른 카드와 비교의 카드를 누르면 그 카드의 플랜 상세가 열린다', (tester) async {
+      await pumpAppAt(tester, AppRoute.cardRecommendation);
+      await tester.tap(findText('“아웃백에서 10만 원 결제할 거야”'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        findText('KB My WE:SH'),
+        200,
+        scrollable: _chatList,
+      );
+
+      await tester.tap(findText('KB My WE:SH'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CardPlanDetailScreen), findsOneWidget);
+      expect(find.bySemanticsLabel('카드 추천'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.chevron_left));
+      await tester.pumpAndSettle();
+      expect(find.byType(CardPlanDetailScreen), findsNothing);
       expect(findText('추천 이유'), findsOneWidget);
     });
   });

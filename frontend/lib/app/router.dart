@@ -97,9 +97,8 @@ Widget _screenFor(AppRoute route, GoRouterState state) {
     AppRoute.planGenerating => const PlanGeneratingScreen(),
     AppRoute.planReady => const PlanReadyScreen(),
     AppRoute.monthlyPlan => const MonthlyPlanScreen(),
-    AppRoute.cardPlanDetail => CardPlanDetailScreen(
-      cardId: state.pathParameters['cardId'] ?? '',
-    ),
+    AppRoute.cardPlanDetail || AppRoute.recommendationCardDetail =>
+      CardPlanDetailScreen(cardId: state.pathParameters['cardId'] ?? ''),
     AppRoute.categoryPlanDetail => CategoryPlanDetailScreen(
       category: _categoryOf(state.pathParameters['category']),
     ),

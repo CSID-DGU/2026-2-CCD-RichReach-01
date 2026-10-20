@@ -94,17 +94,21 @@ class QuickQuestionChip extends StatelessWidget {
     super.key,
     required this.label,
     required this.onPressed,
+    this.semanticLabel,
   });
 
   final String label;
   final VoidCallback? onPressed;
+
+  /// 화면 낭독기가 읽을 이름. 없으면 "빠른 질문 {label}".
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       container: true,
       button: true,
-      label: '빠른 질문 $label',
+      label: semanticLabel ?? '빠른 질문 $label',
       excludeSemantics: true,
       child: Material(
         color: AppColors.primary,

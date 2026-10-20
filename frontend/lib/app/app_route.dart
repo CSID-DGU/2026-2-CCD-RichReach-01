@@ -66,6 +66,11 @@ enum AppRoute {
 
   // 카드 추천 탭 안의 화면
   recommendationHistory('/recommendation/history', 'RECOMMEND-00', '대화 기록'),
+  recommendationCardDetail(
+    '/recommendation/cards/:cardId',
+    'PLAN-02',
+    '카드별 플랜 상세 (카드 추천에서)',
+  ),
   settings('/settings', 'SETTINGS', '설정', showBack: false);
 
   /// 하단 네비게이션 탭 순서.
@@ -74,7 +79,7 @@ enum AppRoute {
   /// 탭 안에서 여는 하위 화면. 하단 네비게이션이 그대로 보인다.
   static const tabChildren = {
     monthlyPlan: [cardPlanDetail, categoryPlanDetail],
-    cardRecommendation: [recommendationHistory],
+    cardRecommendation: [recommendationHistory, recommendationCardDetail],
   };
 
   const AppRoute(

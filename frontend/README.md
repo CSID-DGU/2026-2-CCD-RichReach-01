@@ -70,6 +70,7 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | PLAN-03 | 업종별 플랜 상세 | `/plan/categories/:category` (예: `/plan/categories/DINING`) | `categoryPlanDetail` |
 | RECOMMEND-01 | 카드 추천 (하단 탭) | `/recommendation` | `cardRecommendation` |
 | RECOMMEND-00 | 카드 추천 대화 기록 | `/recommendation/history` | `recommendationHistory` |
+| PLAN-02 | 카드별 플랜 상세 (카드 추천의 "다른 카드와 비교"에서) | `/recommendation/cards/:cardId` | `recommendationCardDetail` |
 | REPORT | 리포트 (하단 탭, 준비 중) | `/report` | `report` |
 | SETTINGS | 설정 (하단 탭, 준비 중) | `/settings` | `settings` |
 

@@ -20,7 +20,16 @@ abstract interface class RecommendationRepository {
 
 /// 카드 한 장의 업종 혜택 규칙 (가짜 데이터).
 class _BenefitRule {
-  const _BenefitRule(this.rate, {this.perUseCap, this.isReward = false});
+  const _BenefitRule(
+    this.rate, {
+    this.perUseCap,
+    this.isReward = false,
+    this.belowAmount,
+    this.fixedDiscount = 0,
+    this.fixedFrom = 0,
+    this.description,
+    this.rangeNote,
+  });
 
   /// 할인·적립률 (0.1 = 10%)
   final double rate;
@@ -31,12 +40,37 @@ class _BenefitRule {
   /// 적립이면 true, 할인이면 false
   final bool isReward;
 
+  /// 이 금액 미만 결제에만 [rate]를 준다. 없으면 null.
+  final int? belowAmount;
+
+  /// [fixedFrom]원 이상 결제하면 더해 주는 정액 할인
+  final int fixedDiscount;
+  final int fixedFrom;
+
+  /// 혜택 설명. 없으면 "10% 할인"처럼 [rate]로 만든다.
+  final String? description;
+
+  /// 금액 구간별 추천에 보여줄 짧은 설명. 없으면 [label].
+  final String? rangeNote;
+
   String get label {
+    if (description case final text?) return text;
     final percent = rate * 100;
     final text = percent == percent.roundToDouble()
         ? percent.round().toString()
         : percent.toStringAsFixed(1);
     return '$text% ${isReward ? '적립' : '할인'}';
+  }
+
+  /// [amount]원 결제의 혜택 (남은 한도는 따로 반영한다)
+  int benefitFor(int amount) {
+    final below = belowAmount;
+    var benefit = below != null && amount >= below
+        ? 0
+        : (amount * rate).round();
+    if (perUseCap case final cap?) benefit = math.min(benefit, cap);
+    if (fixedDiscount > 0 && amount >= fixedFrom) benefit += fixedDiscount;
+    return benefit;
   }
 }
 
@@ -93,13 +127,26 @@ class FakeRecommendationRepository implements RecommendationRepository {
       SpendingCategory.dining: _BenefitRule(0.05),
       SpendingCategory.cafe: _BenefitRule(0.10),
       SpendingCategory.shopping: _BenefitRule(0.07),
-      SpendingCategory.convenienceStore: _BenefitRule(0.10, perUseCap: 1000),
+      SpendingCategory.convenienceStore: _BenefitRule(
+        0.10,
+        perUseCap: 1000,
+        belowAmount: 10000,
+        description: '1만 원 미만 10% 할인',
+        rangeNote: '최대 1,000원 할인',
+      ),
     },
     'WOORI-8830': {
       SpendingCategory.dining: _BenefitRule(0.03, isReward: true),
       SpendingCategory.transport: _BenefitRule(0.10),
       SpendingCategory.shopping: _BenefitRule(0.01, isReward: true),
-      SpendingCategory.convenienceStore: _BenefitRule(0.03, isReward: true),
+      SpendingCategory.convenienceStore: _BenefitRule(
+        0.01,
+        isReward: true,
+        fixedDiscount: 3000,
+        fixedFrom: 30000,
+        description: '3만 원 이상 3,000원 할인 + 1% 적립',
+        rangeNote: '정액 할인 후 적립 유리',
+      ),
       SpendingCategory.etc: _BenefitRule(0.008, isReward: true),
     },
   };
@@ -138,12 +185,34 @@ class FakeRecommendationRepository implements RecommendationRepository {
     SpendingCategory.transport: ['교통', '택시', '버스', '지하철', 'KTX', '주유'],
   };
 
-  /// 금액 구간 (이름, 구간을 대표하는 금액)
+  /// 브랜드마다 혜택이 다른 업종: 브랜드를 알아볼 단어와, 되물을 때 보여줄 브랜드
+  static const _brands = {
+    SpendingCategory.convenienceStore: (
+      words: ['GS25', 'CU', '세븐일레븐', '이마트24'],
+      options: ['GS25', 'CU', '세븐일레븐', '이마트24'],
+    ),
+    SpendingCategory.cafe: (
+      words: ['스타벅스', '투썸', '메가커피', '이디야'],
+      options: ['스타벅스', '투썸플레이스', '메가커피', '이디야'],
+    ),
+  };
+
+  /// 금액 구간 (이름, 구간을 대표하는 금액, 구간 끝 금액. 마지막 구간은 끝이 없다)
   static const _ranges = [
-    ('10,000원 미만', 5000),
-    ('10,000원 초과 ~ 30,000원', 20000),
-    ('30,000원 초과', 50000),
+    ('10,000원 미만', 5000, 10000),
+    ('10,000원 초과 ~ 30,000원', 20000, 30000),
+    ('30,000원 초과', 50000, null),
   ];
+
+  /// 업종별 평소 한 번 결제 금액 (최근 3개월 평균의 예시). 이 금액이 든 구간이 "현재 최적"이다.
+  static const _typicalAmounts = {
+    SpendingCategory.dining: 35000,
+    SpendingCategory.cafe: 6000,
+    SpendingCategory.shopping: 40000,
+    SpendingCategory.transport: 15000,
+    SpendingCategory.convenienceStore: 12000,
+    SpendingCategory.etc: 20000,
+  };
 
   @override
   Future<Recommendation> recommend(String question) async {
@@ -164,13 +233,23 @@ class FakeRecommendationRepository implements RecommendationRepository {
     ];
   }
 
+  /// 예시 대화. 브랜드를 되물으면 첫 번째 브랜드를 고른 것으로 이어 간다.
   ChatHistoryEntry _historyEntry(String question, DateTime date) {
-    final answer = FakeRecommendationRepository.answer(question, month: date);
+    var answer = FakeRecommendationRepository.answer(question, month: date);
+    final messages = <ChatMessage>[
+      UserMessage(question),
+      AssistantMessage(answer),
+    ];
+    if (answer case FollowUpQuestion(:final options)) {
+      final next = options.first.question;
+      answer = FakeRecommendationRepository.answer(next, month: date);
+      messages.addAll([UserMessage(next), AssistantMessage(answer)]);
+    }
     return ChatHistoryEntry(
       question: question,
       summary: answer.summary,
       date: date,
-      messages: [UserMessage(question), AssistantMessage(answer)],
+      messages: messages,
     );
   }
 
@@ -214,10 +293,36 @@ class FakeRecommendationRepository implements RecommendationRepository {
             '예) 스타벅스, 편의점, 온라인 쇼핑',
       );
     }
+    if (_brands[category] case (:final words, :final options)) {
+      final text = question.toUpperCase();
+      if (!words.any((word) => text.contains(word.toUpperCase()))) {
+        return _askBrand(question, category, options);
+      }
+    }
     final amount = amountOf(question);
     return amount == null
         ? _rangeRecommendation(category, month)
         : _cardRecommendation(category, amount, month);
+  }
+
+  /// 업종만 말했을 때 브랜드를 되묻는다. 브랜드를 고르면 질문의 업종 이름을 브랜드로 바꿔 다시 묻는다.
+  static Recommendation _askBrand(
+    String question,
+    SpendingCategory category,
+    List<String> brands,
+  ) {
+    final label = category.label;
+    String withBrand(String brand) => question.contains(label)
+        ? question.replaceFirst(label, brand)
+        : '$brand $question';
+    return FollowUpQuestion(
+      message: '어느 $label에 가시나요? $label 브랜드마다 카드 혜택이 달라요.',
+      category: category,
+      options: [
+        for (final brand in brands)
+          FollowUpOption(label: brand, question: withBrand(brand)),
+      ],
+    );
   }
 
   /// [category] 플랜에서 권장 금액이 큰 카드 순서 (같은 혜택일 때 먼저 고른다).
@@ -231,9 +336,10 @@ class FakeRecommendationRepository implements RecommendationRepository {
   static int _benefitOf(String cardId, SpendingCategory category, int amount) {
     final rule = _rules[cardId]?[category];
     if (rule == null) return 0;
-    var benefit = (amount * rule.rate).round();
-    if (rule.perUseCap case final cap?) benefit = math.min(benefit, cap);
-    benefit = math.min(benefit, _status[cardId]?.remainingLimit ?? 0);
+    final benefit = math.min(
+      rule.benefitFor(amount),
+      _status[cardId]?.remainingLimit ?? 0,
+    );
     return benefit ~/ 10 * 10;
   }
 
@@ -274,7 +380,7 @@ class FakeRecommendationRepository implements RecommendationRepository {
 
     final rule = _rules[best.id]![category]!;
     final status = _status[best.id]!;
-    final rawBenefit = (amount * rule.rate).round();
+    final rawBenefit = rule.benefitFor(amount);
     final plan = FakeMonthlyPlanRepository.samplePlan(month);
     final target = plan.categoryPlans[category]
         ?.where((item) => item.card.id == best.id)
@@ -294,7 +400,7 @@ class FakeRecommendationRepository implements RecommendationRepository {
           : '${category.label} 목표 ${formatWon(target)} → '
                 '${formatWon(math.max(0, target - amount))}',
       reasons: [
-        benefit >= math.min(rawBenefit, rule.perUseCap ?? rawBenefit)
+        benefit >= rawBenefit ~/ 10 * 10
             ? '혜택 한도가 남아 있어 ${rule.label}이 적용돼요.'
             : '남은 혜택 한도만큼 ${formatWon(benefit)}이 적용돼요.',
         if (left == 0)
@@ -315,37 +421,34 @@ class FakeRecommendationRepository implements RecommendationRepository {
     SpendingCategory category,
     DateTime month,
   ) {
-    final priority = _planOrder(category, month).firstOrNull;
+    // 평소 결제 금액이 든 구간을 "현재 최적"으로 표시한다.
+    final typical = _typicalAmounts[category];
+    final bestIndex = typical == null
+        ? -1
+        : _ranges.indexWhere((r) => r.$3 == null || typical <= r.$3!);
     final options = [
-      for (final (label, amount) in _ranges)
+      for (final (i, (label, amount, _)) in _ranges.indexed)
         () {
           final (card, benefit) = _ranked(category, amount, month).first;
           final rule = _rules[card.id]?[category];
-          final cap = rule?.perUseCap;
+          final hasLimit = (_status[card.id]?.remainingLimit ?? 0) > 0;
           final note = rule == null || benefit == 0
               ? '실적 채우기에 유리'
-              : cap != null && benefit >= cap
-              ? '최대 ${formatWon(cap)} 할인'
-              : rule.label;
-          return AmountRangeOption(label: label, card: card, note: note);
+              : rule.rangeNote ??
+                    (hasLimit ? '${rule.label} · 한도 여유' : rule.label);
+          return AmountRangeOption(
+            label: label,
+            card: card,
+            note: note,
+            isBest: i == bestIndex,
+          );
         }(),
     ];
-    // 플랜의 우선 카드가 나온 첫 구간을 "현재 최적"으로 표시한다. 없으면 가운데 구간.
-    var bestIndex = options.indexWhere((o) => o.card.id == priority);
-    if (bestIndex < 0) bestIndex = options.length ~/ 2;
 
     return AmountRangeRecommendation(
       message: '결제 금액을 아직 모른다면 금액 구간별로 가장 유리한 카드를 추천해드릴게요.',
       category: category,
-      options: [
-        for (final (i, option) in options.indexed)
-          AmountRangeOption(
-            label: option.label,
-            card: option.card,
-            note: option.note,
-            isBest: i == bestIndex,
-          ),
-      ],
+      options: options,
       followUp: '정확한 금액을 입력하면 카드 한 장과 예상 혜택을 바로 추천해드려요.',
     );
   }

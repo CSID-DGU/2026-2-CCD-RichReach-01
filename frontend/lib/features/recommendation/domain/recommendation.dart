@@ -98,6 +98,34 @@ class AmountRangeOption {
   final bool isBest;
 }
 
+/// 업종만 말했을 때 브랜드를 되묻는 답변 (예: "어느 편의점에 가시나요?").
+class FollowUpQuestion extends Recommendation {
+  const FollowUpQuestion({
+    required super.message,
+    required this.category,
+    required this.options,
+  });
+
+  final SpendingCategory category;
+
+  /// 고를 수 있는 브랜드
+  final List<FollowUpOption> options;
+
+  @override
+  String get summary => '어느 ${category.label}인지 물어봤어요';
+}
+
+/// 되묻는 답변의 선택지 하나. 누르면 [question]을 보낸다.
+class FollowUpOption {
+  const FollowUpOption({required this.label, required this.question});
+
+  /// 버튼 이름 (예: "GS25")
+  final String label;
+
+  /// 브랜드를 넣어 다시 보낼 질문 (예: "GS25 갈 건데 카드 뭐 써?")
+  final String question;
+}
+
 /// 카드를 추천하지 못하고 문구로만 답할 때 (예: 업종을 알 수 없을 때).
 class TextReply extends Recommendation {
   const TextReply({required super.message});

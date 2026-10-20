@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/assets/app_assets.dart';
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -80,9 +82,16 @@ class _CardPicture extends StatelessWidget {
 
 /// RECOMMEND-02: 추천 카드, 예상 혜택, 사용 후 플랜, 추천 이유, 다른 카드와 비교.
 class CardRecommendationView extends StatelessWidget {
-  const CardRecommendationView({super.key, required this.recommendation});
+  const CardRecommendationView({
+    super.key,
+    required this.recommendation,
+    required this.onOpenCard,
+  });
 
   final CardRecommendation recommendation;
+
+  /// 다른 카드를 누르면 그 카드의 플랜 상세를 연다
+  final ValueChanged<OwnedCard> onOpenCard;
 
   @override
   Widget build(BuildContext context) {
@@ -225,30 +234,43 @@ class CardRecommendationView extends StatelessWidget {
           const SizedBox(height: 6),
           for (final (i, other) in r.alternatives.indexed) ...[
             if (i > 0) const Divider(height: 1, color: _dividerColor),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      other.card.name,
+            InkWell(
+              onTap: () => onOpenCard(other.card),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        other.card.name,
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 11,
+                          height: 1.35,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      formatWon(other.expectedBenefit),
                       style: AppTextStyles.body.copyWith(
                         fontSize: 11,
                         height: 1.35,
                         fontWeight: FontWeight.w500,
+                        color: AppColors.primary,
                       ),
                     ),
-                  ),
-                  Text(
-                    formatWon(other.expectedBenefit),
-                    style: AppTextStyles.body.copyWith(
-                      fontSize: 11,
-                      height: 1.35,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.primary,
+                    const SizedBox(width: 4),
+                    SvgPicture.asset(
+                      AppAssets.iconNavigateNext,
+                      width: 13,
+                      height: 13,
+                      colorFilter: const ColorFilter.mode(
+                        AppColors.primary,
+                        BlendMode.srcIn,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
