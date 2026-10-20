@@ -65,6 +65,7 @@ flutter:
     - assets/images/card_companies/
     - assets/images/cards/
     - assets/images/icons/
+    - assets/images/icons/Navigation/
     - assets/images/onboarding/
 
   # Pretendard (SIL Open Font License 1.1, assets/fonts/pretendard/LICENSE.txt)

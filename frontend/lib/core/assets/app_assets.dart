@@ -5,6 +5,7 @@ abstract final class AppAssets {
   static const _cardCompanies = 'assets/images/card_companies';
   static const _cards = 'assets/images/cards';
   static const _icons = 'assets/images/icons';
+  static const _navigationIcons = '$_icons/Navigation';
   static const _onboarding = 'assets/images/onboarding';
 
   // CardRoute brand
@@ -61,6 +62,19 @@ abstract final class AppAssets {
   static const iconShopping = '$_icons/shopping.svg';
   static const iconTransportation = '$_icons/transportation.svg';
 
+  // Navigation icons (SVG는 ColorFilter로 활성/비활성 색상을 적용한다.)
+  static const navigationHome = '$_navigationIcons/home.svg';
+  static const navigationMonthlyPlan = '$_navigationIcons/plan.svg';
+  static const navigationCardRecommendation =
+      '$_navigationIcons/recommendation.svg';
+  static const navigationReport = '$_navigationIcons/report.svg';
+  static const navigationSettings = '$_navigationIcons/setting.svg';
+
+  // Direction icons
+  static const iconNavigateNext = '$_icons/ic_round-navigate-next.svg';
+  static const iconArrowLeft = '$_icons/dashicons_arrow-left.png';
+  static const iconArrowRight = '$_icons/dashicons_arrow-right.png';
+
   /// 모든 에셋 (파일 누락·미등록 확인용)
   static const all = [
     brandHeaderSymbol,
@@ -96,5 +110,13 @@ abstract final class AppAssets {
     iconRestaurant,
     iconShopping,
     iconTransportation,
+    navigationHome,
+    navigationMonthlyPlan,
+    navigationCardRecommendation,
+    navigationReport,
+    navigationSettings,
+    iconNavigateNext,
+    iconArrowLeft,
+    iconArrowRight,
   ];
 }
