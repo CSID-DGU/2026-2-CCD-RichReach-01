@@ -285,9 +285,9 @@ void main() {
       await pumpAppAt(tester, AppRoute.monthlyPlan);
       expect(find.byType(MonthlyPlanScreen), findsOneWidget);
 
-      await tester.tap(find.bySemanticsLabel('카드 추천'));
+      await tester.tap(find.bySemanticsLabel('리포트'));
       await tester.pumpAndSettle();
-      expect(findText('카드 추천 화면은 준비 중이에요.'), findsOneWidget);
+      expect(findText('리포트 화면은 준비 중이에요.'), findsOneWidget);
 
       await tester.tap(find.bySemanticsLabel('월간 플랜'));
       await tester.pumpAndSettle();

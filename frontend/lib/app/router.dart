@@ -20,6 +20,8 @@ import '../features/onboarding/domain/transaction.dart';
 import '../features/plan/presentation/card_plan_detail_screen.dart';
 import '../features/plan/presentation/category_plan_detail_screen.dart';
 import '../features/plan/presentation/monthly_plan_screen.dart';
+import '../features/recommendation/presentation/card_recommendation_screen.dart';
+import '../features/recommendation/presentation/chat_history_screen.dart';
 import 'app_route.dart';
 import 'main_shell.dart';
 
@@ -95,14 +97,14 @@ Widget _screenFor(AppRoute route, GoRouterState state) {
     AppRoute.planGenerating => const PlanGeneratingScreen(),
     AppRoute.planReady => const PlanReadyScreen(),
     AppRoute.monthlyPlan => const MonthlyPlanScreen(),
-    AppRoute.cardPlanDetail => CardPlanDetailScreen(
-      cardId: state.pathParameters['cardId'] ?? '',
-    ),
+    AppRoute.cardPlanDetail || AppRoute.recommendationCardDetail =>
+      CardPlanDetailScreen(cardId: state.pathParameters['cardId'] ?? ''),
     AppRoute.categoryPlanDetail => CategoryPlanDetailScreen(
       category: _categoryOf(state.pathParameters['category']),
     ),
+    AppRoute.cardRecommendation => const CardRecommendationScreen(),
+    AppRoute.recommendationHistory => const ChatHistoryScreen(),
     AppRoute.home ||
-    AppRoute.cardRecommendation ||
     AppRoute.report ||
     AppRoute.settings => ComingSoonScreen(title: route.title),
   };
