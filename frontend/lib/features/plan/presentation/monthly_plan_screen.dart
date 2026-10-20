@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/app_route.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -71,7 +73,7 @@ class _PlanContent extends ConsumerWidget {
 
   final MonthlyPlan plan;
 
-  // TODO(#78): PLAN-02·03 화면이 생기면 각 화면으로 이동한다.
+  // TODO(#80): 추천 근거 화면이 생기면 그 화면으로 이동한다.
   void _comingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -155,7 +157,10 @@ class _PlanContent extends ConsumerWidget {
         for (final cardPlan in plan.cardPlans) ...[
           CardPlanRow(
             plan: cardPlan,
-            onTap: () => _comingSoon(context, '카드별 플랜 상세'),
+            onTap: () => context.pushNamed(
+              AppRoute.cardPlanDetail.name,
+              pathParameters: {'cardId': cardPlan.card.id},
+            ),
           ),
           const SizedBox(height: 4),
         ],
@@ -164,8 +169,10 @@ class _PlanContent extends ConsumerWidget {
         const SizedBox(height: 3),
         CategoryRanking(
           categoryPlans: plan.categoryPlans,
-          onShowDetail: (category) =>
-              _comingSoon(context, '${category.label} 사용 계획'),
+          onShowDetail: (category) => context.pushNamed(
+            AppRoute.categoryPlanDetail.name,
+            pathParameters: {'category': category.code},
+          ),
         ),
       ],
     );

@@ -5,6 +5,7 @@ import 'package:frontend/core/widgets/coming_soon_screen.dart';
 import 'package:frontend/features/onboarding/domain/transaction.dart';
 import 'package:frontend/features/plan/data/monthly_plan_repository.dart';
 import 'package:frontend/features/plan/domain/monthly_plan.dart';
+import 'package:frontend/features/plan/domain/plan_details.dart';
 import 'package:frontend/features/plan/presentation/monthly_plan_screen.dart';
 
 import '../../helpers/finders.dart';
@@ -22,6 +23,16 @@ class _FailingMonthlyPlanRepository implements MonthlyPlanRepository {
 
   @override
   Future<void> confirmChange(DateTime month) => throw UnimplementedError();
+
+  @override
+  Future<CardPlanDetail?> fetchCardPlan(DateTime month, String cardId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<CategoryPlanDetail?> fetchCategoryPlan(
+    DateTime month,
+    SpendingCategory category,
+  ) => throw UnimplementedError();
 }
 
 /// 재계산을 기다리지 않는 가짜 저장소.

@@ -27,6 +27,14 @@ String? cardImageAsset(OwnedCard card) => switch (card.id) {
   _ => null,
 };
 
+/// 큰 카드 이미지 경로 (그림자·여백 없음). 그림이 없는 카드는 null.
+String? largeCardImageAsset(OwnedCard card) => switch (card.id) {
+  'SHINHAN-2471' => AppAssets.cardShinhanDeepDreamLarge,
+  'KB-0912' => AppAssets.cardKbMyWeshLarge,
+  'WOORI-8830' => AppAssets.cardWooriCardUiJeongseokLarge,
+  _ => null,
+};
+
 /// 흰 바탕 로고에 두르는 브랜드 색 테두리. 바탕이 진한 로고는 null.
 Color? companyLogoBorderColor(CardCompany company) => switch (company) {
   CardCompany.woori => const Color(0xFF0C73B8),

@@ -66,6 +66,8 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | ONB-07B | 최초 플랜 생성 완료 | `/onboarding/plan-ready` | `planReady` |
 | HOME | 홈 (하단 탭, 준비 중) | `/home` | `home` |
 | PLAN-01 | 월간 플랜 대시보드 (하단 탭) | `/plan` | `monthlyPlan` |
+| PLAN-02 | 카드별 플랜 상세 | `/plan/cards/:cardId` (예: `/plan/cards/SHINHAN-2471`) | `cardPlanDetail` |
+| PLAN-03 | 업종별 플랜 상세 | `/plan/categories/:category` (예: `/plan/categories/DINING`) | `categoryPlanDetail` |
 | RECOMMEND-01 | 카드 추천 (하단 탭, 준비 중) | `/recommendation` | `cardRecommendation` |
 | REPORT | 리포트 (하단 탭, 준비 중) | `/report` | `report` |
 | SETTINGS | 설정 (하단 탭, 준비 중) | `/settings` | `settings` |

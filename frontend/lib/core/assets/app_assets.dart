@@ -27,6 +27,13 @@ abstract final class AppAssets {
   static const cardKbMyWesh = '$_cards/kb_my_wesh.png';
   static const cardWooriCardUiJeongseok = '$_cards/woori_card_ui_jeongseok.png';
 
+  // Card images, large (그림자·여백 없이 카드만 꽉 찬 큰 이미지. 카드별 플랜 상세 맨 위)
+  static const cardShinhanDeepDreamLarge =
+      '$_cards/shinhan_deep_dream_large.png';
+  static const cardKbMyWeshLarge = '$_cards/kb_my_wesh_large.png';
+  static const cardWooriCardUiJeongseokLarge =
+      '$_cards/woori_card_ui_jeongseok_large.png';
+
   // Onboarding illustrations
   static const onboardingCardStack = '$_onboarding/card_stack_3d.png';
   static const cardConnectionProgress =
@@ -90,6 +97,9 @@ abstract final class AppAssets {
     cardShinhanDeepDream,
     cardKbMyWesh,
     cardWooriCardUiJeongseok,
+    cardShinhanDeepDreamLarge,
+    cardKbMyWeshLarge,
+    cardWooriCardUiJeongseokLarge,
     onboardingCardStack,
     cardConnectionProgress,
     connectionCompleteCheck,
