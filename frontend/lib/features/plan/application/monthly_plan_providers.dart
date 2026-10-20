@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../onboarding/domain/transaction.dart';
 import '../data/monthly_plan_repository.dart';
 import '../domain/monthly_plan.dart';
+import '../domain/plan_details.dart';
 
 /// 이번 달 (일은 1일).
 final currentMonthProvider = Provider<DateTime>((ref) {
@@ -67,3 +69,22 @@ class MonthlyPlanNotifier extends AsyncNotifier<MonthlyPlan?> {
     state = AsyncData(plan.withoutChange());
   }
 }
+
+/// 보고 있는 달의 카드별 플랜 상세 (PLAN-02). 카드가 없으면 null.
+/// 월간 플랜이 바뀌면(재계산·확인) 다시 불러온다.
+final cardPlanDetailProvider = FutureProvider.autoDispose
+    .family<CardPlanDetail?, String>((ref, cardId) async {
+      await ref.watch(monthlyPlanProvider.future);
+      return ref
+          .watch(monthlyPlanRepositoryProvider)
+          .fetchCardPlan(ref.watch(selectedPlanMonthProvider), cardId);
+    });
+
+/// 보고 있는 달의 업종별 플랜 상세 (PLAN-03). 플랜이 없으면 null.
+final categoryPlanDetailProvider = FutureProvider.autoDispose
+    .family<CategoryPlanDetail?, SpendingCategory>((ref, category) async {
+      await ref.watch(monthlyPlanProvider.future);
+      return ref
+          .watch(monthlyPlanRepositoryProvider)
+          .fetchCategoryPlan(ref.watch(selectedPlanMonthProvider), category);
+    });

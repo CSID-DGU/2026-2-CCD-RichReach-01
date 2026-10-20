@@ -1,8 +1,10 @@
+import '../../../core/formatters/money_formatter.dart';
 import '../../onboarding/data/card_repository.dart';
 import '../../onboarding/domain/card_company.dart';
 import '../../onboarding/domain/owned_card.dart';
 import '../../onboarding/domain/transaction.dart';
 import '../domain/monthly_plan.dart';
+import '../domain/plan_details.dart';
 
 /// 월간 플랜 조회·변경. API 연동 시 실제 구현을 만들어 바꿔 끼운다.
 abstract interface class MonthlyPlanRepository {
@@ -15,6 +17,34 @@ abstract interface class MonthlyPlanRepository {
 
   /// [month] 플랜의 최근 변경을 확인 처리한다. 이후 조회에서는 변경 안내가 없다.
   Future<void> confirmChange(DateTime month);
+
+  /// [month] 플랜에서 카드 한 장의 상세 (PLAN-02). 플랜이나 카드가 없으면 null.
+  Future<CardPlanDetail?> fetchCardPlan(DateTime month, String cardId);
+
+  /// [month] 플랜에서 업종 하나의 상세 (PLAN-03). 플랜이 없으면 null.
+  Future<CategoryPlanDetail?> fetchCategoryPlan(
+    DateTime month,
+    SpendingCategory category,
+  );
+}
+
+/// 가짜 카드 조건: 실적 기준, 혜택 한도, 혜택 내용.
+class _CardTerms {
+  const _CardTerms({
+    required this.performanceRequirement,
+    required this.benefitLimit,
+    required this.remainingBenefitLimit,
+    required this.expectedBenefit,
+    required this.totalSpent,
+    required this.benefits,
+  });
+
+  final int performanceRequirement;
+  final int benefitLimit;
+  final int remainingBenefitLimit;
+  final int expectedBenefit;
+  final int totalSpent;
+  final Map<SpendingCategory, String> benefits;
 }
 
 /// API가 나오기 전까지 쓰는 가짜 구현.
@@ -60,6 +90,200 @@ class FakeMonthlyPlanRepository implements MonthlyPlanRepository {
     await Future<void>.delayed(delay);
     final plan = _plan;
     if (_isCurrent(month) && plan != null) _plan = plan.withoutChange();
+  }
+
+  @override
+  Future<CardPlanDetail?> fetchCardPlan(DateTime month, String cardId) async {
+    final plan = await fetchPlan(month);
+    return plan == null ? null : cardPlanDetail(plan, cardId);
+  }
+
+  @override
+  Future<CategoryPlanDetail?> fetchCategoryPlan(
+    DateTime month,
+    SpendingCategory category,
+  ) async {
+    final plan = await fetchPlan(month);
+    return plan == null ? null : categoryPlanDetail(plan, category);
+  }
+
+  /// 디자인 예시의 카드별 조건 (신한 숫자는 Figma PLAN-02와 같다).
+  static const _terms = {
+    'SHINHAN-2471': _CardTerms(
+      performanceRequirement: 300000,
+      benefitLimit: 20000,
+      remainingBenefitLimit: 14000,
+      expectedBenefit: 18600,
+      totalSpent: 260000,
+      benefits: {
+        SpendingCategory.dining: '10% 할인',
+        SpendingCategory.convenienceStore: '5% 할인',
+        SpendingCategory.shopping: '5% 할인',
+      },
+    ),
+    'KB-0912': _CardTerms(
+      performanceRequirement: 300000,
+      benefitLimit: 15000,
+      remainingBenefitLimit: 6000,
+      expectedBenefit: 9000,
+      totalSpent: 210000,
+      benefits: {
+        SpendingCategory.dining: '5% 할인',
+        SpendingCategory.cafe: '10% 할인',
+        SpendingCategory.shopping: '7% 할인',
+        SpendingCategory.convenienceStore: '5% 할인',
+      },
+    ),
+    'WOORI-8830': _CardTerms(
+      performanceRequirement: 200000,
+      benefitLimit: 10000,
+      remainingBenefitLimit: 8000,
+      expectedBenefit: 2000,
+      totalSpent: 55000,
+      benefits: {
+        SpendingCategory.dining: '3% 적립',
+        SpendingCategory.transport: '10% 할인',
+        SpendingCategory.shopping: '1% 적립',
+        SpendingCategory.etc: '0.8% 적립',
+      },
+    ),
+  };
+
+  /// 카드마다 업종별 이번 달 사용금액. 더하면 카드별 사용금액이 된다.
+  static const _usedByCategory = {
+    'SHINHAN-2471': {
+      SpendingCategory.dining: 80000,
+      SpendingCategory.cafe: 20000,
+      SpendingCategory.shopping: 18000,
+      SpendingCategory.transport: 50000,
+      SpendingCategory.etc: 70000,
+    },
+    'KB-0912': {
+      SpendingCategory.dining: 20000,
+      SpendingCategory.cafe: 40000,
+      SpendingCategory.shopping: 80000,
+      SpendingCategory.convenienceStore: 58000,
+    },
+    'WOORI-8830': {
+      SpendingCategory.shopping: 20000,
+      SpendingCategory.transport: 10000,
+      SpendingCategory.convenienceStore: 10000,
+      SpendingCategory.etc: 10000,
+    },
+  };
+
+  static _CardTerms _termsOf(String cardId) =>
+      _terms[cardId] ??
+      const _CardTerms(
+        performanceRequirement: 300000,
+        benefitLimit: 10000,
+        remainingBenefitLimit: 10000,
+        expectedBenefit: 0,
+        totalSpent: 0,
+        benefits: {},
+      );
+
+  static int _usedOf(String cardId, SpendingCategory category) =>
+      _usedByCategory[cardId]?[category] ?? 0;
+
+  /// [plan]에서 [cardId] 카드의 상세를 만든다. 카드가 없으면 null.
+  static CardPlanDetail? cardPlanDetail(MonthlyPlan plan, String cardId) {
+    final cardPlan = plan.cardPlans
+        .where((p) => p.card.id == cardId)
+        .firstOrNull;
+    if (cardPlan == null) return null;
+    final terms = _termsOf(cardId);
+
+    return CardPlanDetail(
+      card: cardPlan.card,
+      targetAmount: cardPlan.targetAmount,
+      usedAmount: cardPlan.usedAmount,
+      performanceRequirement: terms.performanceRequirement,
+      benefitLimit: terms.benefitLimit,
+      remainingBenefitLimit: terms.remainingBenefitLimit,
+      expectedBenefit: terms.expectedBenefit,
+      totalSpent: terms.totalSpent,
+      benefits: [
+        for (final MapEntry(key: category, value: description)
+            in terms.benefits.entries)
+          CardBenefit(category: category, description: description),
+      ],
+      categoryUsages: [
+        for (final MapEntry(key: category, value: items)
+            in plan.categoryPlans.entries)
+          for (final item in items)
+            if (item.card.id == cardId)
+              CategoryUsage(
+                category: category,
+                usedAmount: _usedOf(cardId, category),
+                targetAmount: item.amount,
+              ),
+      ]..sort((a, b) => b.targetAmount.compareTo(a.targetAmount)),
+    );
+  }
+
+  /// [plan]에서 [category] 업종의 상세를 만든다.
+  static CategoryPlanDetail categoryPlanDetail(
+    MonthlyPlan plan,
+    SpendingCategory category,
+  ) {
+    final cards = [
+      for (final item in plan.categoryPlans[category] ?? const [])
+        CategoryCardPlan(
+          card: item.card,
+          usedAmount: _usedOf(item.card.id, category),
+          targetAmount: item.amount,
+          benefit: _termsOf(item.card.id).benefits[category],
+        ),
+    ];
+    final priority = cards.firstOrNull;
+
+    return CategoryPlanDetail(
+      category: category,
+      budget: cards.fold(0, (sum, c) => sum + c.targetAmount),
+      spentAmount: cards.fold(0, (sum, c) => sum + c.usedAmount),
+      priorityCard: priority,
+      reasons: priority == null
+          ? const []
+          : _reasonsFor(plan, priority, category),
+      alternativeCards: cards.skip(1).toList(),
+    );
+  }
+
+  static List<PlanReason> _reasonsFor(
+    MonthlyPlan plan,
+    CategoryCardPlan priority,
+    SpendingCategory category,
+  ) {
+    final terms = _termsOf(priority.card.id);
+    final used =
+        plan.cardPlans
+            .where((p) => p.card.id == priority.card.id)
+            .firstOrNull
+            ?.usedAmount ??
+        0;
+    final performanceLeft = terms.performanceRequirement - used;
+    final benefit = priority.benefit;
+    return [
+      PlanReason(
+        label: '혜택',
+        text: benefit == null
+            ? '${category.label} 사용으로 실적을 채우기 좋아요'
+            : '${category.label} $benefit 적용',
+      ),
+      PlanReason(
+        label: '실적',
+        text: performanceLeft > 0
+            ? '목표 실적까지 ${formatWon(performanceLeft)} 남음'
+            : '실적 기준을 이미 채웠어요',
+      ),
+      PlanReason(
+        label: '한도',
+        text: terms.remainingBenefitLimit > 0
+            ? '이번 달 할인 한도 여유'
+            : '이번 달 할인 한도를 다 썼어요',
+      ),
+    ];
   }
 
   /// [plan]의 예산을 [budget]으로 바꾸고 카드별·업종별 금액을 같은 비율로 다시 나눈다.
