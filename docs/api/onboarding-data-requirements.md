@@ -1,11 +1,12 @@
 # 온보딩 화면별 필요 데이터 (API 규약 초안)
 
-> 상태: **초안 (백엔드 리뷰 전)**
-> 기준 디자인: Figma "1. Onboarding Wireframes" (와이어프레임 단계라 문구·구성은 바뀔 수 있음)
-> 관련 이슈: #15
+> 상태: **초안 (백엔드 1차 답변 반영, 요청·응답 형식은 미확정)**
+> 기준 디자인: Figma 온보딩 새 디자인 (AUTH-01 ~ ONB-07B)
+> 경로 기준: 백엔드 API 명세서 초안 (노션 "API 명세서[리치리치]")
+> 관련 이슈: #15, #74
 
 프론트가 온보딩 화면(회원가입 ~ 최초 플랜 생성)을 만들 때 필요한 데이터를 화면별로 정리한 문서입니다.
-**엔드포인트 경로와 필드 이름은 제안**이니 편하게 바꿔 주세요. 확정되면 이 문서를 고치거나 Swagger로 옮깁니다.
+**경로는 백엔드 명세서 초안을 따르고, 필드 이름과 JSON 예시는 프론트 제안**이니 편하게 바꿔 주세요. 확정되면 이 문서를 고치거나 Swagger로 옮깁니다.
 프론트는 API가 나오기 전까지 이 형식의 가짜 데이터로 화면을 개발합니다.
 
 ## 1. 공통 형식
@@ -13,53 +14,72 @@
 | 항목 | 제안 | 비고 |
 |---|---|---|
 | 응답 형식 | 기존 `ApiResponse` 그대로 (`success`, `code`, `message`, `data`) | 아래 예시는 `data` 부분만 적음 |
-| 경로 | `/api/v1/...` | |
+| 경로 | `/api/...` | 명세서 초안 기준. 인증 경로 일부가 `/auth/...`라 확인 필요 (→ Q9) |
 | 필드 이름 | camelCase (`cardName`) | Spring 기본값 |
 | 날짜 | `2026-10-11` (ISO 8601 날짜) | |
 | 날짜+시간 | `2026-10-11T14:30:00+09:00` (시간대 포함) | |
+| 월 | `2026-10` | `?month=2026-10` |
 | 금액 | 원 단위 정수 (`820000`) | 소수점 없음 |
 | 비율 | 0~100 정수 (`28`) | 소수점이 필요하면 알려주세요 |
 | enum | 대문자 문자열 (`"SHINHAN"`, `"CREDIT"`) | 화면에 보일 이름은 프론트가 매핑하거나 응답에 같이 내려주기 |
 | 인증 | `Authorization: Bearer <accessToken>` | 회원가입/로그인 외 모든 API |
+| 오래 걸리는 작업 | 작업 시작 → `jobId` 받기 → 상태 조회(폴링) | Q2 답변 |
 
 ### 1-1. enum 후보
 
-**카드사 (`CardCompany`)**: 와이어프레임 기준 7개
+**카드사 (`CardCompany`)**: 디자인 기준 7개
 
-| 값 | 화면 이름 | 화면 약칭 |
-|---|---|---|
-| `KB` | KB국민카드 | KB |
-| `HYUNDAI` | 현대카드 | HY |
-| `NH` | NH농협카드 | NH |
-| `CITI` | 씨티카드 | CT |
-| `WOORI` | 우리카드 | WR |
-| `BC` | BC카드 | BC |
-| `SHINHAN` | 신한카드 | SH |
+| 값 | 화면 이름 |
+|---|---|
+| `KB` | KB국민카드 |
+| `HYUNDAI` | 현대카드 |
+| `NH` | NH농협카드 |
+| `CITI` | 씨티카드 |
+| `WOORI` | 우리카드 |
+| `BC` | BC카드 |
+| `SHINHAN` | 신한카드 |
 
 **카드 종류 (`CardType`)**: `CREDIT`(신용), `CHECK`(체크)
 
-**분석 가능 여부 (`AnalysisStatus`)**: `AVAILABLE`(분석 가능), `PARTIAL`(일부 혜택 제외), `UNAVAILABLE`(분석 불가, 와이어프레임에는 없지만 필요할 것 같음)
+**분석 가능 여부 (`AnalysisStatus`)**: `AVAILABLE`(분석 가능), `PARTIAL`(일부 혜택 제외), `UNAVAILABLE`(분석 불가)
 
-**업종 (`Category`)**: 디자인에는 `DINING`(외식), `CAFE`(카페), `SHOPPING`(쇼핑), `TRANSPORT`(교통), `CONVENIENCE_STORE`(편의점), `ETC`(기타) 6개가 보임. 카드 혜택 기준으로 더 세분화할지 정해야 함 (→ 질문 Q5)
+**업종 (`Category`)**: 화면에는 `DINING`(외식), `CAFE`(카페), `SHOPPING`(쇼핑), `TRANSPORT`(교통), `CONVENIENCE_STORE`(편의점), `ETC`(기타) 6개를 보여줍니다.
+내부 계산용 세부 업종(예: 30개)을 따로 두더라도, **API 응답에는 화면용 6개 코드로 묶어서** 내려주면 프론트는 매핑 없이 쓸 수 있습니다. (→ Q5)
+
+**작업 상태 (`JobStatus`)**: `PENDING`, `IN_PROGRESS`, `SUCCESS`, `FAILED` (제안)
 
 ## 2. 화면별 필요 데이터
 
 ### AUTH-01 회원가입
 
-**요청** `POST /api/v1/auth/signup`
+**요청** `POST /api/auth/signup`
 
 | 필드 | 타입 | 화면 | 비고 |
 |---|---|---|---|
 | `name` | string | 이름 | |
-| `phoneNumber` | string | 전화번호 (`010-0000-0000`) | 하이픈 포함/제외 정해야 함 |
-| `loginId` | string | 아이디 (`example@email.com`) | 이메일 형식인지 정해야 함 (→ Q1) |
+| `phoneNumber` | string | 전화번호 (`010-0000-0000`) | SMS 인증은 추후. 하이픈 포함/제외 정해야 함 (→ Q10) |
+| `loginId` | string | 아이디 (`example@email.com`) | **이메일 형식** (Q1 답변) |
 | `password` | string | 비밀번호 | 영문·숫자 포함 8자 이상 |
 | `termsAgreed` | boolean | [필수] 서비스 이용약관 및 개인정보 수집 동의 | |
 
 - 비밀번호 확인은 프론트에서만 비교하고 서버로 보내지 않습니다.
 - **응답**: 가입 후 바로 로그인 상태로 온보딩을 이어가므로 `accessToken`, `refreshToken`이 같이 오면 좋습니다.
 - **에러**: 아이디 중복, 전화번호 중복, 입력값 형식 오류(`COMMON-400` + 필드별 오류)를 구분할 수 있으면 화면에 바로 표시할 수 있습니다.
-- 화면 하단에 "이미 계정이 있나요? 로그인"이 있어 **로그인 API**도 필요합니다. (로그인 화면은 아직 와이어프레임에 없음)
+
+**아이디 중복 확인** `GET /api/auth/check-id?loginId={email}`
+
+- 이메일이 주소(쿼리)에 들어가 서버 접근 로그에 남을 수 있습니다. `POST` 본문으로 보내는 방법도 검토해 주세요. (→ Q11)
+
+### AUTH-02 로그인 · 토큰
+
+| 기능 | 경로 | 비고 |
+|---|---|---|
+| 로그인 | `POST /auth/login` | 이메일 + 비밀번호 (Q1 답변). 명세서 이름은 "로그인 (PIN)"이라 확인 필요 (→ Q10) |
+| 토큰 재발급 | `POST /auth/reissue` | |
+| 로그아웃 | `POST /auth/logout` | |
+
+- 로그인 응답에도 `accessToken`, `refreshToken`이 오면 됩니다.
+- 로그인 후 어느 화면으로 보낼지는 Q8 답변을 참고해 주세요.
 
 ### ONB-01 서비스 안내
 
@@ -67,17 +87,22 @@
 
 ### ONB-02 CODEF 연결 안내 · 동의
 
+**요청** `POST /api/connections/agreements`
+
+```json
+{ "types": ["CARD_INFO", "TRANSACTION", "PRIVACY"], "termsVersion": "2026-10-01" }
+```
+
 | 데이터 | 비고 |
 |---|---|
 | 필수 동의 3개: 카드정보 조회, 거래내역 조회, 개인정보 수집 및 이용 | 각 항목 `›`를 누르면 약관 본문을 보여줌 |
 | 동의 결과 저장 | 동의 항목, 동의 시각, 약관 버전 |
 
-- 약관 본문을 서버에서 내려줄지, 앱에 넣어둘지 정해야 합니다. (→ Q3)
-- 제안: `POST /api/v1/consents` (`{ "types": ["CARD_INFO", "TRANSACTION", "PRIVACY"] }`)
+- 약관 본문 위치는 미정입니다. (→ Q3) MVP에서는 **앱에 정적으로 넣고 동의할 때 약관 버전만 같이 보내는 방식**을 제안합니다. 마이페이지의 `GET /api/terms?type=`을 쓰게 되면 온보딩도 같은 API로 바꿉니다.
 
 ### ONB-02A 연결할 카드사 선택
 
-**응답** `GET /api/v1/card-companies`
+**응답** `GET /api/card-companies`
 
 ```json
 [
@@ -86,14 +111,14 @@
 ]
 ```
 
-- 앱에 7개를 고정해 둘 수도 있지만, 지원 카드사가 바뀔 수 있다면 서버에서 받는 편이 좋습니다.
+- 지금은 앱에 7개를 고정해 두었습니다. 지원 카드사가 바뀔 수 있으면 이 API로 바꿉니다.
 - 사용자가 고른 카드사 목록은 다음 화면(인증)으로 넘어가기만 하고 따로 저장하지 않아도 됩니다.
 
 ### ONB-02B 카드사 계정 인증 팝업
 
-카드사를 여러 개 고르면 **카드사마다 한 번씩** 아이디/비밀번호를 입력합니다. (예: KB → 우리 → 신한)
+카드사를 여러 개 고르면 **카드사마다 한 번씩, 차례대로** 호출합니다. (Q4 답변, 예: KB → 우리 → 신한)
 
-**요청** `POST /api/v1/card-connections`
+**요청** `POST /api/connections`
 
 | 필드 | 타입 | 비고 |
 |---|---|---|
@@ -101,35 +126,46 @@
 | `loginId` | string | 카드사 홈페이지 아이디 |
 | `password` | string | 카드사 홈페이지 비밀번호 |
 
-- 화면 안내 문구: "인증정보는 연결 과정에만 사용되며 리치리치에 저장되지 않아요." → **서버도 비밀번호를 DB와 로그에 남기지 않아야** 합니다. (CODEF 요청에 쓰고 바로 버리기)
-- 카드사별로 한 번씩 호출할지, 여러 카드사를 한 번에 보낼지 정해야 합니다. (→ Q4)
+**응답** (제안)
+
+```json
+{ "connectionId": 11, "cardCompany": "KB", "status": "CONNECTED" }
+```
+
+- 화면 안내 문구: "입력 정보는 연결 요청에만 사용되고 저장되지 않아요." → **서버도 비밀번호를 DB와 로그에 남기지 않아야** 합니다. (CODEF 요청에 쓰고 바로 버리기)
+- 인증 실패(비밀번호 오류, 계정 잠김 등)는 팝업 안에서 바로 보여줄 수 있게 에러 코드로 구분해 주세요.
 
 ### ONB-03A 카드 연결 진행 → 03B 완료 / 03C 일부 실패
 
-진행 화면에 단계가 3개 보입니다: **카드사 인증 → 보유카드 확인 → 실적 정보 확인**
+진행 화면에 문구 3개가 차례대로 나타납니다: **카드사 인증 중이에요 → 카드사 인증을 완료했어요 → 보유카드와 실적 정보를 확인하고 있어요**
 
-CODEF 호출이 오래 걸리면 화면이 멈춘 것처럼 보이므로 진행 방식을 정해야 합니다. (→ Q2)
-- (A) 요청 한 번에 끝날 때까지 기다림 (간단하지만 오래 걸리면 타임아웃 위험)
-- (B) 연결 작업을 시작하고, 프론트가 상태를 주기적으로 조회 (진행 단계 표시 가능)
+Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진행합니다.
 
-**결과 데이터** (03B, 03C 공통)
+1. 카드사별 인증 `POST /api/connections` (ONB-02B, 카드사 수만큼)
+2. 불러오기 시작 `POST /api/connections/sync` → `{ "jobId": "..." }`
+3. 상태 조회 `GET /api/connections/sync/{jobId}` (1~2초 간격)
+
+**상태 조회 응답** (제안, 03B·03C 결과 화면에도 그대로 사용)
 
 ```json
 {
+  "jobId": "a1b2c3",
+  "status": "IN_PROGRESS",
   "results": [
-    { "cardCompany": "KB", "status": "SUCCESS", "cardCount": 1, "failureReason": null },
-    { "cardCompany": "SHINHAN", "status": "SUCCESS", "cardCount": 1, "failureReason": null },
-    { "cardCompany": "WOORI", "status": "FAILED", "cardCount": 0, "failureReason": "카드사 인증 시간이 만료됐어요." }
+    { "connectionId": 11, "cardCompany": "KB", "status": "SUCCESS", "cardCount": 1, "failureCode": null, "failureReason": null },
+    { "connectionId": 12, "cardCompany": "SHINHAN", "status": "SUCCESS", "cardCount": 1, "failureCode": null, "failureReason": null },
+    { "connectionId": 13, "cardCompany": "WOORI", "status": "FAILED", "cardCount": 0, "failureCode": "AUTH_EXPIRED", "failureReason": "카드사 인증 시간이 만료됐어요." }
   ]
 }
 ```
 
-- 03C의 "다시 연결하기"는 실패한 카드사만 다시 인증합니다.
-- `failureReason`은 사용자에게 그대로 보여줄 문구입니다. 실패 종류별 코드(`AUTH_EXPIRED`, `WRONG_PASSWORD` 등)도 같이 있으면 화면을 다르게 처리할 수 있습니다.
+- `failureReason`은 사용자에게 그대로 보여줄 문구, `failureCode`는 화면 처리용 코드(`AUTH_EXPIRED`, `WRONG_PASSWORD` 등)입니다.
+- 03C의 "다시 연결하기"는 실패한 카드사만 다시 인증합니다: `POST /api/connections/{connectionId}/retry`
+  - 다시 인증하려면 카드사 아이디/비밀번호를 **다시 받아야** 하므로, 요청 본문에 `loginId`, `password`가 들어갑니다. ONB-02B와 똑같이 저장·로그 금지가 필요합니다. (→ Q12)
 
 ### ONB-04 분석할 카드 확인
 
-**응답** `GET /api/v1/cards`
+**응답** `GET /api/cards`
 
 ```json
 [
@@ -140,19 +176,20 @@ CODEF 호출이 오래 걸리면 화면이 멈춘 것처럼 보이므로 진행 
     "maskedNumber": "2471",
     "cardType": "CREDIT",
     "analysisStatus": "AVAILABLE",
-    "selected": true
+    "selected": true,
+    "imageUrl": null
   }
 ]
 ```
 
-- 화면 표시: `신한카드 · •••• 2471`, `신용 · 분석 가능`
-- 카드마다 펼치기(`⌄`) 버튼이 있는데 펼쳤을 때 내용은 아직 와이어프레임에 없음 (혜택 요약이 들어갈 것으로 예상)
-- **요청** `PUT /api/v1/cards/selection` (`{ "cardIds": [1, 2, 3] }`): 분석에 쓸 카드 선택 저장
+- 화면 표시: 카드 이미지, `신한 Deep Dream`, `신용 · 2471`, 분석 가능 여부
+- 카드 이미지를 서버에서 줄지(`imageUrl`), 앱에 넣어둘지 정해야 합니다. 지금은 앱에 일부 카드 이미지를 넣어 두었습니다.
+- **요청** `PUT /api/cards/analysis-targets` (`{ "cardIds": [1, 2, 3] }`): 분석에 쓸 카드 선택 저장
 - "다른 카드사 연결하기"는 ONB-02A로 돌아갑니다.
 
 ### ONB-05 거래내역 확인
 
-**요청** `GET /api/v1/transactions/summary?period=3M` (`1M`, `3M`, `6M`)
+**응답** `GET /api/transactions/summary?period=3M` (`1M`, `3M`, `6M`)
 
 ```json
 {
@@ -182,79 +219,125 @@ CODEF 호출이 오래 걸리면 화면이 멈춘 것처럼 보이므로 진행 
 
 - `categorizedRate`: 업종 분류에 성공한 거래 비율 (지금 화면에는 보이지 않음)
 - 최근 거래는 "업종 · 카드 이름"(예: "카페 · 신한 Deep Dream")으로 보여 주므로 `cardName`이 필요합니다.
-- 최근 거래는 화면에 3건만 보입니다. 전체 목록 화면이 생기면 페이지 나누기 방식을 정해야 합니다.
+- 새 디자인에서 "거래내역 다시 불러오기" 버튼은 빠졌습니다. `POST /api/transactions/sync`는 온보딩에서는 쓰지 않습니다.
 
 ### ONB-06 소비패턴 · 월간 예산
 
-**응답** `GET /api/v1/spending/analysis`
+**응답** `GET /api/plans/analysis?period=3M`
 
 ```json
 {
   "analyzedMonths": 3,
   "monthlyAverage": 820000,
   "topCategory": "DINING",
-  "mainCard": { "cardId": 1, "cardName": "신한 Deep Dream" },
   "categoryRatios": [
     { "category": "DINING", "ratio": 28 },
+    { "category": "CAFE", "ratio": 8 },
     { "category": "SHOPPING", "ratio": 22 },
     { "category": "TRANSPORT", "ratio": 15 },
     { "category": "CONVENIENCE_STORE", "ratio": 12 },
-    { "category": "ETC", "ratio": 23 }
+    { "category": "ETC", "ratio": 15 }
   ],
   "suggestedBudget": {
     "total": 820000,
     "byCategory": [
       { "category": "DINING", "amount": 230000 },
+      { "category": "CAFE", "amount": 60000 },
       { "category": "SHOPPING", "amount": 180000 },
       { "category": "TRANSPORT", "amount": 120000 },
       { "category": "CONVENIENCE_STORE", "amount": 100000 },
-      { "category": "ETC", "amount": 190000 }
+      { "category": "ETC", "amount": 130000 }
     ]
   }
 }
 ```
 
-- 예산 총액은 사용자가 **수정**할 수 있습니다. 총액을 바꾸면 업종별 예산을 누가 다시 나눌지 정해야 합니다. (→ Q6)
-- 업종별 예산도 **수정**할 수 있습니다. 이때 총액은 업종별 예산의 합이 됩니다.
-- 화면에 "주 사용 카드"(`mainCard`)는 보이지 않습니다. 다른 화면에서 쓰지 않으면 빼도 됩니다.
-- **요청** `PUT /api/v1/budgets/{yyyy-MM}`: 확정한 예산(총액, 업종별) 저장
+- 예산은 사용자가 **수정**할 수 있습니다.
+  - 총액을 바꾸면 업종별 예산을 지금 비율대로 다시 나눕니다.
+  - 업종별 예산을 바꾸면 총액은 업종별 예산의 합이 됩니다.
+- 누가 다시 나눌지는 미정입니다. (→ Q6) 다루는 업종이 6개뿐이라 **프론트가 바로 계산해 화면에 보여주고, 서버는 확정한 값을 받아 검증·저장**하는 방식을 제안합니다. 프론트는 지금 이 방식으로 만들어 두었습니다.
+- 확정한 예산을 저장할 API가 명세서에 없습니다. (→ Q13) 아래 플랜 생성 요청에 예산을 함께 보내는 방식을 제안합니다.
+- 새 디자인에서 "이번 달 예정지출 추가"는 빠졌습니다. 예정지출 API는 온보딩에서는 쓰지 않습니다.
 
 ### ONB-07A 최초 플랜 생성 중
 
-- 진행 단계 4개: 소비패턴 분석 → 카드 혜택조건 확인 → 카드별 사용금액 계산 → 예상 혜택 비교
-- 하단 요약: `카드 3장 · 예산 820,000원 · 주요 업종 5개` (앞 화면 데이터로 프론트가 만들 수 있음)
-- 계산이 오래 걸리면 카드 연결과 같은 방식(Q2)으로 진행 상태를 조회합니다.
+화면에는 그림, 진행 막대, "가장 유리한 카드 사용계획을 만들고 있어요" 문구만 있습니다. (단계 목록과 하단 요약은 새 디자인에서 빠짐)
 
-### ONB-07B 최초 플랜 생성 완료
-
-**응답** `GET /api/v1/plans/{yyyy-MM}`
+**요청** `POST /api/plans` (제안)
 
 ```json
 {
+  "month": "2026-10",
+  "budget": {
+    "total": 820000,
+    "byCategory": [
+      { "category": "DINING", "amount": 230000 },
+      { "category": "CAFE", "amount": 60000 }
+    ]
+  }
+}
+```
+
+- Q2 답변에 따라 카드 연결과 같은 **작업 시작 → 상태 조회** 방식이 필요한데, 플랜 생성의 **상태 조회 경로가 명세서에 없습니다.** (→ Q14)
+  - 예: `POST /api/plans` → `{ "jobId": "..." }`, `GET /api/plans/jobs/{jobId}` → `{ "status": "IN_PROGRESS", "progress": 60, "planId": null }`
+  - `progress`(0~100)가 있으면 진행 막대를 실제 진행률로 채울 수 있고, 없으면 프론트가 시간에 따라 채웁니다.
+
+### ONB-07B 최초 플랜 생성 완료
+
+**응답** `GET /api/plans?month=2026-10`
+
+```json
+{
+  "planId": 7,
   "month": "2026-10",
   "expectedBenefit": 32400,
   "baselineBenefit": 21600,
   "additionalBenefit": 10800,
   "cardTargets": [
-    { "cardId": 1, "cardName": "신한 Deep Dream", "targetAmount": 350000 },
-    { "cardId": 2, "cardName": "KB My WE:SH", "targetAmount": 270000 },
-    { "cardId": 3, "cardName": "우리 NU 카드", "targetAmount": 200000 }
+    { "cardId": 1, "cardName": "신한 Deep Dream", "targetAmount": 350000, "usedAmount": 0 },
+    { "cardId": 2, "cardName": "KB My WE:SH", "targetAmount": 270000, "usedAmount": 0 },
+    { "cardId": 3, "cardName": "우리 NU 카드", "targetAmount": 200000, "usedAmount": 0 }
   ]
 }
 ```
 
-- `baselineBenefit`: 지금처럼 쓸 때 예상 혜택 (화면의 "기존 예상 혜택")
-- 카드마다 진행 막대가 있는데 **무엇의 비율인지** 정해야 합니다. (→ Q7)
+- `baselineBenefit`: 지금처럼 쓸 때 예상 혜택 (화면의 "기존 예상")
+- 카드 이미지·종류·번호는 ONB-04의 `GET /api/cards` 결과에서 `cardId`로 찾아 씁니다.
+- 카드별 막대는 **목표 금액 대비 사용률**(`usedAmount / targetAmount`, Q7 답변)입니다.
+  - 다만 플랜을 막 만든 시점에는 사용액이 0원이라 막대가 모두 비어 보입니다. 디자인은 막대가 카드마다 다르게 채워져 있어 확인이 필요합니다. (→ Q15)
+  - 지금 프론트는 임시로 "가장 큰 목표 금액 대비 비중"으로 막대를 그립니다.
+- "금액 환산이 어려운 마일리지는 별도로 안내해요" 안내가 있어, 마일리지 혜택을 따로 알려줄 필드가 나중에 필요할 수 있습니다.
 
 ## 3. 백엔드와 정해야 할 질문
 
+### 3-1. 1차 질문 (답변 반영)
+
+| # | 질문 | 관련 화면 | 백엔드 답변 | 프론트 의견 / 남은 일 |
+|---|---|---|---|---|
+| Q1 | 아이디는 이메일 형식인가요? 전화번호 인증(SMS)도 하나요? | AUTH-01 | 아이디는 이메일. SMS 인증은 추후 개발, 이메일 + 비밀번호로 로그인 | 지금 화면 그대로 사용. 전화번호 칸 유지 여부는 Q10 |
+| Q2 | 오래 걸리는 작업은 한 번에 기다릴까요, 시작 후 상태를 조회할까요? | ONB-03A, 07A | 비동기 작업 → 상태 조회(폴링) | 카드 연결은 명세서 경로로 진행. 플랜 생성 상태 조회 경로는 Q14 |
+| Q3 | 약관 본문은 서버에서 내려주나요, 앱에 넣어두나요? | AUTH-01, ONB-02 | 미정 (앱 정적 vs 테이블) | MVP는 앱에 정적으로 넣고 동의 시 약관 버전만 저장하는 방식 제안 |
+| Q4 | 카드사 인증은 카드사별로 호출하나요, 한 번에 보내나요? | ONB-02B | 카드사별로 각각 호출 (순차, 1:N) | 지금 팝업 흐름과 일치 |
+| Q5 | 업종 분류는 몇 개로 하나요? | ONB-05, 06 | 논의 필요 (화면 6개, 내부 30개 등) | 내부 분류와 상관없이 API 응답은 화면용 6개 코드로 묶어서 내려주기 제안 |
+| Q6 | 예산 총액을 수정하면 업종별 예산은 누가 다시 나누나요? | ONB-06 | 미정 (논의 필요) | 프론트가 계산해 바로 보여주고, 서버는 확정 값을 검증·저장하는 방식 제안 |
+| Q7 | 플랜 완료 화면의 카드별 막대는 무엇의 비율인가요? | ONB-07B | 카드별 목표 금액 대비 사용률 | 생성 직후엔 0%라 막대가 비어 보임 → Q15 |
+| Q8 | 온보딩을 중간에 그만두면 어디서부터 시작하나요? | 전체 | 미정. 진행 단계를 저장하는 칼럼 없음 | **칼럼 추가 없이** 처리 가능: 로그인 후 `GET /api/connections`가 비면 ONB-01, 플랜이 없으면 ONB-04, `GET /api/plans?month=`에 플랜이 있으면 홈 |
+
+### 3-2. 2차 질문 (명세서 초안 검토)
+
 | # | 질문 | 관련 화면 |
 |---|---|---|
-| Q1 | 아이디는 이메일 형식인가요? (placeholder가 `example@email.com`) 전화번호 인증(SMS)도 하나요? | AUTH-01 |
-| Q2 | 카드 연결·플랜 생성처럼 오래 걸리는 작업은 한 번에 기다릴까요, 시작 후 상태를 조회할까요? | ONB-03A, 07A |
-| Q3 | 약관 본문은 서버에서 내려주나요, 앱에 넣어두나요? 약관 버전 관리가 필요한가요? | AUTH-01, ONB-02 |
-| Q4 | 카드사 인증은 카드사별로 한 번씩 호출하나요, 여러 카드사를 한 번에 보내나요? | ONB-02B |
-| Q5 | 업종 분류는 몇 개로 하나요? 화면의 6개(외식·카페·쇼핑·교통·편의점·기타)로 충분한가요? | ONB-05, 06 |
-| Q6 | 예산 총액을 수정하면 업종별 예산은 서버가 다시 나누나요, 프론트가 비율대로 나누나요? | ONB-06 |
-| Q7 | 플랜 완료 화면의 카드별 막대는 무엇의 비율인가요? (예산 대비 비중, 실적 조건 대비 등) | ONB-07B |
-| Q8 | 온보딩을 중간에 그만두면 다시 들어왔을 때 어디서부터 시작하나요? (진행 단계를 서버가 기억할지) | 전체 |
+| Q9 | 로그인·토큰 재발급·로그아웃만 경로가 `/auth/...`인데, 다른 경로처럼 `/api/auth/...`로 맞출까요? | AUTH |
+| Q10 | 명세서의 "로그인 (PIN)"은 이메일 + 비밀번호 로그인을 뜻하나요? 회원가입의 전화번호는 계속 받나요? 받는다면 하이픈 포함/제외는? | AUTH-01, 02 |
+| Q11 | 아이디 중복 확인에서 이메일이 쿼리로 가는데, `POST` 본문으로 바꿀까요? | AUTH-01 |
+| Q12 | 실패 카드사 다시 연결(`/retry`)도 카드사 아이디/비밀번호를 받아야 하는데, 요청 본문 형식과 저장·로그 금지를 ONB-02B와 같게 하나요? | ONB-03C |
+| Q13 | 온보딩에서 확정한 월 예산은 어디에 저장하나요? (`POST /api/plans` 본문에 포함 제안. `/api/users/me/default-budget`은 기본값용으로 보임) | ONB-06 |
+| Q14 | 플랜 생성 상태 조회 경로가 필요합니다. 응답에 진행률(0~100)을 넣을 수 있나요? | ONB-07A |
+| Q15 | 플랜 생성 직후 사용률은 0%인데, 완료 화면 막대는 비워 둘까요? 아니면 완료 화면은 카드별 비중, 홈은 사용률로 나눌까요? | ONB-07B |
+
+### 3-3. 명세서 초안에서 눈에 띈 점 (참고)
+
+- `POST /api/users/me`(내 정보 조회)는 `GET`이 맞아 보입니다.
+- `GET /api/plans/next`(다음 달 플랜 만들기)는 새로 만드는 요청이라 `POST`가 맞아 보입니다.
+- `GET /api/plans/{planId}/categories`의 이름이 "카드별 목표 사용금액 조회"로 되어 있습니다. 업종별 사용계획 조회로 보입니다.
+- 요청·응답 형식이 아직 없습니다. 온보딩 부분은 이 문서의 JSON 예시를 출발점으로 써 주세요.
