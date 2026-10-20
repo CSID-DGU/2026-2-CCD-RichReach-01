@@ -63,6 +63,9 @@ enum AppRoute {
   // 월간 플랜 탭 안의 상세 화면 (하단 네비게이션이 그대로 보인다)
   cardPlanDetail('/plan/cards/:cardId', 'PLAN-02', '카드별 플랜 상세'),
   categoryPlanDetail('/plan/categories/:category', 'PLAN-03', '업종별 플랜 상세'),
+
+  // 카드 추천 탭 안의 화면
+  recommendationHistory('/recommendation/history', 'RECOMMEND-00', '대화 기록'),
   settings('/settings', 'SETTINGS', '설정', showBack: false);
 
   /// 하단 네비게이션 탭 순서.
@@ -71,6 +74,7 @@ enum AppRoute {
   /// 탭 안에서 여는 하위 화면. 하단 네비게이션이 그대로 보인다.
   static const tabChildren = {
     monthlyPlan: [cardPlanDetail, categoryPlanDetail],
+    cardRecommendation: [recommendationHistory],
   };
 
   const AppRoute(

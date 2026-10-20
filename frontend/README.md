@@ -68,7 +68,8 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | PLAN-01 | 월간 플랜 대시보드 (하단 탭) | `/plan` | `monthlyPlan` |
 | PLAN-02 | 카드별 플랜 상세 | `/plan/cards/:cardId` (예: `/plan/cards/SHINHAN-2471`) | `cardPlanDetail` |
 | PLAN-03 | 업종별 플랜 상세 | `/plan/categories/:category` (예: `/plan/categories/DINING`) | `categoryPlanDetail` |
-| RECOMMEND-01 | 카드 추천 (하단 탭, 준비 중) | `/recommendation` | `cardRecommendation` |
+| RECOMMEND-01 | 카드 추천 (하단 탭) | `/recommendation` | `cardRecommendation` |
+| RECOMMEND-00 | 카드 추천 대화 기록 | `/recommendation/history` | `recommendationHistory` |
 | REPORT | 리포트 (하단 탭, 준비 중) | `/report` | `report` |
 | SETTINGS | 설정 (하단 탭, 준비 중) | `/settings` | `settings` |
 
