@@ -13,4 +13,10 @@ void main() {
   test('원 단위로 표시한다', () {
     expect(formatWon(68000), '68,000원');
   });
+
+  test('늘거나 준 금액은 부호를 붙인다', () {
+    expect(formatSignedWon(800), '+800원');
+    expect(formatSignedWon(-20000), '-20,000원');
+    expect(formatSignedWon(0), '0원');
+  });
 }

@@ -27,10 +27,7 @@ class ProgressTrack extends StatelessWidget {
     final radius = BorderRadius.circular(height / 2);
     return Container(
       height: height,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: radius,
-      ),
+      decoration: BoxDecoration(color: backgroundColor, borderRadius: radius),
       alignment: Alignment.centerLeft,
       child: FractionallySizedBox(
         widthFactor: fraction.clamp(0.0, 1.0),

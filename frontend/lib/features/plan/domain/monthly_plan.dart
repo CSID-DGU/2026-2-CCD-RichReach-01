@@ -35,6 +35,65 @@ class CategoryCardAmount {
   final int amount;
 }
 
+/// 플랜 변경 항목 하나 (PLAN-01A).
+sealed class PlanChangeItem {
+  const PlanChangeItem({required this.title});
+
+  /// 항목 제목 (예: "외식", "이번 달 예상 혜택")
+  final String title;
+}
+
+/// 금액이 바뀐 항목 (예: 외식 · 신한 Deep Dream 150,000원 → 130,000원).
+class AmountChange extends PlanChangeItem {
+  const AmountChange({
+    required super.title,
+    required this.before,
+    required this.after,
+    this.cardName,
+  });
+
+  /// 원 단위 바뀌기 전·후 금액
+  final int before;
+  final int after;
+
+  /// 금액이 걸린 카드. 카드와 상관없는 항목(예: 예상 혜택)은 null.
+  final String? cardName;
+
+  int get difference => after - before;
+}
+
+/// 업종의 우선 사용 카드가 바뀐 항목 (예: 편의점 · 우리 카드의정석 → KB My WE:SH).
+class PriorityChange extends PlanChangeItem {
+  const PriorityChange({
+    required super.title,
+    required this.fromCardName,
+    required this.toCardName,
+  });
+
+  final String fromCardName;
+  final String toCardName;
+}
+
+/// 실제 소비를 반영해 플랜을 다시 계산한 결과.
+class PlanChange {
+  const PlanChange({
+    required this.updatedAt,
+    required this.summary,
+    required this.items,
+    required this.reason,
+  });
+
+  /// 다시 계산한 시각
+  final DateTime updatedAt;
+
+  /// 대시보드 안내 띠 문구 (예: "외식·편의점 플랜이 변경됐어요")
+  final String summary;
+  final List<PlanChangeItem> items;
+
+  /// 바뀐 이유 설명
+  final String reason;
+}
+
 /// 한 달 카드 사용계획과 진행 상황 (PLAN-01 월간 플랜 대시보드).
 class MonthlyPlan {
   const MonthlyPlan({
@@ -44,7 +103,7 @@ class MonthlyPlan {
     required this.expectedBenefit,
     required this.cardPlans,
     required this.categoryPlans,
-    this.changeSummary,
+    this.change,
   });
 
   /// 계획 월 (일은 1일로 둔다)
@@ -65,9 +124,19 @@ class MonthlyPlan {
   /// 업종별 권장 카드. 업종마다 권장 금액이 큰 카드부터.
   final Map<SpendingCategory, List<CategoryCardAmount>> categoryPlans;
 
-  /// 최근 플랜이 바뀌었을 때 보여줄 안내 (예: "외식·편의점 플랜이 변경됐어요"). 없으면 null.
-  final String? changeSummary;
+  /// 사용자가 아직 확인하지 않은 최근 플랜 변경. 없으면 null.
+  final PlanChange? change;
 
   /// 예산 대비 사용률 (0 이상, 예산을 넘으면 1보다 크다)
   double get usageRatio => budget == 0 ? 0 : spentAmount / budget;
+
+  /// 변경을 확인한 뒤의 플랜 (안내 띠가 사라진다).
+  MonthlyPlan withoutChange() => MonthlyPlan(
+    month: month,
+    budget: budget,
+    spentAmount: spentAmount,
+    expectedBenefit: expectedBenefit,
+    cardPlans: cardPlans,
+    categoryPlans: categoryPlans,
+  );
 }

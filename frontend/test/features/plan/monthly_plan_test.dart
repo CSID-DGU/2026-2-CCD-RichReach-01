@@ -15,7 +15,22 @@ class _FailingMonthlyPlanRepository implements MonthlyPlanRepository {
   @override
   Future<MonthlyPlan?> fetchPlan(DateTime month) async =>
       throw Exception('network');
+
+  @override
+  Future<MonthlyPlan> recalculate(DateTime month, {required int budget}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> confirmChange(DateTime month) => throw UnimplementedError();
 }
+
+/// 재계산을 기다리지 않는 가짜 저장소.
+FakeMonthlyPlanRepository _instantRepository() => FakeMonthlyPlanRepository(
+  currentMonth: testCurrentMonth,
+  delay: Duration.zero,
+  recalculateDelay: Duration.zero,
+  now: () => DateTime(2026, 10, 22, 9, 5),
+);
 
 void main() {
   group('가짜 월간 플랜', () {
@@ -27,6 +42,7 @@ void main() {
       expect(shinhan.remainingAmount, 112000);
       expect(shinhan.usageRatio, closeTo(0.68, 0.001));
       expect(plan.usageRatio, closeTo(0.593, 0.001));
+      expect(plan.change!.summary, '외식·편의점 플랜이 변경됐어요');
     });
 
     test('목표보다 많이 쓰면 남은 금액은 0이다', () {
@@ -121,10 +137,10 @@ void main() {
     testWidgets('아직 없는 화면으로 가는 버튼은 준비 중 안내를 보여준다', (tester) async {
       await pumpAppAt(tester, AppRoute.monthlyPlan);
 
-      await tester.tap(find.bySemanticsLabel('변경 내용'));
+      await tester.tap(find.bySemanticsLabel('추천 근거'));
       await tester.pump();
 
-      expect(findText('플랜 변경 내용 화면은 준비 중이에요.'), findsOneWidget);
+      expect(findText('추천 근거 화면은 준비 중이에요.'), findsOneWidget);
     });
 
     testWidgets('플랜을 불러오지 못하면 다시 시도할 수 있다', (tester) async {
@@ -135,6 +151,121 @@ void main() {
       );
 
       expect(findText('월간 플랜을 불러오지 못했어요.'), findsOneWidget);
+    });
+  });
+
+  group('PLAN-01A·01B 플랜 변경', () {
+    testWidgets('변경 내용을 열면 변경 항목과 이유를 보여주고, 닫아도 안내 띠는 남는다', (tester) async {
+      await pumpAppAt(tester, AppRoute.monthlyPlan);
+
+      await tester.tap(find.bySemanticsLabel('변경 내용'));
+      await tester.pumpAndSettle();
+
+      expect(findText('변경된 월간 플랜'), findsOneWidget);
+      expect(findText('10월 21일 오후 2:30 업데이트'), findsOneWidget);
+      expect(findText('-20,000원'), findsOneWidget);
+      expect(findText('신한 Deep Dream  150,000원 → 130,000원'), findsOneWidget);
+      expect(findText('우선순위 변경'), findsOneWidget);
+      expect(findText('우리 카드의정석 → KB My WE:SH'), findsOneWidget);
+      expect(findText('+800원'), findsOneWidget);
+      expect(findText('변경 이유'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('닫기'));
+      await tester.pumpAndSettle();
+
+      expect(findText('변경된 월간 플랜'), findsNothing);
+      expect(findText('외식·편의점 플랜이 변경됐어요'), findsOneWidget);
+    });
+
+    testWidgets('변경된 플랜을 확인하면 안내 띠가 사라진다', (tester) async {
+      final repository = _instantRepository();
+      await pumpAppAt(tester, AppRoute.monthlyPlan, monthlyPlan: repository);
+
+      await tester.tap(find.bySemanticsLabel('변경 내용'));
+      await tester.pumpAndSettle();
+      await tester.tap(findText('변경된 플랜 확인'));
+      await tester.pumpAndSettle();
+
+      expect(findText('외식·편의점 플랜이 변경됐어요'), findsNothing);
+      final saved = await tester.runAsync(
+        () => repository.fetchPlan(testCurrentMonth),
+      );
+      expect(saved!.change, isNull);
+    });
+
+    testWidgets('소비예산을 바꾸면 재계산 팝업 뒤에 바뀐 플랜을 보여준다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.monthlyPlan,
+        monthlyPlan: FakeMonthlyPlanRepository(
+          currentMonth: testCurrentMonth,
+          delay: Duration.zero,
+          recalculateDelay: const Duration(seconds: 1),
+          now: () => DateTime(2026, 10, 22, 9, 5),
+        ),
+      );
+
+      await tester.tap(find.bySemanticsLabel('소비예산 수정'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '1000000');
+      await tester.pump();
+      await tester.tap(findText('수정하기'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(findText('남은 기간의 플랜을\n다시 계산하고 있어요'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(findText('남은 기간의 플랜을\n다시 계산하고 있어요'), findsNothing);
+      expect(findText('10월 22일 오전 9:05 업데이트'), findsOneWidget);
+      expect(findText('820,000원 → 1,000,000원'), findsOneWidget);
+      expect(findText('+180,000원'), findsOneWidget);
+
+      await tester.tap(findText('변경된 플랜 확인'));
+      await tester.pumpAndSettle();
+
+      expect(findText('1,000,000원'), findsOneWidget);
+      expect(findText('소비예산에 맞춰 플랜이 변경됐어요'), findsNothing);
+    });
+
+    testWidgets('예산이 그대로면 다시 계산하지 않는다', (tester) async {
+      await pumpAppAt(tester, AppRoute.monthlyPlan);
+
+      await tester.tap(find.bySemanticsLabel('소비예산 수정'));
+      await tester.pumpAndSettle();
+      await tester.tap(findText('수정하기'));
+      await tester.pumpAndSettle();
+
+      expect(findText('변경된 월간 플랜'), findsNothing);
+      expect(findText('외식·편의점 플랜이 변경됐어요'), findsOneWidget);
+    });
+
+    test('재계산은 카드별·업종별 금액을 예산 비율대로 다시 나눈다', () {
+      final plan = FakeMonthlyPlanRepository.samplePlan(testCurrentMonth);
+      final updated = FakeMonthlyPlanRepository.rescale(
+        plan,
+        budget: 410000,
+        updatedAt: DateTime(2026, 10, 22),
+      );
+
+      expect(updated.budget, 410000);
+      expect(updated.cardPlans.map((p) => p.targetAmount), [
+        180000,
+        140000,
+        100000,
+      ]);
+      expect(updated.cardPlans.first.usedAmount, 238000);
+      expect(updated.expectedBenefit, 16200);
+      expect(
+        updated.categoryPlans[SpendingCategory.dining]!.first.amount,
+        70000,
+      );
+      final items = updated.change!.items.whereType<AmountChange>();
+      expect(items.first.title, '소비예산');
+      expect(items.first.difference, -410000);
+      expect(items.last.title, '이번 달 예상 혜택');
     });
   });
 
