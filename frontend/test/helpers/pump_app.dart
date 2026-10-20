@@ -56,6 +56,7 @@ Future<void> pumpAppAt(
               FakeMonthlyPlanRepository(
                 currentMonth: testCurrentMonth,
                 delay: Duration.zero,
+                recalculateDelay: Duration.zero,
               ),
         ),
       ],
