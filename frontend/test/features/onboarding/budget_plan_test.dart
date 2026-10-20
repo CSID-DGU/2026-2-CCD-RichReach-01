@@ -10,6 +10,7 @@ import 'package:frontend/features/onboarding/domain/card_company.dart';
 import 'package:frontend/features/onboarding/domain/transaction.dart';
 import 'package:frontend/features/onboarding/presentation/plan_generating_screen.dart';
 import 'package:frontend/features/onboarding/presentation/plan_ready_screen.dart';
+import 'package:frontend/features/plan/presentation/monthly_plan_screen.dart';
 
 import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
@@ -192,13 +193,13 @@ void main() {
       expect(findText('혜택 계산 기준'), findsOneWidget);
     });
 
-    testWidgets('시작하기는 준비 중 안내를 보여준다', (tester) async {
+    testWidgets('시작하기를 누르면 월간 플랜 탭으로 간다', (tester) async {
       await pumpAppAt(tester, AppRoute.planGenerating, budget: _budget());
 
       await tester.tap(findText('시작하기'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
-      expect(findText('월간 플랜 화면은 준비 중이에요.'), findsOneWidget);
+      expect(find.byType(MonthlyPlanScreen), findsOneWidget);
     });
   });
 }

@@ -9,6 +9,7 @@ class ProgressTrack extends StatelessWidget {
     required this.fraction,
     this.height = 9,
     this.color = AppColors.primary,
+    this.backgroundColor = AppColors.surfaceStrong,
   });
 
   /// 0~1
@@ -18,13 +19,16 @@ class ProgressTrack extends StatelessWidget {
   /// 채움 색
   final Color color;
 
+  /// 막대 바탕 색
+  final Color backgroundColor;
+
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(height / 2);
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.surfaceStrong,
+        color: backgroundColor,
         borderRadius: radius,
       ),
       alignment: Alignment.centerLeft,
