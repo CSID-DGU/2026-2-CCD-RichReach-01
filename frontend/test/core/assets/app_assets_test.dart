@@ -20,6 +20,7 @@ void main() {
         .listSync(recursive: true)
         .whereType<File>()
         .map((f) => f.path.replaceAll(r'\', '/'))
+        .where((path) => !path.split('/').last.startsWith('.'))
         .toSet();
     expect(files, AppAssets.all.toSet());
   });
@@ -60,6 +61,24 @@ void main() {
         MaterialApp(home: Center(child: SvgPicture.asset(path, height: 40))),
       );
       // SVG는 비동기로 읽으므로 실제 파일 읽기를 기다린다.
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+      expect(tester.takeException(), isNull, reason: path);
+    }
+  });
+
+  testWidgets('네비게이션 SVG를 오류 없이 그린다', (tester) async {
+    for (final path in [
+      AppAssets.navigationHome,
+      AppAssets.navigationMonthlyPlan,
+      AppAssets.navigationCardRecommendation,
+      AppAssets.navigationReport,
+      AppAssets.navigationSettings,
+      AppAssets.iconNavigateNext,
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(home: Center(child: SvgPicture.asset(path, width: 24))),
+      );
       await tester.runAsync(() => Future<void>.delayed(Duration.zero));
       await tester.pump();
       expect(tester.takeException(), isNull, reason: path);
