@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/app_route.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/theme/app_colors.dart';
@@ -26,11 +28,8 @@ import 'onboarding_images.dart';
 class PlanReadyScreen extends ConsumerWidget {
   const PlanReadyScreen({super.key});
 
-  void _start(BuildContext context) {
-    // TODO(#37): 홈(월간 플랜) 화면이 생기면 그 화면으로 이동한다.
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('월간 플랜 화면은 준비 중이에요.')));
-  }
+  /// 온보딩을 마치고 월간 플랜 탭으로 간다. (온보딩 화면으로는 돌아가지 않는다)
+  void _start(BuildContext context) => context.go(AppRoute.monthlyPlan.path);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

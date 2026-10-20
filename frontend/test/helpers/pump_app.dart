@@ -12,11 +12,16 @@ import 'package:frontend/features/onboarding/data/budget_repository.dart';
 import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
 import 'package:frontend/features/onboarding/data/plan_repository.dart';
 import 'package:frontend/features/onboarding/data/transaction_repository.dart';
+import 'package:frontend/features/plan/application/monthly_plan_providers.dart';
+import 'package:frontend/features/plan/data/monthly_plan_repository.dart';
 
 /// 테스트에서는 카드 연결을 기다리지 않고 바로 끝내는 가짜 저장소를 쓴다.
 const instantCardConnection = FakeCardConnectionRepository(
   stepDelay: Duration.zero,
 );
+
+/// 테스트의 "이번 달". 월간 플랜 가짜 저장소는 이 달에만 플랜을 돌려준다.
+final testCurrentMonth = DateTime(2026, 10);
 
 /// 와이어프레임 크기(414×896) 화면에서 [initial] 경로로 앱을 띄운다.
 Future<void> pumpAppAt(
@@ -27,6 +32,7 @@ Future<void> pumpAppAt(
   TransactionRepository? transactions,
   BudgetRepository? budget,
   PlanRepository plan = const FakePlanRepository(stepDelay: Duration.zero),
+  MonthlyPlanRepository? monthlyPlan,
 }) async {
   tester.view.physicalSize = const Size(414, 896);
   tester.view.devicePixelRatio = 1;
@@ -44,6 +50,14 @@ Future<void> pumpAppAt(
           budget ?? FakeBudgetRepository(delay: Duration.zero),
         ),
         planRepositoryProvider.overrideWithValue(plan),
+        currentMonthProvider.overrideWithValue(testCurrentMonth),
+        monthlyPlanRepositoryProvider.overrideWithValue(
+          monthlyPlan ??
+              FakeMonthlyPlanRepository(
+                currentMonth: testCurrentMonth,
+                delay: Duration.zero,
+              ),
+        ),
       ],
       child: MaterialApp.router(
         theme: AppTheme.light,

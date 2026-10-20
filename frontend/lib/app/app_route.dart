@@ -47,7 +47,22 @@ enum AppRoute {
     'ONB-07B',
     '최초 플랜 생성 완료',
     showBack: false,
-  );
+  ),
+
+  // 하단 네비게이션 탭 (홈·리포트·설정은 아직 디자인이 없어 화면 ID 대신 이름을 쓴다)
+  home('/home', 'HOME', '홈', showBack: false),
+  monthlyPlan('/plan', 'PLAN-01', '월간 플랜', showBack: false),
+  cardRecommendation(
+    '/recommendation',
+    'RECOMMEND-01',
+    '카드 추천',
+    showBack: false,
+  ),
+  report('/report', 'REPORT', '리포트', showBack: false),
+  settings('/settings', 'SETTINGS', '설정', showBack: false);
+
+  /// 하단 네비게이션 탭 순서.
+  static const tabs = [home, monthlyPlan, cardRecommendation, report, settings];
 
   const AppRoute(
     this.path,
