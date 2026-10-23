@@ -93,6 +93,8 @@ def collect(card, output, offline=None):
     raw.mkdir(parents=True, exist_ok=True)
     meta = {'issuer_code':card['issuer_code'], 'card_id':card['card_id'],
             'requested_name':card['requested_name'], 'url':card['url'], 'retrieved_at':DATE()}
+    if card.get('product_notice_url'):
+        meta['product_notice_url'] = card['product_notice_url']
     try:
         if offline:
             b = Path(offline).read_bytes()
@@ -109,7 +111,15 @@ def collect(card, output, offline=None):
         meta.update(title=title, bytes=len(b), html_sha256=hashlib.sha256(b).hexdigest(),
                     text_sha256=digest(text), text_length=len(text))
         missing = [token for token in card['identity_tokens'] if token not in text and token not in title]
-        if missing or '/error' in meta['final_url']:
+        if card.get('dynamic_detail') and meta.get('http_status') == 200 and missing:
+            meta.update(
+                status='DYNAMIC_CONTENT_REQUIRES_RENDERED_PAGE',
+                detail=('공식 모바일 상품 화면은 HTTP 200이나 이 HTTP 수집 결과는 초기 HTML만 포함하고 '
+                        '상품 상세는 JavaScript 조회 후 브라우저 DOM에 표시됩니다. '
+                        '자동 혜택 추출에는 렌더링된 본문 또는 공식 상품설명서가 필요합니다. '
+                        '로그인/CAPTCHA 차단으로 판정하지 않습니다.'),
+            )
+        elif missing or '/error' in meta['final_url']:
             meta.update(status='BODY_MISSING_OR_WRONG_PRODUCT', detail='Missing identity: '+', '.join(missing))
         elif not re.search(r'\d+(?:\.\d+)?\s*%|\d[\d,]*\s*원',text):
             meta.update(status='BENEFIT_BODY_MISSING', detail='Product name present; benefit amounts not present')
