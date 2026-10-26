@@ -50,13 +50,15 @@ public class BenefitRule extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String category;
 
-    @Column(name = "category_name", nullable = false, length = 200)
+    /** null이면 미확정이다. */
+    @Column(name = "category_name", length = 200)
     private String categoryName;
 
     @Column(length = 300)
     private String merchants;
 
-    @Column(name = "target_raw", nullable = false, length = 1000)
+    /** null이면 미확정이다. */
+    @Column(name = "target_raw", length = 1000)
     private String targetRaw;
 
     @Column(name = "targets_normalized", length = 200)
@@ -78,12 +80,12 @@ public class BenefitRule extends BaseEntity {
     @Column
     private Long amount;
 
-    /** KRW, POINT, MILE */
-    @Column(name = "reward_unit", length = 10)
+    /** KRW, POINT, MILE, USD, FREE_SERVICE 등 */
+    @Column(name = "reward_unit", length = 30)
     private String rewardUnit;
 
-    /** PER_LITER, PER_TRANSACTION */
-    @Column(name = "amount_basis", length = 30)
+    /** PER_LITER, PER_TRANSACTION, PERCENT_OF_ELIGIBLE_SPEND 등 코드 또는 설명 */
+    @Column(name = "amount_basis", length = 100)
     private String amountBasis;
 
     @Column(name = "monthly_limit")
@@ -93,7 +95,8 @@ public class BenefitRule extends BaseEntity {
     @Column(name = "monthly_limit_unit", length = 10)
     private String monthlyLimitUnit;
 
-    @Column(name = "monthly_limit_status", nullable = false, length = 30)
+    /** NOT_STATED, NOT_EXTRACTED, LIMITED, SHARED_LIMIT, UNLIMITED 등. null이면 미확정이다. */
+    @Column(name = "monthly_limit_status", length = 30)
     private String monthlyLimitStatus;
 
     @Column(name = "daily_limit")
@@ -141,7 +144,7 @@ public class BenefitRule extends BaseEntity {
     @Column(name = "source_scope_id", nullable = false, length = 100)
     private String sourceScopeId;
 
-    @Column(name = "extraction_method", nullable = false, length = 30)
+    @Column(name = "extraction_method", nullable = false, length = 80)
     private String extractionMethod;
 
 }

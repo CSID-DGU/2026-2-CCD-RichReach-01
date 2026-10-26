@@ -35,7 +35,7 @@ public class PerformanceExclusion extends BaseEntity {
     private CardProduct cardProduct;
 
     /** 스테이징 condition_id. 재승격 시 같은 행을 갱신하는 키다. */
-    @Column(name = "source_condition_id", nullable = false, length = 20)
+    @Column(name = "source_condition_id", nullable = false, length = 80)
     private String sourceConditionId;
 
     /** PERFORMANCE(전월실적 산정 제외), BENEFIT(혜택 제외) */

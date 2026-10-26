@@ -44,8 +44,8 @@ public class CardProduct extends BaseEntity {
     @Column(name = "card_type", nullable = false, length = 30)
     private String cardType;
 
-    /** listed, issuance_suspended */
-    @Column(name = "card_status", nullable = false, length = 30)
+    /** listed, issuance_suspended. 비어 있으면(null) 미확정이다. */
+    @Column(name = "card_status", length = 30)
     private String cardStatus;
 
     /** PAYMENT_CARD, GIFT_PREPAID, SUBSIDY_PAYMENT */
