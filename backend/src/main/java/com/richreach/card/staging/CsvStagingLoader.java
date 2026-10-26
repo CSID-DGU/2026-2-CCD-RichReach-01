@@ -146,6 +146,13 @@ class CsvStagingLoader {
         Object[] params = new Object[table.columns().size()];
         for (int i = 0; i < params.length; i++) {
             String column = table.columns().get(i);
+            // target_code는 비어 있는 게 정상이라 NULL이 아니라 ''로 넣는다. MySQL은 NULL이 든 UNIQUE 키를 서로 다르다고 봐서,
+            // NULL로 두면 같은 CSV를 다시 적재할 때 같은 줄이 중복된다. (target_names의 코드 없는 연결)
+            // 다른 키(card_id, benefit_id 등)가 비면 NULL이 되어 NOT NULL 제약으로 거부된다.
+            if (record.get(column).isEmpty() && table.keys().contains(column) && "target_code".equals(column)) {
+                params[i] = "";
+                continue;
+            }
             try {
                 params[i] = convert(record.get(column), table.typeOf(column));
             } catch (RuntimeException e) {
@@ -156,7 +163,7 @@ class CsvStagingLoader {
         return params;
     }
 
-    /** 빈칸은 NULL이다. 0이나 '무제한'으로 바꾸지 않는다. */
+    /** 빈칸은 NULL이다(target_code 제외). 0이나 '무제한'으로 바꾸지 않는다. */
     private static Object convert(String value, StagingTable.ColumnType type) {
         if (value.isEmpty()) {
             return null;

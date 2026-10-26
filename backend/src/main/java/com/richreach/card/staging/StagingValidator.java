@@ -72,11 +72,15 @@ class StagingValidator {
             SELECT COUNT(*) FROM stg_target_name t
             LEFT JOIN stg_card_benefit b ON b.benefit_id = t.benefit_id
             WHERE b.id IS NULL"""),
-        new Check("target_name_without_standard", "공통 코드표에 없는 target_code",
+        // target_code가 빈 문자열이면 아직 코드가 정해지지 않은 연결이라 "없는 코드"로 세지 않는다.
+        new Check("target_name_without_standard", "공통 코드표에 없는 target_code (코드가 비어 있는 연결은 제외)",
             """
             SELECT COUNT(*) FROM stg_target_name t
             LEFT JOIN ref_common_standard r ON r.code = t.target_code
-            WHERE r.id IS NULL"""),
+            WHERE t.target_code <> '' AND r.id IS NULL"""),
+        new Check("target_name_without_code", "코드가 아직 정해지지 않은 대상 명칭 연결 (참고용)",
+            """
+            SELECT COUNT(*) FROM stg_target_name WHERE target_code = ''"""),
         new Check("catalog_without_raw", "원문(card_catalog_raw)이 없는 카탈로그 카드",
             """
             SELECT COUNT(*) FROM stg_card_catalog c

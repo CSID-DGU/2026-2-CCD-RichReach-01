@@ -275,6 +275,97 @@ class StagingServiceTest {
         assertThat(result.performanceExclusions()).isZero();
     }
 
+    @Test
+    void loadsBlankAndLongValuesLikeTheAddedCards(@TempDir Path sparse) throws IOException {
+        writeFixtures(sparse, true);
+
+        Report first = service.loadAll(sparse);
+
+        assertThat(first.loads()).allSatisfy(r -> {
+            assertThat(r.fileRows()).isEqualTo(3);
+            assertThat(r.tableRows()).isEqualTo(3);
+        });
+        // 빈칸은 NULL로 저장된다 (0이나 기본값으로 채우지 않는다)
+        assertThat(count("SELECT COUNT(*) FROM stg_card_catalog WHERE card_status IS NULL AND source_table_count IS NULL"))
+            .isEqualTo(3);
+        assertThat(count("SELECT COUNT(*) FROM stg_card_benefit WHERE category_name IS NULL AND target_raw IS NULL "
+            + "AND monthly_limit_status IS NULL")).isEqualTo(3);
+        assertThat(count("SELECT COUNT(*) FROM stg_source_scope WHERE html_line IS NULL")).isEqualTo(3);
+        // 길어진 값도 잘리지 않고 그대로 저장된다
+        assertThat(count("SELECT COUNT(*) FROM stg_card_benefit WHERE CHAR_LENGTH(extraction_method) = 39 "
+            + "AND reward_unit = 'FREE_SERVICE' AND CHAR_LENGTH(amount_basis) = 32")).isEqualTo(3);
+        assertThat(count("SELECT COUNT(*) FROM stg_card_condition WHERE CHAR_LENGTH(condition_id) = 31")).isEqualTo(3);
+        // 키 컬럼(target_code)의 빈칸은 NULL이 아니라 ''로 저장된다
+        assertThat(count("SELECT COUNT(*) FROM stg_target_name WHERE target_code = ''")).isEqualTo(3);
+
+        // 같은 CSV를 다시 넣어도 코드가 빈 줄이 중복되지 않는다 (NULL이었다면 중복됐다)
+        Report second = service.loadAll(sparse);
+        assertThat(second.loads()).allSatisfy(r -> assertThat(r.tableRows()).isEqualTo(3));
+
+        // 코드가 비어 있는 연결은 "코드표에 없는 코드"로 세지 않고, 별도 참고 항목으로만 센다
+        assertThat(second.checks()).filteredOn(c -> c.name().equals("target_name_without_standard"))
+            .singleElement().extracting(CheckResult::count).isEqualTo(0L);
+        assertThat(second.checks()).filteredOn(c -> c.name().equals("target_name_without_code"))
+            .singleElement().extracting(CheckResult::count).isEqualTo(3L);
+    }
+
+    @Test
+    void promotesCardsWhoseStatusAndTargetsAreBlank(@TempDir Path sparse, @TempDir Path dir) throws IOException {
+        writeFixtures(sparse, true);
+        service.loadAll(sparse);
+        service.selectMvpCards(writeMvp(dir, "v1,00001\nv2,00002"));
+
+        CardPromotionService.Result first = promotion.promote();
+        CardPromotionService.Result second = promotion.promote();
+
+        assertThat(first.cardProducts()).isEqualTo(2);
+        assertThat(first.benefitRules()).isEqualTo(2);
+        assertThat(first.performanceExclusions()).isEqualTo(1);
+        // card_status가 비어 있으면 미확정이라 신규 추천 후보에서는 뺀다
+        assertThat(count("SELECT COUNT(*) FROM card_products WHERE card_status IS NULL AND recommendable = 0")).isEqualTo(2);
+        assertThat(count("SELECT COUNT(*) FROM benefit_rules WHERE category_name IS NULL AND target_raw IS NULL "
+            + "AND monthly_limit_status IS NULL")).isEqualTo(2);
+        assertThat(count("SELECT COUNT(*) FROM performance_exclusions WHERE CHAR_LENGTH(source_condition_id) = 31"))
+            .isEqualTo(1);
+        // 다시 승격해도 중복되지 않는다
+        assertThat(second.cardProducts()).isEqualTo(2);
+        assertThat(second.benefitRules()).isEqualTo(2);
+    }
+
+    /**
+     * 기존 319종 위에 추가 카드 12장 CSV를 얹어 적재하고 승격한다.
+     * STAGING_CSV_DIR(319종)과 STAGING_ADDED_DIR(추가 12장 폴더)이 모두 설정된 경우에만 실행한다.
+     */
+    @Test
+    @EnabledIfEnvironmentVariable(named = "STAGING_CSV_DIR", matches = ".+")
+    @EnabledIfEnvironmentVariable(named = "STAGING_ADDED_DIR", matches = ".+")
+    void loadsTheAddedCardsOnTopOfTheBaseSet(@TempDir Path dir) throws IOException {
+        service.loadAll(Path.of(System.getenv("STAGING_CSV_DIR")));
+        Report added = service.loadAll(Path.of(System.getenv("STAGING_ADDED_DIR")));
+
+        added.loads().forEach(r -> System.out.printf("[added] %s -> %s: 파일 %d행, 테이블 전체 %d행, 파일 내 중복 키 %d%n",
+            r.csvFile(), r.table(), r.fileRows(), r.tableRows(), r.duplicateKeys()));
+        added.checks().forEach(c -> System.out.printf("[added-check] %s = %d%n", c.name(), c.count()));
+
+        assertThat(count("SELECT COUNT(*) FROM stg_card_catalog")).isEqualTo(331); // 319 + 12
+        assertThat(count("SELECT COUNT(*) FROM stg_card_benefit")).isEqualTo(4126 + 21);
+        assertThat(count("SELECT COUNT(*) FROM stg_card_condition")).isEqualTo(11164 + 24);
+        assertThat(count("SELECT COUNT(*) FROM stg_source_scope")).isEqualTo(1545 + 21);
+        assertThat(count("SELECT COUNT(*) FROM stg_special_case")).isEqualTo(129 + 5);
+
+        // 팀원 카드 7장(혜택이 있는 카드 6장 + 혜택이 아직 없는 신한 1장)을 MVP로 승격한다
+        service.selectMvpCards(writeMvp(dir, "nh,90010036\nkb,01664\nwoori,839035\nbc,nf-card-02\n"
+            + "bc,1000027768\nkakaobank,friends_kpass\nshinhan,1225714"));
+        CardPromotionService.Result result = promotion.promote();
+
+        System.out.printf("[added-promotion] %s%n", result);
+        assertThat(result.cardProducts()).isEqualTo(7);
+        assertThat(result.benefitRules()).isEqualTo(5 + 2 + 12 + 3 + 2 + 2); // 신한은 혜택 0행
+        assertThat(count("SELECT COUNT(*) FROM benefit_rules WHERE rule_engine_ready = 1")).isZero();
+        // 발급 중단 카드(우리 K-패스)는 승격되지만 신규 추천 후보는 아니다
+        assertThat(count("SELECT COUNT(*) FROM card_products WHERE card_id = '839035' AND recommendable = 0")).isEqualTo(1);
+    }
+
     /**
      * 실제 CSV 전체를 넣어 건수를 확인한다. STAGING_CSV_DIR이 설정된 경우에만 실행한다. (평소 CI에서는 건너뜀)
      * 실행: STAGING_CSV_DIR=C:\경로\319종_카드혜택_전체자료 ./gradlew test --tests "*StagingServiceTest.loadsRealCsvFiles"
@@ -319,17 +410,40 @@ class StagingServiceTest {
      * 값은 "v1", "v2" 같은 지어낸 문자열이라 크롤링 원문이 들어가지 않는다.
      */
     private static void writeFixtures(Path dir) throws IOException {
+        writeFixtures(dir, false);
+    }
+
+    /**
+     * @param sparse true면 추가 카드 12장 CSV처럼 일부 칸을 비우고 일부 값을 길게 만든다.
+     *               (빈칸은 "미확정"이라 정상이고, 새 ID/코드는 기존보다 길다)
+     */
+    private static void writeFixtures(Path dir, boolean sparse) throws IOException {
         for (StagingTable table : StagingTables.ALL) {
             StringBuilder csv = new StringBuilder("﻿").append(String.join(",", table.columns())).append('\n');
             for (int row = 1; row <= 3; row++) {
                 List<String> cells = new ArrayList<>();
                 for (String column : table.columns()) {
-                    cells.add(cell(table, column, row));
+                    cells.add(sparse ? sparseCell(table, column, row) : cell(table, column, row));
                 }
                 csv.append(String.join(",", cells)).append('\n');
             }
             Files.writeString(dir.resolve(table.csvFile()), csv, StandardCharsets.UTF_8);
         }
+    }
+
+    /** 추가 카드 CSV에서 실제로 나온 빈칸과 긴 값을 흉내 낸다. 나머지 칸은 {@link #cell}과 같다. */
+    private static String sparseCell(StagingTable table, String column, int row) {
+        return switch (column) {
+            // 실제 CSV에서 비어 있던 칸들 (이전에는 NOT NULL이라 적재가 실패했다)
+            case "card_status", "source_table_count", "category_name", "target_raw", "monthly_limit_status",
+                 "html_line", "target_code" -> "";
+            // 실제 CSV에서 기존 한도를 넘었던 값들
+            case "reward_unit" -> "FREE_SERVICE"; // 12자 (기존 한도 10자)
+            case "amount_basis" -> "건당 할인대상 결제금액 상한 20000원; 정액 할인 아님"; // 32자 (기존 한도 30자)
+            case "extraction_method" -> "MANUAL_OFFICIAL_GUIDE_AND_RENDERED_PAGE"; // 39자 (기존 한도 30자)
+            case "condition_id" -> "mvp_kb_01664_c_a32d2ce1305d850" + row; // 31자 (기존 한도 20자)
+            default -> cell(table, column, row);
+        };
     }
 
     private static String cell(StagingTable table, String column, int row) {

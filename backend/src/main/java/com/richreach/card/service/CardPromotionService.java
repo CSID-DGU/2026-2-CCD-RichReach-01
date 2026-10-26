@@ -44,7 +44,8 @@ public class CardPromotionService {
             key("issuer_code", "s.issuer_code"), key("card_id", "s.card_id"),
             same("issuer"), same("card_name"), same("card_type"), same("card_status"), same("product_class"),
             // 발급 중단이거나 결제용 카드가 아니면(기프트/바우처 등) 신규 추천 후보에서 뺀다.
-            of("recommendable", "(s.card_status = 'listed' AND s.product_class = 'PAYMENT_CARD')"),
+            // card_status가 비어 있으면(미확정) 비교 결과가 NULL이 되므로 COALESCE로 FALSE 처리한다.
+            of("recommendable", "COALESCE(s.card_status = 'listed' AND s.product_class = 'PAYMENT_CARD', FALSE)"),
             same("source_url"), same("source_snapshot_date"), same("source_text_sha256"), same("review_status")),
         "FROM stg_card_catalog s WHERE s.mvp_selected = 'SELECTED'");
 
