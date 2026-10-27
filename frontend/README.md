@@ -53,6 +53,7 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | - | 로딩창 | `/` | `splash` |
 | - | 로그인 | `/login` | `login` |
 | AUTH-01 | 회원가입 | `/signup` | `signup` |
+| AUTH-04 | 세션 만료 | `/session-expired` | `sessionExpired` |
 | ONB-01 | 서비스 안내 | `/onboarding/intro` | `serviceIntro` |
 | ONB-02 | CODEF 연결 안내 | `/onboarding/codef-consent` | `codefConsent` |
 | ONB-02A | 연결할 카드사 선택 | `/onboarding/card-companies` | `cardCompanySelect` |
@@ -76,6 +77,10 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 
 - 하단 탭 화면(홈·월간 플랜·카드 추천·리포트·설정)은 하단 네비게이션과 함께 열립니다. 홈·리포트·설정은 아직 디자인이 없어 "준비 중" 화면입니다.
 - ONB-02B 카드사 계정 인증은 화면이 아니라 ONB-02A에서 띄우는 팝업이라 경로가 없습니다. 카드사를 선택하고 연결하기를 누르면 나타납니다.
+
+## 로그인 실패 흉내 내기 (개발용)
+
+로그인 API가 나오기 전까지는 가짜 로그인을 씁니다. 이메일 형식이 맞고 비밀번호가 가입 규칙(영문·숫자 포함 8자 이상)에 맞으면 성공하고, 아니면 로그인 오류(AUTH-00A)를 보여줍니다.
 
 ## 카드 연결 실패 흉내 내기 (개발용)
 

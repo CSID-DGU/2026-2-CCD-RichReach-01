@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
@@ -8,26 +9,36 @@ import '../../../core/widgets/brand_symbol_mark.dart';
 import '../../../core/widgets/labeled_text_field.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../application/auth_providers.dart';
+import '../data/auth_repository.dart';
 import '../domain/signup_validator.dart';
 
-/// 로그인 화면.
-///
-/// 로그인 API가 아직 없어 이메일 형식만 확인하고 서비스 안내 화면으로 이동한다.
-class LoginScreen extends StatefulWidget {
+/// 로그인 화면. 로그인에 실패하면 비밀번호 칸에 오류를 보여준다 (AUTH-00A).
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
+  /// 이메일·비밀번호가 맞지 않을 때 문구 (어느 쪽이 틀렸는지는 알려주지 않는다)
+  static const invalidCredentialsMessage = '입력한 정보를 다시 확인해 주세요';
+
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
 
   /// 로그인 버튼을 한 번 누른 뒤부터 오류 문구를 보여준다.
   bool _submitted = false;
 
-  bool get _canSubmit => _email.text.isNotEmpty && _password.text.isNotEmpty;
+  /// 로그인 요청 중
+  bool _loading = false;
+
+  /// 이메일·비밀번호가 맞지 않아 실패했고, 그 뒤로 입력을 고치지 않았다
+  bool _loginFailed = false;
+
+  bool get _canSubmit =>
+      !_loading && _email.text.isNotEmpty && _password.text.isNotEmpty;
 
   String? get _emailError =>
       _submitted ? SignupValidator.email(_email.text) : null;
@@ -39,12 +50,31 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _onSubmit() {
+  void _onEdited(String _) => setState(() => _loginFailed = false);
+
+  Future<void> _onSubmit() async {
     setState(() => _submitted = true);
     if (SignupValidator.email(_email.text) != null) return;
 
-    // TODO(#19): 로그인 API 연동 후 요청 결과에 따라 이동한다. 비밀번호는 저장하지 않는다.
-    context.go(AppRoute.serviceIntro.path);
+    setState(() => _loading = true);
+    try {
+      await ref
+          .read(authRepositoryProvider)
+          .login(email: _email.text.trim(), password: _password.text);
+      // TODO(#19): 온보딩을 마친 사용자는 월간 플랜으로 보낸다 (온보딩 문서 Q8).
+      if (mounted) context.go(AppRoute.serviceIntro.path);
+    } on InvalidCredentialsException {
+      if (mounted) setState(() => _loginFailed = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('로그인하지 못했어요. 잠시 후 다시 시도해 주세요.')),
+        );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   void _showPreparing() {
@@ -71,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.email],
               errorText: _emailError,
-              onChanged: (_) => setState(() {}),
+              onChanged: _onEdited,
             ),
             const SizedBox(height: 8),
             LabeledTextField(
@@ -81,11 +111,15 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: true,
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.password],
-              onChanged: (_) => setState(() {}),
+              errorText: _loginFailed
+                  ? LoginScreen.invalidCredentialsMessage
+                  : null,
+              onChanged: _onEdited,
             ),
             const SizedBox(height: 12),
             PrimaryButton(
               label: '로그인',
+              loading: _loading,
               onPressed: _canSubmit ? _onSubmit : null,
             ),
             const SizedBox(height: 12),
