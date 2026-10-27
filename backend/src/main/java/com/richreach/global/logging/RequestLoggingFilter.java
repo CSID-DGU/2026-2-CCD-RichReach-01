@@ -55,7 +55,8 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             return;
         }
         String body = new String(content, StandardCharsets.UTF_8);
-        log.debug("request body: {}", SensitiveDataMasker.maskJson(body));
+        // 본문에 줄바꿈을 넣어 가짜 로그 줄을 만드는 것을 막기 위해 한 줄로 정리해서 남긴다.
+        log.debug("request body: {}", SensitiveDataMasker.oneLine(SensitiveDataMasker.maskJson(body)));
     }
 
 }

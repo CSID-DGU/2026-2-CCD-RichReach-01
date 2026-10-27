@@ -56,6 +56,19 @@ class SensitiveDataMaskerTest {
     }
 
     @Test
+    @DisplayName("본문에 줄바꿈이 있어도 로그에는 한 줄로 남아 가짜 로그 줄을 만들 수 없다")
+    void oneLineRemovesLineBreaks() {
+        String lineSeparator = String.valueOf((char) 0x2028);
+        String body = "{\"name\":\"kim\",\r\n\"memo\":\"x\"\n2026-10-28 ERROR forged" + lineSeparator + "line\"}";
+
+        String line = SensitiveDataMasker.oneLine(SensitiveDataMasker.maskJson(body));
+
+        assertThat(line).doesNotContain("\r").doesNotContain("\n").doesNotContain(lineSeparator);
+        assertThat(line).contains("\"name\":\"kim\"");
+        assertThat(SensitiveDataMasker.oneLine(null)).isNull();
+    }
+
+    @Test
     @DisplayName("쿼리 문자열에서 민감한 파라미터만 가린다")
     void masksQuery() {
         String masked = SensitiveDataMasker.maskQuery("month=2026-10&token=xyz&access_token=abc&flag");

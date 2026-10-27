@@ -57,6 +57,14 @@ public final class SensitiveDataMasker {
         return masked.toString();
     }
 
+    /**
+     * 로그 한 줄에 그대로 남겨도 되게 줄바꿈 등 제어 문자를 공백으로 바꾼다.
+     * 요청 본문에 줄바꿈과 가짜 로그 줄을 넣어 로그를 위조하는 것(CWE-117)을 막는다.
+     */
+    public static String oneLine(String value) {
+        return value == null ? null : value.replaceAll("[\\p{Cntrl}\\u2028\\u2029]", " ");
+    }
+
     /** {@code a=1&token=xyz} 형태의 쿼리 문자열에서 민감한 파라미터의 값을 가린다. */
     public static String maskQuery(String query) {
         if (query == null || query.isEmpty()) {
