@@ -20,4 +20,9 @@ void main() {
     expect(_type('010-1234-5678'), '010-1234-5678');
     expect(_type('010 1234 5678 9'), '010-1234-5678');
   });
+
+  test('서버로 보낼 때는 하이픈 없이 숫자만 남긴다', () {
+    expect(PhoneNumberFormatter.digitsOnly('010-1234-5678'), '01012345678');
+    expect(PhoneNumberFormatter.digitsOnly('01012345678'), '01012345678');
+  });
 }

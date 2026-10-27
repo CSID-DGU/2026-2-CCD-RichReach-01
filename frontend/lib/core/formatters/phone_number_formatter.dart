@@ -31,4 +31,8 @@ class PhoneNumberFormatter extends TextInputFormatter {
     return '${digits.substring(0, 3)}-${digits.substring(3, 7)}-'
         '${digits.substring(7)}';
   }
+
+  /// 서버로 보낼 때 쓰는 숫자만 남긴 번호. (예: 010-1234-5678 → 01012345678, 온보딩 문서 Q10)
+  static String digitsOnly(String phoneNumber) =>
+      phoneNumber.replaceAll(RegExp(r'\D'), '');
 }
