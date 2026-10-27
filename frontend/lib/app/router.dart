@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/widgets/coming_soon_screen.dart';
+import '../features/auth/presentation/find_email_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/session_expired_screen.dart';
 import '../features/auth/presentation/signup_screen.dart';
@@ -86,6 +87,7 @@ Widget _screenFor(AppRoute route, GoRouterState state) {
     AppRoute.splash => const SplashScreen(),
     AppRoute.login => const LoginScreen(),
     AppRoute.signup => const SignupScreen(),
+    AppRoute.findEmail => const FindEmailScreen(),
     AppRoute.sessionExpired => const SessionExpiredScreen(),
     AppRoute.serviceIntro => const ServiceIntroScreen(),
     AppRoute.codefConsent => const CodefConsentScreen(),

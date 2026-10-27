@@ -131,7 +131,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: () => context.go(AppRoute.signup.path),
                 ),
                 const _Divider(),
-                _LinkButton(label: '이메일 찾기', onPressed: _showPreparing),
+                _LinkButton(
+                  label: '이메일 찾기',
+                  onPressed: () => context.push(AppRoute.findEmail.path),
+                ),
                 const _Divider(),
                 _LinkButton(label: '비밀번호 찾기', onPressed: _showPreparing),
               ],
