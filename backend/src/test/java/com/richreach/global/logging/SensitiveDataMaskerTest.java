@@ -42,6 +42,38 @@ class SensitiveDataMaskerTest {
     }
 
     @Test
+    @DisplayName("민감한 키의 값이 배열이나 객체여도 안에 든 값이 하나도 남지 않는다")
+    void masksArrayAndObjectValues() {
+        String masked = SensitiveDataMasker.maskJson(
+            "{\"token\":[\"aaa\",\"bbb\"],\"secret\":{\"v\":\"xxx\",\"w\":\"yyy\"},\"name\":\"kim\"}");
+
+        assertThat(masked).isEqualTo("{\"token\":\"****\",\"secret\":\"****\",\"name\":\"kim\"}");
+    }
+
+    @Test
+    @DisplayName("키를 유니코드 이스케이프로 써도 가려진다")
+    void masksEscapedKeys() {
+        String masked = SensitiveDataMasker.maskJson("{\"pass\\u0077ord\":\"secret1\",\"name\":\"kim\"}");
+
+        assertThat(masked).doesNotContain("secret1").contains("\"name\":\"kim\"");
+    }
+
+    @Test
+    @DisplayName("최상위가 배열이어도 그 안의 객체에서 민감한 값을 가린다")
+    void masksInsideTopLevelArray() {
+        String masked = SensitiveDataMasker.maskJson("[{\"password\":\"a1\"},{\"nested\":[{\"otp\":\"654321\"}]}]");
+
+        assertThat(masked).doesNotContain("a1").doesNotContain("654321");
+    }
+
+    @Test
+    @DisplayName("값이 하나뿐인 JSON(문자열, 숫자)은 통째로 가린다")
+    void masksScalarBody() {
+        assertThat(SensitiveDataMasker.maskJson("\"eyJhbGciOi.token\"")).doesNotContain("eyJhbGciOi");
+        assertThat(SensitiveDataMasker.maskJson("123456")).doesNotContain("123456");
+    }
+
+    @Test
     @DisplayName("JSON이 아니거나 잘린 본문은 통째로 가린다")
     void masksUnreadableBodyEntirely() {
         assertThat(SensitiveDataMasker.maskJson("password=secret")).doesNotContain("secret");
@@ -59,13 +91,23 @@ class SensitiveDataMaskerTest {
     @DisplayName("본문에 줄바꿈이 있어도 로그에는 한 줄로 남아 가짜 로그 줄을 만들 수 없다")
     void oneLineRemovesLineBreaks() {
         String lineSeparator = String.valueOf((char) 0x2028);
-        String body = "{\"name\":\"kim\",\r\n\"memo\":\"x\"\n2026-10-28 ERROR forged" + lineSeparator + "line\"}";
+        // 토큰 사이의 줄바꿈과 문자열 안의 줄 구분 문자는 JSON으로 유효하다.
+        String body = "{\"name\":\"kim\",\r\n\"memo\":\"x" + lineSeparator + "2026-10-28 ERROR forged\"}";
 
         String line = SensitiveDataMasker.oneLine(SensitiveDataMasker.maskJson(body));
 
         assertThat(line).doesNotContain("\r").doesNotContain("\n").doesNotContain(lineSeparator);
         assertThat(line).contains("\"name\":\"kim\"");
         assertThat(SensitiveDataMasker.oneLine(null)).isNull();
+    }
+
+    @Test
+    @DisplayName("깨진 JSON에 줄바꿈과 가짜 로그 줄이 있어도 본문은 한 줄 문구로만 남는다")
+    void brokenBodyWithLineBreaksIsOneLine() {
+        String line = SensitiveDataMasker.oneLine(
+            SensitiveDataMasker.maskJson("{\"memo\":\"x\"\n2026-10-28 ERROR forged\"}"));
+
+        assertThat(line).doesNotContain("\n").doesNotContain("forged");
     }
 
     @Test

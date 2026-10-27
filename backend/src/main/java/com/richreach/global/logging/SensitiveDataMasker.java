@@ -1,9 +1,13 @@
 package com.richreach.global.logging;
 
+import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * 로그에 남기는 요청 정보에서 비밀번호, 토큰, 카드사 자격증명 같은 민감한 값을 가린다.
@@ -22,9 +26,8 @@ public final class SensitiveDataMasker {
         "verificationcode", "authcode", "otp",
         "cardnumber", "accountnumber", "residentnumber", "ssn");
 
-    /** JSON의 "키": 값 한 쌍. 값은 문자열이거나 따옴표 없는 값(숫자, true, null 등)이다. */
-    private static final Pattern JSON_PAIR = Pattern.compile(
-        "\"([^\"\\\\]+)\"(\\s*:\\s*)(\"(?:[^\"\\\\]|\\\\.)*\"|[^,}\\]\\s][^,}\\]]*)");
+    /** Spring Boot 4가 쓰는 Jackson 3 (tools.jackson). 이 클래스는 JSON을 읽고 다시 쓰는 용도로만 쓴다. */
+    private static final JsonMapper MAPPER = JsonMapper.builder().build();
 
     private static final String UNREADABLE_BODY = "[본문을 읽을 수 없어 가렸습니다]";
 
@@ -32,29 +35,41 @@ public final class SensitiveDataMasker {
     }
 
     /**
-     * JSON 본문에서 민감한 키의 값을 가린다. 중첩된 객체/배열 안의 키도 가린다.
-     * JSON 모양이 아니거나 잘려서 끝까지 읽을 수 없으면 일부만 가려지는 것을 막기 위해 본문 전체를 가린다.
+     * JSON 본문을 읽어서 민감한 키의 값을 가린 뒤 한 줄 JSON으로 돌려준다.
+     * 값이 문자열이든 숫자든 배열/객체든 통째로 가리고, 중첩된 객체/배열 안의 키도 가린다.
+     * 키를 유니코드 이스케이프({@code "password"})로 써도 읽은 뒤의 이름으로 비교하므로 가려진다.
+     * JSON이 아니거나 잘려서 끝까지 읽을 수 없으면 일부만 가려지는 것을 막기 위해 본문 전체를 가린다.
      */
     public static String maskJson(String body) {
         if (body == null || body.isBlank()) {
             return body;
         }
-        String trimmed = body.trim();
-        boolean looksLikeJson = (trimmed.startsWith("{") && trimmed.endsWith("}"))
-            || (trimmed.startsWith("[") && trimmed.endsWith("]"));
-        if (!looksLikeJson) {
+        try {
+            JsonNode root = MAPPER.readTree(body);
+            if (!root.isObject() && !root.isArray()) {
+                return UNREADABLE_BODY;
+            }
+            maskNode(root);
+            return MAPPER.writeValueAsString(root);
+        } catch (JacksonException e) {
             return UNREADABLE_BODY;
         }
-        Matcher matcher = JSON_PAIR.matcher(body);
-        StringBuilder masked = new StringBuilder();
-        while (matcher.find()) {
-            String replacement = isSensitive(matcher.group(1))
-                ? "\"" + matcher.group(1) + "\"" + matcher.group(2) + "\"" + MASK + "\""
-                : matcher.group(0);
-            matcher.appendReplacement(masked, Matcher.quoteReplacement(replacement));
+    }
+
+    private static void maskNode(JsonNode node) {
+        if (node.isObject()) {
+            ObjectNode object = (ObjectNode) node;
+            // 순회하면서 값을 바꾸면 안 되므로 목록을 복사해서 돈다.
+            for (Map.Entry<String, JsonNode> field : new ArrayList<>(object.properties())) {
+                if (isSensitive(field.getKey())) {
+                    object.put(field.getKey(), MASK);
+                } else {
+                    maskNode(field.getValue());
+                }
+            }
+        } else if (node.isArray()) {
+            node.forEach(SensitiveDataMasker::maskNode);
         }
-        matcher.appendTail(masked);
-        return masked.toString();
     }
 
     /**
