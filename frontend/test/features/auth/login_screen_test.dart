@@ -27,6 +27,26 @@ class _BrokenAuthRepository implements AuthRepository {
     required String name,
     required String phoneNumber,
   }) async => throw Exception('network');
+
+  @override
+  Future<bool> isEmailRegistered(String email) async =>
+      throw Exception('network');
+
+  @override
+  Future<void> sendPasswordResetCode(String email) async =>
+      throw Exception('network');
+
+  @override
+  Future<String> verifyPasswordResetCode({
+    required String email,
+    required String code,
+  }) async => throw Exception('network');
+
+  @override
+  Future<void> resetPassword({
+    required String resetToken,
+    required String newPassword,
+  }) async => throw Exception('network');
 }
 
 Finder _field(String hint) => find.widgetWithText(TextField, hint);
@@ -97,14 +117,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(SignupScreen), findsOneWidget);
-  });
-
-  testWidgets('비밀번호 찾기는 준비 중 안내를 보여준다', (tester) async {
-    await pumpAppAt(tester, AppRoute.login);
-
-    await tester.tap(find.widgetWithText(TextButton, '비밀번호 찾기'));
-    await tester.pump();
-    expect(findText('준비 중인 기능이에요.'), findsOneWidget);
   });
 
   group('AUTH-00A 로그인 오류', () {
