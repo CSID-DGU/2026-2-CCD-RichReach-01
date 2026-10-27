@@ -1,6 +1,9 @@
 # ── 환경변수 / 시크릿 ──
 .env
 .env.*
+# 공용 DB 접속 정보 (.env_shared 이름으로도 받으므로 함께 제외한다)
+.env_shared
+.env_shared.*
 !.env.example
 *.pem
 *.key
