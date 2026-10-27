@@ -17,6 +17,15 @@ spring:
   flyway:
     enabled: true
 
+# 로그인 토큰(JWT). secret은 32바이트 이상이어야 하고, 비워 두면 실행할 때마다 임시 키를 만든다.
+# (임시 키는 서버를 다시 켜면 모든 로그인이 풀리므로 운영에서는 JWT_SECRET을 반드시 설정한다.)
+app:
+  jwt:
+    issuer: richreach
+    access-token-ttl: 30m
+    refresh-token-ttl: 14d
+    secret: ${JWT_SECRET:}
+
 # 카드 혜택 CSV 스테이징 적재. 평소에는 꺼 두고, 적재할 때만 환경변수로 켠다. (StagingRunner 참고)
 richreach:
   staging:
