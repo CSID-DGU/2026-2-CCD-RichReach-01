@@ -28,8 +28,12 @@ abstract final class ApiConfig {
   static const receiveTimeout = Duration(seconds: 20);
 }
 
-/// 백엔드 경로. API 명세서 초안 기준이며, 확정되면 여기만 고친다.
+/// 백엔드 경로. 온보딩 API 문서 기준이며, 바뀌면 여기만 고친다.
 abstract final class ApiPaths {
-  /// 토큰 재발급 (명세서 초안은 `/auth/reissue`, `/api/auth/...`로 맞출지 확인 중 — 온보딩 문서 Q9)
-  static const reissue = '/auth/reissue';
+  // 인증 (Q9 답변: `/api/auth/...`)
+  static const signup = '/api/auth/signup';
+  static const checkId = '/api/auth/check-id';
+  static const login = '/api/auth/login';
+  static const reissue = '/api/auth/reissue';
+  static const logout = '/api/auth/logout';
 }
