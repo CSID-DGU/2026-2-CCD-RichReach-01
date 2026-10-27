@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/core/widgets/brand_symbol_mark.dart';
+import 'package:frontend/features/auth/application/auth_providers.dart';
+import 'package:frontend/features/auth/data/auth_repository.dart';
+import 'package:frontend/features/auth/presentation/login_screen.dart';
 import 'package:frontend/features/auth/presentation/signup_screen.dart';
 import 'package:frontend/features/onboarding/presentation/service_intro_screen.dart';
 
 import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
+
+/// 네트워크 오류처럼 이메일·비밀번호와 상관없이 실패하는 저장소.
+class _BrokenAuthRepository implements AuthRepository {
+  @override
+  Future<void> login({required String email, required String password}) async =>
+      throw Exception('network');
+}
 
 Finder _field(String hint) => find.widgetWithText(TextField, hint);
 
@@ -86,5 +97,65 @@ void main() {
       await tester.pump();
       expect(findText('준비 중인 기능이에요.'), findsOneWidget);
     }
+  });
+
+  group('AUTH-00A 로그인 오류', () {
+    testWidgets('이메일·비밀번호가 맞지 않으면 비밀번호 칸에 오류를 보여주고 이동하지 않는다', (tester) async {
+      await pumpAppAt(tester, AppRoute.login);
+
+      await _fill(tester, password: 'short');
+      await tester.tap(_loginButton);
+      await tester.pumpAndSettle();
+
+      expect(findText(LoginScreen.invalidCredentialsMessage), findsOneWidget);
+      expect(find.byType(ServiceIntroScreen), findsNothing);
+    });
+
+    testWidgets('입력을 고치면 오류가 사라진다', (tester) async {
+      await pumpAppAt(tester, AppRoute.login);
+      await _fill(tester, password: 'short');
+      await tester.tap(_loginButton);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(_field('short'), 'abcd1234');
+      await tester.pump();
+
+      expect(findText(LoginScreen.invalidCredentialsMessage), findsNothing);
+    });
+
+    testWidgets('그 밖의 오류는 잠시 후 다시 시도하라는 안내를 보여준다', (tester) async {
+      tester.view.physicalSize = const Size(414, 896);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(_BrokenAuthRepository()),
+          ],
+          child: const MaterialApp(home: LoginScreen()),
+        ),
+      );
+
+      await _fill(tester);
+      await tester.tap(_loginButton);
+      await tester.pumpAndSettle();
+
+      expect(findText('로그인하지 못했어요. 잠시 후 다시 시도해 주세요.'), findsOneWidget);
+      expect(findText(LoginScreen.invalidCredentialsMessage), findsNothing);
+    });
+  });
+
+  group('AUTH-04 세션 만료', () {
+    testWidgets('안내를 보여주고 다시 로그인을 누르면 로그인 화면으로 간다', (tester) async {
+      await pumpAppAt(tester, AppRoute.sessionExpired);
+
+      expect(findText('로그인 시간이 만료됐어요'), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_left), findsNothing);
+
+      await tester.tap(findText('다시 로그인'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginScreen), findsOneWidget);
+    });
   });
 }

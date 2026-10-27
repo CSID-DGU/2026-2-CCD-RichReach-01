@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/app/router.dart';
 import 'package:frontend/core/theme/app_theme.dart';
+import 'package:frontend/features/auth/application/auth_providers.dart';
+import 'package:frontend/features/auth/data/auth_repository.dart';
 import 'package:frontend/features/onboarding/application/budget_plan_providers.dart';
 import 'package:frontend/features/onboarding/application/card_connection_providers.dart';
 import 'package:frontend/features/onboarding/application/onboarding_data_providers.dart';
@@ -47,6 +49,9 @@ Future<void> pumpAppAt(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        authRepositoryProvider.overrideWithValue(
+          const FakeAuthRepository(delay: Duration.zero),
+        ),
         cardConnectionRepositoryProvider.overrideWithValue(connection),
         cardRepositoryProvider.overrideWithValue(cards),
         transactionRepositoryProvider.overrideWithValue(
