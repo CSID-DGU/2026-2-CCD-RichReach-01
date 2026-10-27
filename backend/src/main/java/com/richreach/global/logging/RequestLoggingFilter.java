@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
@@ -18,6 +20,8 @@ import org.springframework.web.util.ContentCachingRequestWrapper;
  */
 @Slf4j
 @Component
+// 보안 필터보다 먼저 실행해서, 인증에 실패한 요청(401/403)도 로그에 남긴다.
+@Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class RequestLoggingFilter extends OncePerRequestFilter {
 
     /** 이보다 긴 본문은 잘려서 JSON으로 읽을 수 없으므로 통째로 가려진다. */

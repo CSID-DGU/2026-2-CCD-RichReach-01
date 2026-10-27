@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -23,7 +24,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+// 이 테스트는 예외 응답 형식만 확인하므로 보안 필터는 끈다. (보안은 SecurityConfigTest에서 확인한다.)
 @WebMvcTest
+@AutoConfigureMockMvc(addFilters = false)
 @Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
 class GlobalExceptionHandlerTest {
 
