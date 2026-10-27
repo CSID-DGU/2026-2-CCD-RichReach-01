@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.richreach.global.config.CorsConfig;
 
-@WebMvcTest
+@WebMvcTest(controllers = SecurityConfigTest.TestController.class)
 @Import({SecurityConfig.class, JwtSigningKey.class, JwtTokenProvider.class, RestAuthenticationEntryPoint.class,
     RestAccessDeniedHandler.class, GlobalExceptionHandler.class, CorsConfig.class,
     SecurityConfigTest.TestController.class})
