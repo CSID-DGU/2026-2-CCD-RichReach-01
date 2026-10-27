@@ -33,7 +33,9 @@ public final class SensitiveDataMasker {
      * 부분 문자열로 비교하면 관계없는 필드까지 가려진다. (예: pin은 shipping, pw는 viewpoint 안에 있다.)
      */
     private static final Set<String> SENSITIVE_EXACT_KEYS = Set.of(
-        "pw", "pin", "otp", "ssn", "cvc", "cvv", "cvv2", "cardno", "accountno", "cardpw");
+        "pw", "pin", "otp", "ssn", "cvc", "cvv", "cvv2", "cardno", "accountno", "cardpw",
+        // 전화번호는 개인정보이고, loginId는 카드사 연결 때 카드사 아이디로도 쓰이므로 로그에 남기지 않는다.
+        "phone", "phonenumber", "loginid");
 
     /** Spring Boot 4가 쓰는 Jackson 3 (tools.jackson). 이 클래스는 JSON을 읽고 다시 쓰는 용도로만 쓴다. */
     private static final JsonMapper MAPPER = JsonMapper.builder().build();
