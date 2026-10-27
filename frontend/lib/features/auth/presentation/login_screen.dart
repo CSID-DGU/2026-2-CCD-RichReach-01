@@ -77,12 +77,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  void _showPreparing() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('준비 중인 기능이에요.')));
-  }
-
   @override
   Widget build(BuildContext context) {
     return OnboardingScaffold(
@@ -136,7 +130,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: () => context.push(AppRoute.findEmail.path),
                 ),
                 const _Divider(),
-                _LinkButton(label: '비밀번호 찾기', onPressed: _showPreparing),
+                _LinkButton(
+                  label: '비밀번호 찾기',
+                  onPressed: () => context.push(AppRoute.resetPassword.path),
+                ),
               ],
             ),
           ],

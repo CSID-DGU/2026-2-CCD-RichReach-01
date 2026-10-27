@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../core/widgets/coming_soon_screen.dart';
 import '../features/auth/presentation/find_email_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
+import '../features/auth/presentation/new_password_screen.dart';
+import '../features/auth/presentation/reset_code_screen.dart';
+import '../features/auth/presentation/reset_password_screen.dart';
 import '../features/auth/presentation/session_expired_screen.dart';
 import '../features/auth/presentation/signup_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
@@ -88,6 +91,9 @@ Widget _screenFor(AppRoute route, GoRouterState state) {
     AppRoute.login => const LoginScreen(),
     AppRoute.signup => const SignupScreen(),
     AppRoute.findEmail => const FindEmailScreen(),
+    AppRoute.resetPassword => const ResetPasswordScreen(),
+    AppRoute.resetPasswordCode => const ResetCodeScreen(),
+    AppRoute.newPassword => const NewPasswordScreen(),
     AppRoute.sessionExpired => const SessionExpiredScreen(),
     AppRoute.serviceIntro => const ServiceIntroScreen(),
     AppRoute.codefConsent => const CodefConsentScreen(),
