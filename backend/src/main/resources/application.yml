@@ -25,6 +25,9 @@ app:
     access-token-ttl: 30m
     refresh-token-ttl: 14d
     secret: ${JWT_SECRET:}
+  # 현재 약관 버전. 약관 본문은 앱에 있고 서버는 동의한 버전만 기록한다. 약관을 고치면 이 값을 바꾼다.
+  terms:
+    signup-version: 2026-10-01
 
 # 카드 혜택 CSV 스테이징 적재. 평소에는 꺼 두고, 적재할 때만 환경변수로 켠다. (StagingRunner 참고)
 richreach:
