@@ -1,5 +1,7 @@
 package com.richreach.global.logging;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
@@ -96,9 +98,21 @@ public final class SensitiveDataMasker {
                 continue;
             }
             String key = pair.substring(0, eq);
-            masked.append(key).append('=').append(isSensitive(key) ? MASK : pair.substring(eq + 1));
+            masked.append(key).append('=').append(isSensitiveQueryKey(key) ? MASK : pair.substring(eq + 1));
         }
         return masked.toString();
+    }
+
+    /**
+     * getQueryString()은 디코딩 전 값이라 {@code pass%77ord}처럼 쓴 키도 들어온다.
+     * 디코딩한 이름으로 판별하고, 디코딩할 수 없는 키는 판별할 수 없으므로 가리는 쪽으로 처리한다.
+     */
+    private static boolean isSensitiveQueryKey(String rawKey) {
+        try {
+            return isSensitive(URLDecoder.decode(rawKey, StandardCharsets.UTF_8));
+        } catch (IllegalArgumentException e) {
+            return true;
+        }
     }
 
     /** HTTP 헤더 값을 로그용으로 바꾼다. Authorization, Cookie 같은 헤더는 가린다. */

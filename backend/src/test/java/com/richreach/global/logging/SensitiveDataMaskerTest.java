@@ -121,6 +121,21 @@ class SensitiveDataMaskerTest {
     }
 
     @Test
+    @DisplayName("쿼리 키를 퍼센트 인코딩으로 써도 디코딩한 이름으로 판별해 가린다")
+    void masksEncodedQueryKeys() {
+        String masked = SensitiveDataMasker.maskQuery("pass%77ord=credential&access%5Ftoken=abc&month=2026-10");
+
+        assertThat(masked).doesNotContain("credential").doesNotContain("abc");
+        assertThat(masked).contains("month=2026-10");
+    }
+
+    @Test
+    @DisplayName("디코딩할 수 없는 쿼리 키의 값은 판별할 수 없으므로 가린다")
+    void masksQueryValueWhenKeyCannotBeDecoded() {
+        assertThat(SensitiveDataMasker.maskQuery("%zz=leak&month=1")).isEqualTo("%zz=****&month=1");
+    }
+
+    @Test
     @DisplayName("Authorization, Cookie 헤더 값은 가리고 나머지 헤더는 그대로 둔다")
     void masksHeaders() {
         assertThat(SensitiveDataMasker.maskHeader("Authorization", "Bearer abc")).isEqualTo("****");
