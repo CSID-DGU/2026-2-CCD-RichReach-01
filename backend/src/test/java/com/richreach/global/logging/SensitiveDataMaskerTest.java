@@ -136,6 +136,37 @@ class SensitiveDataMaskerTest {
     }
 
     @Test
+    @DisplayName("이름이 조금 달라도 비밀번호, 토큰, 비밀키, 카드 정보 키는 가린다")
+    void masksVariantKeyNames() {
+        String masked = SensitiveDataMasker.maskJson("{\"userPassword\":\"p1\",\"secretKey\":\"s1\",\"authToken\":\"t1\","
+            + "\"x-api-key\":\"k1\",\"cardNo\":\"c1\",\"accountNo\":\"a1\",\"cvc\":\"v1\",\"CVV\":\"v2\","
+            + "\"card.number\":\"n1\",\"clientSecret\":\"cs1\",\"db_passwd\":\"d1\"}");
+
+        assertThat(masked).doesNotContain("p1").doesNotContain("s1").doesNotContain("t1").doesNotContain("k1")
+            .doesNotContain("c1").doesNotContain("a1").doesNotContain("v1").doesNotContain("v2")
+            .doesNotContain("n1").doesNotContain("d1");
+    }
+
+    @Test
+    @DisplayName("짧은 단어(pin, pw)는 이름이 정확히 같을 때만 가리고, 다른 단어 안에 있을 때는 가리지 않는다")
+    void shortWordsAreMatchedExactlyOnly() {
+        assertThat(SensitiveDataMasker.isSensitive("pin")).isTrue();
+        assertThat(SensitiveDataMasker.isSensitive("PW")).isTrue();
+        assertThat(SensitiveDataMasker.isSensitive("shipping")).isFalse();
+        assertThat(SensitiveDataMasker.isSensitive("viewpoint")).isFalse();
+        assertThat(SensitiveDataMasker.isSensitive("email")).isFalse();
+        assertThat(SensitiveDataMasker.isSensitive(null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("변형된 쿼리 키와 헤더 이름도 가린다")
+    void masksVariantQueryKeysAndHeaders() {
+        assertThat(SensitiveDataMasker.maskQuery("authToken=abc&month=1")).isEqualTo("authToken=****&month=1");
+        assertThat(SensitiveDataMasker.maskHeader("X-Api-Key", "k1")).isEqualTo("****");
+        assertThat(SensitiveDataMasker.maskHeader("Proxy-Authorization", "Basic abc")).isEqualTo("****");
+    }
+
+    @Test
     @DisplayName("Authorization, Cookie 헤더 값은 가리고 나머지 헤더는 그대로 둔다")
     void masksHeaders() {
         assertThat(SensitiveDataMasker.maskHeader("Authorization", "Bearer abc")).isEqualTo("****");

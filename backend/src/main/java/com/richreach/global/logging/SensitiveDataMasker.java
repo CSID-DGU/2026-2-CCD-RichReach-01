@@ -19,14 +19,21 @@ public final class SensitiveDataMasker {
 
     public static final String MASK = "****";
 
-    /** 소문자로 바꾸고 '_', '-'를 뺀 이름으로 비교한다. (refresh_token, refreshToken, Refresh-Token 모두 해당) */
-    private static final Set<String> SENSITIVE_KEYS = Set.of(
-        "password", "passwordconfirm", "currentpassword", "newpassword", "oldpassword", "loginpassword",
-        "cardpassword", "cardpw", "pw", "pin",
-        "accesstoken", "refreshtoken", "idtoken", "token", "resettoken", "authorization", "cookie", "setcookie",
-        "secret", "clientsecret", "apikey", "privatekey", "connectedid",
-        "verificationcode", "authcode", "otp",
-        "cardnumber", "accountnumber", "residentnumber", "ssn");
+    /**
+     * 이름에 이 단어가 들어 있으면 가린다. 길고 뜻이 분명한 단어만 넣는다.
+     * (userPassword, secretKey, authToken, x-api-key 같은 변형 이름까지 잡기 위해서다.)
+     */
+    private static final Set<String> SENSITIVE_FRAGMENTS = Set.of(
+        "password", "passwd", "secret", "token", "credential", "authorization", "cookie",
+        "apikey", "accesskey", "privatekey", "connectedid",
+        "verificationcode", "authcode", "cardnumber", "accountnumber", "residentnumber");
+
+    /**
+     * 이름이 정확히 같을 때만 가린다. 짧은 단어는 다른 단어 안에 들어 있는 경우가 많아서
+     * 부분 문자열로 비교하면 관계없는 필드까지 가려진다. (예: pin은 shipping, pw는 viewpoint 안에 있다.)
+     */
+    private static final Set<String> SENSITIVE_EXACT_KEYS = Set.of(
+        "pw", "pin", "otp", "ssn", "cvc", "cvv", "cvv2", "cardno", "accountno", "cardpw");
 
     /** Spring Boot 4가 쓰는 Jackson 3 (tools.jackson). 이 클래스는 JSON을 읽고 다시 쓰는 용도로만 쓴다. */
     private static final JsonMapper MAPPER = JsonMapper.builder().build();
@@ -124,8 +131,10 @@ public final class SensitiveDataMasker {
         if (name == null) {
             return false;
         }
-        String normalized = name.toLowerCase(Locale.ROOT).replace("_", "").replace("-", "");
-        return SENSITIVE_KEYS.contains(normalized);
+        // 소문자로 바꾸고 '_', '-', '.', 공백을 뺀 이름으로 비교한다. (refresh_token, refreshToken, Refresh-Token 모두 같다.)
+        String normalized = name.toLowerCase(Locale.ROOT).replaceAll("[_\\-.\\s]", "");
+        return SENSITIVE_EXACT_KEYS.contains(normalized)
+            || SENSITIVE_FRAGMENTS.stream().anyMatch(normalized::contains);
     }
 
 }
