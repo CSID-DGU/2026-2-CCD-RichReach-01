@@ -53,6 +53,7 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | - | 로딩창 | `/` | `splash` |
 | - | 로그인 | `/login` | `login` |
 | AUTH-01 | 회원가입 | `/signup` | `signup` |
+| AUTH-02 | 이메일 찾기 (결과는 AUTH-02A 팝업) | `/find-email` | `findEmail` |
 | AUTH-04 | 세션 만료 | `/session-expired` | `sessionExpired` |
 | ONB-01 | 서비스 안내 | `/onboarding/intro` | `serviceIntro` |
 | ONB-02 | CODEF 연결 안내 | `/onboarding/codef-consent` | `codefConsent` |
@@ -81,6 +82,8 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 ## 로그인 실패 흉내 내기 (개발용)
 
 로그인 API가 나오기 전까지는 가짜 로그인을 씁니다. 이메일 형식이 맞고 비밀번호가 가입 규칙(영문·숫자 포함 8자 이상)에 맞으면 성공하고, 아니면 로그인 오류(AUTH-00A)를 보여줍니다.
+
+이메일 찾기(AUTH-02)는 휴대폰 번호를 `010-0000-0000`으로 넣으면 "일치하는 계정이 없음"을, 그 밖의 번호는 결과 팝업(AUTH-02A)을 보여줍니다. 휴대폰 "인증"은 SMS 인증 방식이 정해지기 전까지 번호 확인만 합니다.
 
 ## 카드 연결 실패 흉내 내기 (개발용)
 

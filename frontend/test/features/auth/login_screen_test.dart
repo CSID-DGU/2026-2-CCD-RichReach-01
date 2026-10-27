@@ -17,6 +17,16 @@ class _BrokenAuthRepository implements AuthRepository {
   @override
   Future<void> login({required String email, required String password}) async =>
       throw Exception('network');
+
+  @override
+  Future<void> verifyPhone(String phoneNumber) async =>
+      throw Exception('network');
+
+  @override
+  Future<String?> findEmail({
+    required String name,
+    required String phoneNumber,
+  }) async => throw Exception('network');
 }
 
 Finder _field(String hint) => find.widgetWithText(TextField, hint);
@@ -89,14 +99,12 @@ void main() {
     expect(find.byType(SignupScreen), findsOneWidget);
   });
 
-  testWidgets('이메일·비밀번호 찾기는 준비 중 안내를 보여준다', (tester) async {
+  testWidgets('비밀번호 찾기는 준비 중 안내를 보여준다', (tester) async {
     await pumpAppAt(tester, AppRoute.login);
 
-    for (final link in ['이메일 찾기', '비밀번호 찾기']) {
-      await tester.tap(find.widgetWithText(TextButton, link));
-      await tester.pump();
-      expect(findText('준비 중인 기능이에요.'), findsOneWidget);
-    }
+    await tester.tap(find.widgetWithText(TextButton, '비밀번호 찾기'));
+    await tester.pump();
+    expect(findText('준비 중인 기능이에요.'), findsOneWidget);
   });
 
   group('AUTH-00A 로그인 오류', () {

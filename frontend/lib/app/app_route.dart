@@ -4,6 +4,7 @@ enum AppRoute {
   splash('/', 'SPLASH', '로딩창', showBack: false),
   login('/login', 'LOGIN', '로그인', showBack: false),
   signup('/signup', 'AUTH-01', '회원가입', showBack: false),
+  findEmail('/find-email', 'AUTH-02', '이메일 찾기'),
   sessionExpired('/session-expired', 'AUTH-04', '세션 만료', showBack: false),
   serviceIntro('/onboarding/intro', 'ONB-01', '서비스 안내', showBack: false),
   codefConsent('/onboarding/codef-consent', 'ONB-02', 'CODEF 연결 안내', step: 1),
