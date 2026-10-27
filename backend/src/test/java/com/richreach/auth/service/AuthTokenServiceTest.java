@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +44,8 @@ class AuthTokenServiceTest {
         registry.add("app.encryption.key", () -> Base64.getEncoder().encodeToString(key));
     }
 
+    private static final AtomicInteger PHONE_SEQUENCE = new AtomicInteger();
+
     @Autowired
     private AuthTokenService service;
     @Autowired
@@ -65,8 +68,10 @@ class AuthTokenServiceTest {
         users.deleteAll();
     }
 
+    /** 전화번호는 사용자마다 달라야 해서(유일 제약) 번호를 하나씩 늘려가며 만든다. */
     private long newUser() {
-        return users.save(new User(UUID.randomUUID() + "@example.com", "hash", "테스터", "01012345678", "REAL",
+        String phone = "010%08d".formatted(PHONE_SEQUENCE.incrementAndGet());
+        return users.save(new User(UUID.randomUUID() + "@example.com", "hash", "테스터", phone, "REAL",
             LocalDateTime.now())).getId();
     }
 

@@ -27,8 +27,10 @@ class SensitiveDataMaskerTest {
 
         String masked = SensitiveDataMasker.maskJson(body);
 
-        assertThat(masked).contains("\"cardCompany\":\"WOORI\"").contains("\"loginId\":\"user1\"");
-        assertThat(masked).doesNotContain("secret1").doesNotContain("1234").doesNotContain("123456");
+        // 카드사 아이디(loginId)도 자격증명이라 가린다.
+        assertThat(masked).contains("\"cardCompany\":\"WOORI\"");
+        assertThat(masked).doesNotContain("user1").doesNotContain("secret1")
+            .doesNotContain("1234").doesNotContain("123456");
     }
 
     @Test
@@ -145,6 +147,16 @@ class SensitiveDataMaskerTest {
         assertThat(masked).doesNotContain("p1").doesNotContain("s1").doesNotContain("t1").doesNotContain("k1")
             .doesNotContain("c1").doesNotContain("a1").doesNotContain("v1").doesNotContain("v2")
             .doesNotContain("n1").doesNotContain("d1");
+    }
+
+    @Test
+    @DisplayName("전화번호와 loginId는 개인정보/자격증명이라 로그에서 가린다")
+    void masksPhoneAndLoginId() {
+        String masked = SensitiveDataMasker.maskJson(
+            "{\"name\":\"kim\",\"phoneNumber\":\"01012345678\",\"phone\":\"01099998888\",\"loginId\":\"user@example.com\"}");
+
+        assertThat(masked).doesNotContain("01012345678").doesNotContain("01099998888").doesNotContain("user@example.com");
+        assertThat(masked).contains("\"name\":\"kim\"");
     }
 
     @Test
