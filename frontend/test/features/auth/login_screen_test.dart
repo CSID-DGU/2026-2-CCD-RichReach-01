@@ -150,6 +150,14 @@ void main() {
       await pumpAppAt(tester, AppRoute.sessionExpired);
 
       expect(findText('로그인 시간이 만료됐어요'), findsOneWidget);
+      expect(
+        findText(
+          '개인정보 보호를 위해 다시 로그인해 주세요.\n'
+          '작성 중이던 정보는 가능한 범위에서 유지돼요.',
+        ),
+        findsOneWidget,
+      );
+      expect(findText('세션 만료'), findsNothing);
       expect(find.byIcon(Icons.chevron_left), findsNothing);
 
       await tester.tap(findText('다시 로그인'));
