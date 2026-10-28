@@ -198,7 +198,10 @@ void main() {
       );
 
       expect(findText('확인된 거래내역이 없어요'), findsOneWidget);
-      expect(find.textContaining('업종별 예산과 예정 지출을 직접 입력하게 돼요'), findsOneWidget);
+      expect(
+        findText('거래내역 없이 계속하면 업종별 예산과 예정 지출을 직접 입력하게 돼요.'),
+        findsOneWidget,
+      );
       expect(findText('거래내역 없이 계속하기'), findsOneWidget);
       expect(findText('다시 불러오기'), findsOneWidget);
       expect(findText('이 거래 내역으로 분석하기'), findsNothing);
