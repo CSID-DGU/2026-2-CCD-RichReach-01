@@ -7,8 +7,10 @@ import 'package:frontend/features/onboarding/application/card_connection_provide
 import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
 import 'package:frontend/features/onboarding/domain/card_connection.dart';
+import 'package:frontend/features/onboarding/presentation/card_company_select_screen.dart';
 import 'package:frontend/features/onboarding/presentation/card_select_screen.dart';
 import 'package:frontend/features/onboarding/presentation/connect_complete_screen.dart';
+import 'package:frontend/features/onboarding/presentation/connect_failure_screen.dart';
 import 'package:frontend/features/onboarding/presentation/connect_partial_failure_screen.dart';
 
 import '../../helpers/finders.dart';
@@ -21,6 +23,13 @@ class _FailOnceRepository implements CardConnectionRepository {
 
   final Set<CardCompany> failOnce;
   final requested = <List<CardCompany>>[];
+
+  @override
+  Future<void> authenticate(
+    CardCompany company, {
+    required String loginId,
+    required String password,
+  }) async {}
 
   @override
   Stream<ConnectionProgress> connect(List<CardCompany> companies) {
@@ -44,6 +53,22 @@ CardConnectionResult _failure(CardCompany company) => CardConnectionResult(
   status: ConnectionStatus.failed,
   failureReason: '카드사 인증 시간이 만료됐어요.',
 );
+
+Future<void> _authenticateAndSubmit(WidgetTester tester, String submit) async {
+  await tester.enterText(
+    find.widgetWithText(TextField, '아이디를 입력해 주세요'),
+    'user',
+  );
+  await tester.enterText(
+    find.widgetWithText(TextField, '비밀번호를 입력해 주세요'),
+    'secret',
+  );
+  await tester.pump();
+  await tester.tap(findText(submit));
+  await tester.pumpAndSettle();
+}
+
+const _allSamples = {CardCompany.kb, CardCompany.woori, CardCompany.shinhan};
 
 void main() {
   group('가짜 카드 연결 저장소', () {
@@ -192,6 +217,63 @@ void main() {
     expect(repository.requested.last, [CardCompany.woori]);
     expect(find.byType(ConnectCompleteScreen), findsOneWidget);
     expect(findText('카드 3장이 연결됐어요'), findsOneWidget);
+  });
+
+  testWidgets('모두 실패하면 전체 실패 화면에서 확인할 항목을 보여준다', (tester) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.connecting,
+      connection: const FakeCardConnectionRepository(
+        stepDelay: Duration.zero,
+        failingCompanies: _allSamples,
+      ),
+    );
+
+    expect(find.byType(ConnectFailureScreen), findsOneWidget);
+    expect(findText('카드를 연결하지 못했어요'), findsOneWidget);
+    expect(findText('확인해주세요'), findsOneWidget);
+    expect(find.textContaining('카드사 서비스 점검 여부'), findsOneWidget);
+  });
+
+  testWidgets('전체 실패에서 다시 연결하기는 같은 카드사를 모두 다시 인증해 연결한다', (tester) async {
+    final repository = _FailOnceRepository(_allSamples);
+    await pumpAppAt(tester, AppRoute.connecting, connection: repository);
+    expect(find.byType(ConnectFailureScreen), findsOneWidget);
+
+    await tester.tap(findText('다시 연결하기'));
+    await tester.pumpAndSettle();
+
+    expect(findText('1 / 3'), findsOneWidget);
+    await _authenticateAndSubmit(tester, '인증하고 다음');
+    await _authenticateAndSubmit(tester, '인증하고 다음');
+    await _authenticateAndSubmit(tester, '인증하고 연결하기');
+
+    expect(repository.requested.last, [
+      CardCompany.kb,
+      CardCompany.woori,
+      CardCompany.shinhan,
+    ]);
+    expect(find.byType(ConnectCompleteScreen), findsOneWidget);
+  });
+
+  testWidgets('연결할 카드사 다시 선택은 실패 결과를 지우고 카드사 선택 화면으로 간다', (tester) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.connecting,
+      connection: const FakeCardConnectionRepository(
+        stepDelay: Duration.zero,
+        failingCompanies: _allSamples,
+      ),
+    );
+
+    await tester.tap(findText('연결할 카드사 다시 선택'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CardCompanySelectScreen), findsOneWidget);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CardCompanySelectScreen)),
+    );
+    expect(container.read(cardConnectionResultsProvider), isEmpty);
   });
 
   testWidgets('연결된 카드만 확인을 누르면 카드 확인 화면으로 이동한다', (tester) async {

@@ -38,6 +38,7 @@ enum AppRoute {
     step: 2,
     showBack: false,
   ),
+  connectFailure('/onboarding/connect-failure', 'ONB-03D', '전체 연결 실패', step: 2),
   cardSelect('/onboarding/cards', 'ONB-04', '분석 대상 카드 확인', step: 3),
   transactions('/onboarding/transactions', 'ONB-05', '거래내역 연결·확인', step: 4),
   budget('/onboarding/budget', 'ONB-06', '소비패턴·월간 예산', step: 5),

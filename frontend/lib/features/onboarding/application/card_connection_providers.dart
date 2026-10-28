@@ -49,4 +49,8 @@ class CardConnectionResults extends Notifier<List<CardConnectionResult>> {
       for (final company in CardCompany.values) ?byCompany[company],
     ]);
   }
+
+  /// 실패한 결과를 지운다. (전체 실패 후 카드사를 다시 고르는 경우)
+  void removeFailures() =>
+      state = List.unmodifiable(state.where((r) => r.isSuccess));
 }

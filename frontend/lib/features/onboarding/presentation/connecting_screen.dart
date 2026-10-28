@@ -19,7 +19,8 @@ import 'connection_widgets.dart';
 /// ONB-03A 카드 연결 진행 화면.
 ///
 /// 진행 막대와 함께 단계별 문구를 차례대로 보여주고, 연결이 끝나면
-/// 모두 성공 시 연결 완료(ONB-03B), 하나라도 실패하면 일부 실패(ONB-03C)로 이동한다.
+/// 모두 성공 시 연결 완료(ONB-03B), 모두 실패하면 전체 실패(ONB-03D),
+/// 그 밖에는 일부 실패(ONB-03C)로 이동한다. 결과는 앞서 연결한 카드사와 합쳐서 판단한다.
 /// 연결 중에는 뒤로가기를 막는다.
 class ConnectingScreen extends ConsumerStatefulWidget {
   const ConnectingScreen({super.key});
@@ -65,14 +66,13 @@ class _ConnectingScreenState extends ConsumerState<ConnectingScreen> {
     if (results == null) return;
 
     ref.read(cardConnectionResultsProvider.notifier).merge(results);
-    final allSucceeded = ref
-        .read(cardConnectionResultsProvider)
-        .every((r) => r.isSuccess);
-    context.pushReplacement(
-      allSucceeded
-          ? AppRoute.connectComplete.path
-          : AppRoute.connectPartialFailure.path,
-    );
+    final merged = ref.read(cardConnectionResultsProvider);
+    final next = merged.every((r) => r.isSuccess)
+        ? AppRoute.connectComplete
+        : merged.every((r) => !r.isSuccess)
+        ? AppRoute.connectFailure
+        : AppRoute.connectPartialFailure;
+    context.pushReplacement(next.path);
   }
 
   @override

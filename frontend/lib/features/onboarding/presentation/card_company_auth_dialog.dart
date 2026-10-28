@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -6,10 +7,13 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/labeled_text_field.dart';
 import '../../../core/widgets/notice_box.dart';
 import '../../../core/widgets/word_wrap_text.dart';
+import '../application/card_connection_providers.dart';
+import '../data/card_connection_repository.dart';
 import '../domain/card_company.dart';
 import 'onboarding_images.dart';
 
 /// ONB-02B 카드사 계정 인증 팝업(아래에서 올라오는 팝업)을 띄운다.
+/// 계정 정보가 맞지 않으면 팝업 안에 오류를 보여준다 (ONB-02B-E).
 /// 인증을 마치면 true, 취소하거나 팝업을 내려 닫으면 false를 돌려준다.
 ///
 /// 아이디·비밀번호는 팝업 안에서만 다루고 밖으로 돌려주지 않는다.
@@ -51,7 +55,7 @@ Future<bool> runCardCompanyAuthFlow(
   return context.mounted;
 }
 
-class CardCompanyAuthDialog extends StatefulWidget {
+class CardCompanyAuthDialog extends ConsumerStatefulWidget {
   const CardCompanyAuthDialog({
     super.key,
     required this.companies,
@@ -62,19 +66,24 @@ class CardCompanyAuthDialog extends StatefulWidget {
   final int index;
 
   @override
-  State<CardCompanyAuthDialog> createState() => _CardCompanyAuthDialogState();
+  ConsumerState<CardCompanyAuthDialog> createState() =>
+      _CardCompanyAuthDialogState();
 }
 
-class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
+class _CardCompanyAuthDialogState extends ConsumerState<CardCompanyAuthDialog> {
   final _loginId = TextEditingController();
   final _password = TextEditingController();
+  bool _loading = false;
+
+  /// 인증 실패 문구. 비밀번호 칸 아래에 보여주고, 다시 입력하면 지운다.
+  String? _error;
 
   CardCompany get _company => widget.companies[widget.index];
 
   bool get _isLast => widget.index == widget.companies.length - 1;
 
   bool get _canSubmit =>
-      _loginId.text.trim().isNotEmpty && _password.text.isNotEmpty;
+      !_loading && _loginId.text.trim().isNotEmpty && _password.text.isNotEmpty;
 
   @override
   void dispose() {
@@ -83,10 +92,32 @@ class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
     super.dispose();
   }
 
-  void _onSubmit() {
-    // TODO(#27): 카드 연결 API 연동 후 이 카드사의 인증을 요청하고, 성공하면 닫는다.
-    // 비밀번호는 요청에만 쓰고 저장하거나 로그로 남기지 않는다.
-    Navigator.of(context).pop(true);
+  void _onEdited(String _) => setState(() => _error = null);
+
+  Future<void> _onSubmit() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      // 비밀번호는 요청에만 쓰고 저장하거나 로그로 남기지 않는다.
+      await ref
+          .read(cardConnectionRepositoryProvider)
+          .authenticate(
+            _company,
+            loginId: _loginId.text.trim(),
+            password: _password.text,
+          );
+      if (mounted) Navigator.of(context).pop(true);
+    } on CardCompanyAuthException {
+      if (mounted) setState(() => _error = '입력한 정보를 다시 확인해 주세요');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = '카드사에 연결하지 못했어요. 잠시 후 다시 시도해 주세요');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -121,7 +152,7 @@ class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
               hint: '아이디를 입력해 주세요',
               controller: _loginId,
               textInputAction: TextInputAction.next,
-              onChanged: (_) => setState(() {}),
+              onChanged: _onEdited,
             ),
             const SizedBox(height: 4),
             LabeledTextField(
@@ -130,7 +161,8 @@ class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
               controller: _password,
               obscureText: true,
               textInputAction: TextInputAction.done,
-              onChanged: (_) => setState(() {}),
+              errorText: _error,
+              onChanged: _onEdited,
             ),
             const SizedBox(height: 12),
             const NoticeBox(
@@ -141,6 +173,7 @@ class _CardCompanyAuthDialogState extends State<CardCompanyAuthDialog> {
             AppButton(
               label: _isLast ? '인증하고 연결하기' : '인증하고 다음',
               variant: AppButtonVariant.primary,
+              loading: _loading,
               onPressed: _canSubmit ? _onSubmit : null,
             ),
             const SizedBox(height: 4),
