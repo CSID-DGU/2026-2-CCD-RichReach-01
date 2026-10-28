@@ -25,6 +25,11 @@ app:
     access-token-ttl: 30m
     refresh-token-ttl: 14d
     secret: ${JWT_SECRET:}
+  # 로그인 실패 잠금: max-failures번 연속으로 틀리면 lock-duration 동안 로그인할 수 없다.
+  auth:
+    login-lock:
+      max-failures: 5
+      lock-duration: 10m
   # 현재 약관 버전. 약관 본문은 앱에 있고 서버는 동의한 버전만 기록한다. 약관을 고치면 이 값을 바꾼다.
   terms:
     signup-version: 2026-10-01

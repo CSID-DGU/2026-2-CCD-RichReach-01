@@ -11,6 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.richreach.auth.dto.SignupRequest;
 import com.richreach.auth.dto.TokenPair;
+import com.richreach.auth.dto.LoginRequest;
+import com.richreach.auth.service.AuthTokenService;
+import com.richreach.auth.service.LoginService;
 import com.richreach.auth.service.SignupService;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
@@ -39,6 +42,10 @@ class AuthControllerTest {
 
     @MockitoBean
     private SignupService signupService;
+    @MockitoBean
+    private LoginService loginService;
+    @MockitoBean
+    private AuthTokenService authTokenService;
 
     private static String signupJson(String name, String phone, String loginId, String password, boolean terms) {
         return """
@@ -174,6 +181,94 @@ class AuthControllerTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.data[?(@.field=='loginId')]").exists());
         verifyNoInteractions(signupService);
+    }
+
+    private ResultActions postJson(String path, String json) throws Exception {
+        return mockMvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content(json));
+    }
+
+    @Test
+    @DisplayName("로그인에 성공하면 200과 토큰을 내려준다")
+    void loginReturnsTokens() throws Exception {
+        when(loginService.login(any())).thenReturn(new TokenPair("access-value", "refresh-value", 1800));
+
+        postJson("/api/auth/login", "{\"loginId\":\"rich@example.com\",\"password\":\"abcd1234\"}")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.accessToken").value("access-value"))
+            .andExpect(jsonPath("$.data.refreshToken").value("refresh-value"));
+    }
+
+    @Test
+    @DisplayName("로그인은 아이디나 비밀번호가 비어 있을 때만 400이고, 형식이 달라도 서비스까지 넘긴다")
+    void loginValidatesOnlyPresence() throws Exception {
+        postJson("/api/auth/login", "{\"loginId\":\"\",\"password\":\"abcd1234\"}")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.data[?(@.field=='loginId')]").exists());
+        postJson("/api/auth/login", "{\"loginId\":\"rich@example.com\"}")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.data[?(@.field=='password')]").exists());
+        verifyNoInteractions(loginService);
+
+        when(loginService.login(any())).thenReturn(new TokenPair("a", "r", 1));
+        postJson("/api/auth/login", "{\"loginId\":\"not-an-email\",\"password\":\"x\"}").andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("로그인 실패와 잠금은 코드와 HTTP 상태로 구분해서 내려준다")
+    void loginErrorsKeepTheirCodes() throws Exception {
+        String json = "{\"loginId\":\"rich@example.com\",\"password\":\"abcd1234\"}";
+
+        doThrow(new BusinessException(ErrorCode.INVALID_CREDENTIALS)).when(loginService).login(any());
+        postJson("/api/auth/login", json).andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("AUTH-002"));
+
+        doThrow(new BusinessException(ErrorCode.ACCOUNT_LOCKED)).when(loginService).login(any());
+        postJson("/api/auth/login", json).andExpect(status().isLocked())
+            .andExpect(jsonPath("$.code").value("AUTH-003"));
+    }
+
+    @Test
+    @DisplayName("재발급에 성공하면 새 토큰을 내려주고, 만료/위조는 401과 코드로 구분한다")
+    void reissueReturnsTokensOrErrors() throws Exception {
+        when(authTokenService.reissue("old-refresh")).thenReturn(new TokenPair("new-access", "new-refresh", 1800));
+        postJson("/api/auth/reissue", "{\"refreshToken\":\"old-refresh\"}")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.accessToken").value("new-access"))
+            .andExpect(jsonPath("$.data.refreshToken").value("new-refresh"));
+
+        doThrow(new BusinessException(ErrorCode.TOKEN_EXPIRED)).when(authTokenService).reissue("expired");
+        postJson("/api/auth/reissue", "{\"refreshToken\":\"expired\"}")
+            .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("AUTH-004"));
+
+        doThrow(new BusinessException(ErrorCode.INVALID_TOKEN)).when(authTokenService).reissue("forged");
+        postJson("/api/auth/reissue", "{\"refreshToken\":\"forged\"}")
+            .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("AUTH-005"));
+    }
+
+    @Test
+    @DisplayName("재발급과 로그아웃은 refreshToken이 없으면 400이다")
+    void refreshTokenIsRequired() throws Exception {
+        postJson("/api/auth/reissue", "{}").andExpect(status().isBadRequest());
+        postJson("/api/auth/logout", "{\"refreshToken\":\"\"}").andExpect(status().isBadRequest());
+        verifyNoInteractions(authTokenService);
+    }
+
+    @Test
+    @DisplayName("로그아웃은 refresh 토큰을 폐기하고 성공으로 답한다")
+    void logoutRevokesToken() throws Exception {
+        postJson("/api/auth/logout", "{\"refreshToken\":\"some-refresh\"}")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+
+        org.mockito.Mockito.verify(authTokenService).revoke("some-refresh");
+    }
+
+    @Test
+    @DisplayName("로그인/재발급 요청 객체를 문자열로 찍어도 비밀번호와 토큰은 나오지 않는다")
+    void loginDtoToStringHidesSecrets() {
+        assertThat(new LoginRequest("rich@example.com", "abcd1234").toString()).doesNotContain("abcd1234");
+        assertThat(new com.richreach.auth.dto.RefreshTokenRequest("secret-refresh").toString())
+            .doesNotContain("secret-refresh");
     }
 
     @Test
