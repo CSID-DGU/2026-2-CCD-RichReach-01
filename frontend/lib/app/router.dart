@@ -15,6 +15,7 @@ import '../features/onboarding/presentation/card_company_select_screen.dart';
 import '../features/onboarding/presentation/card_select_screen.dart';
 import '../features/onboarding/presentation/codef_consent_screen.dart';
 import '../features/onboarding/presentation/connect_complete_screen.dart';
+import '../features/onboarding/presentation/connect_failure_screen.dart';
 import '../features/onboarding/presentation/connect_partial_failure_screen.dart';
 import '../features/onboarding/presentation/connecting_screen.dart';
 import '../features/onboarding/presentation/plan_generating_screen.dart';
@@ -101,6 +102,7 @@ Widget _screenFor(AppRoute route, GoRouterState state) {
     AppRoute.connecting => const ConnectingScreen(),
     AppRoute.connectComplete => const ConnectCompleteScreen(),
     AppRoute.connectPartialFailure => const ConnectPartialFailureScreen(),
+    AppRoute.connectFailure => const ConnectFailureScreen(),
     AppRoute.cardSelect => const CardSelectScreen(),
     AppRoute.transactions => const TransactionsScreen(),
     AppRoute.budget => const BudgetScreen(),

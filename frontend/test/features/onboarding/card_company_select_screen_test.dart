@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
 import 'package:frontend/features/onboarding/presentation/card_company_auth_dialog.dart';
 
@@ -21,14 +22,17 @@ Future<void> _select(WidgetTester tester, CardCompany company) async {
   await tester.pump();
 }
 
-Future<void> _authenticate(WidgetTester tester) async {
+Future<void> _authenticate(
+  WidgetTester tester, {
+  String password = 'secret',
+}) async {
   await tester.enterText(
     find.widgetWithText(TextField, '아이디를 입력해 주세요'),
     'user',
   );
   await tester.enterText(
     find.widgetWithText(TextField, '비밀번호를 입력해 주세요'),
-    'secret',
+    password,
   );
   await tester.pump();
 }
@@ -138,6 +142,32 @@ void main() {
 
     await _authenticate(tester);
     expect(submit().onPressed, isNotNull);
+  });
+
+  testWidgets('계정 정보가 틀리면 팝업에 오류를 보여주고, 다시 입력하면 오류를 지운다', (tester) async {
+    await pumpAppAt(tester, AppRoute.cardCompanySelect);
+    await _select(tester, CardCompany.kb);
+    await tester.tap(findText('선택한 카드사 1곳 연결하기'));
+    await tester.pumpAndSettle();
+
+    await _authenticate(
+      tester,
+      password: FakeCardConnectionRepository.wrongPassword,
+    );
+    await tester.tap(findText('인증하고 연결하기'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CardCompanyAuthDialog), findsOneWidget);
+    expect(findText('입력한 정보를 다시 확인해 주세요'), findsOneWidget);
+    final label = tester.widget<Text>(find.text('카드사 비밀번호'));
+    expect(label.style?.color, AppColors.error);
+
+    await _authenticate(tester);
+    expect(findText('입력한 정보를 다시 확인해 주세요'), findsNothing);
+    await tester.tap(findText('인증하고 연결하기'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CardCompanyAuthDialog), findsNothing);
   });
 
   testWidgets('취소하면 팝업이 닫히고 카드사 선택 화면에 머문다', (tester) async {

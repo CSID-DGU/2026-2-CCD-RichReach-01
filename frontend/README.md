@@ -64,6 +64,7 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | ONB-03A | 카드 연결 진행 | `/onboarding/connecting` | `connecting` |
 | ONB-03B | 카드 연결 완료 | `/onboarding/connect-complete` | `connectComplete` |
 | ONB-03C | 일부 연결 실패 | `/onboarding/connect-partial-failure` | `connectPartialFailure` |
+| ONB-03D | 전체 연결 실패 | `/onboarding/connect-failure` | `connectFailure` |
 | ONB-04 | 분석 대상 카드 확인 | `/onboarding/cards` | `cardSelect` |
 | ONB-05 | 거래내역 연결·확인 | `/onboarding/transactions` | `transactions` |
 | ONB-06 | 소비패턴·월간 예산 | `/onboarding/budget` | `budget` |
@@ -106,13 +107,14 @@ flutter run --dart-define=USE_FAKE_API=false
 
 ## 카드 연결 실패 흉내 내기 (개발용)
 
-카드 연결 API가 나오기 전까지는 가짜 연결을 씁니다. 기본은 모든 카드사가 성공하고, 아래처럼 실행하면 지정한 카드사를 실패시켜 일부 실패 화면(ONB-03C)을 확인할 수 있습니다.
+카드 연결 API가 나오기 전까지는 가짜 연결을 씁니다. 기본은 모든 카드사가 성공하고, 아래처럼 실행하면 지정한 카드사를 실패시켜 일부 실패 화면(ONB-03C)을 확인할 수 있습니다. 고른 카드사를 모두 실패시키면 전체 실패 화면(ONB-03D)이 나옵니다.
 
 ```bash
 flutter run --dart-define=INITIAL_ROUTE=cardCompanySelect --dart-define=FAKE_FAIL_COMPANIES=WOORI
 ```
 
 - 카드사 코드: `KB`, `HYUNDAI`, `NH`, `CITI`, `WOORI`, `BC`, `SHINHAN` (쉼표로 여러 개 지정)
+- 카드사 인증 팝업(ONB-02B)에서 비밀번호를 `wrong1234`로 넣으면 인증 오류(ONB-02B-E)를 보여줍니다.
 - 앞 화면의 데이터가 필요한 화면(연결 결과, 카드 확인, 거래내역, 예산, 플랜 완료 등)을 시작 화면으로 바로 열면 debug 빌드에서는 예시 데이터(KB·우리·신한 카드, 예산 820,000원)를 보여줍니다.
 
 ## 검사
