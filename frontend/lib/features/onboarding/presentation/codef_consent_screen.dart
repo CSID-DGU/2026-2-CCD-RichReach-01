@@ -11,6 +11,7 @@ import '../../../core/widgets/page_title.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
 import '../domain/codef_consent.dart';
+import 'consent_terms_sheet.dart';
 
 /// ONB-02 CODEF 연결 안내 · 동의 화면.
 ///
@@ -38,10 +39,21 @@ class _CodefConsentScreenState extends State<CodefConsentScreen> {
     setState(() => value ? _agreed.add(consent) : _agreed.remove(consent));
   }
 
-  void _showTerms(CodefConsent consent) {
-    // TODO(#21): 약관 본문 제공 방식이 정해지면(데이터 규약 Q3) 상세 화면으로 연결한다.
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('약관 내용은 준비 중이에요.')));
+  /// ONB-02C1~C3: 약관을 보고 "동의하기"/"동의하지 않기"를 고르면 체크 상태를 바꾼다.
+  Future<void> _showTerms(CodefConsent consent) async {
+    final agreed = await showConsentTermsSheet(context, consent);
+    if (agreed != null && mounted) _toggle(consent, agreed);
+  }
+
+  /// ONB-02C0: 전체 약관. 안에서 항목별로 고른 결과도 바로 반영한다.
+  Future<void> _showAllTerms() async {
+    final agreed = await showAllTermsSheet(
+      context,
+      onDecided: (consent, agreed) {
+        if (mounted) _toggle(consent, agreed);
+      },
+    );
+    if (agreed != null && mounted) _toggleAll(agreed);
   }
 
   void _onNext() {
@@ -75,6 +87,7 @@ class _CodefConsentScreenState extends State<CodefConsentScreen> {
             label: '전체 동의',
             checked: _allAgreed,
             onChanged: _toggleAll,
+            onDetail: _showAllTerms,
           ),
           const Divider(height: 9),
           for (final consent in CodefConsent.values)
