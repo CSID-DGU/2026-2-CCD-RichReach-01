@@ -115,6 +115,7 @@ flutter run --dart-define=INITIAL_ROUTE=cardCompanySelect --dart-define=FAKE_FAI
 
 - 카드사 코드: `KB`, `HYUNDAI`, `NH`, `CITI`, `WOORI`, `BC`, `SHINHAN` (쉼표로 여러 개 지정)
 - 카드사 인증 팝업(ONB-02B)에서 비밀번호를 `wrong1234`로 넣으면 인증 오류(ONB-02B-E)를 보여줍니다.
+- `--dart-define=FAKE_NO_TRANSACTIONS=true`로 실행하면 거래내역이 없는 경우(ONB-05A)를 확인할 수 있습니다.
 - 앞 화면의 데이터가 필요한 화면(연결 결과, 카드 확인, 거래내역, 예산, 플랜 완료 등)을 시작 화면으로 바로 열면 debug 빌드에서는 예시 데이터(KB·우리·신한 카드, 예산 820,000원)를 보여줍니다.
 
 ## 검사

@@ -3,20 +3,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
+import '../../../core/assets/app_assets.dart';
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/page_title.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
+import '../../../core/widgets/word_wrap_text.dart';
 import '../../../core/widgets/summary_card.dart';
 import '../application/onboarding_data_providers.dart';
 import '../domain/transaction.dart';
+import 'connection_widgets.dart';
 import 'load_failure_view.dart';
 import 'onboarding_images.dart';
 
 /// ONB-05 거래내역 확인 화면. 기본 조회 기간은 3개월이다.
+///
+/// 조회한 기간에 거래가 없으면 ONB-05A 안내를 보여주고, 거래내역 없이 예산 화면으로 넘어가거나
+/// 다시 불러올 수 있다.
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
 
@@ -30,6 +37,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     final summaryAsync = ref.watch(transactionSummaryProvider(_period));
+    final isEmpty = summaryAsync.value?.isEmpty ?? false;
 
     return OnboardingScaffold(
       header: const StepHeader(step: 4),
@@ -46,8 +54,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             selected: _period,
             onChanged: (period) => setState(() => _period = period),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: isEmpty ? 31 : 20),
           switch (summaryAsync) {
+            AsyncData(value: final summary) when summary.isEmpty =>
+              const _EmptyContent(),
             AsyncData(value: final summary) => _SummaryContent(
               summary: summary,
             ),
@@ -63,12 +73,32 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           },
         ],
       ),
-      bottom: PrimaryButton(
-        label: '이 거래 내역으로 분석하기',
-        onPressed: summaryAsync.hasValue
-            ? () => context.push(AppRoute.budget.path)
-            : null,
-      ),
+      bottom: isEmpty
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // TODO: 예산 화면에 거래내역 없이 직접 입력하는 상태가 정해지면 그쪽으로 보낸다.
+                AppButton(
+                  label: '거래내역 없이 계속하기',
+                  variant: AppButtonVariant.primary,
+                  onPressed: () => context.push(AppRoute.budget.path),
+                ),
+                const SizedBox(height: 4),
+                AppButton(
+                  label: '다시 불러오기',
+                  loading: summaryAsync.isLoading,
+                  onPressed: () =>
+                      ref.invalidate(transactionSummaryProvider(_period)),
+                ),
+              ],
+            )
+          : PrimaryButton(
+              label: '이 거래 내역으로 분석하기',
+              onPressed: summaryAsync.hasValue
+                  ? () => context.push(AppRoute.budget.path)
+                  : null,
+            ),
     );
   }
 }
@@ -141,6 +171,48 @@ class _PeriodTab extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// ONB-05A 거래내역 없음 안내.
+class _EmptyContent extends StatelessWidget {
+  const _EmptyContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: Image.asset(
+            AppAssets.connectionWarningExclamation,
+            width: 171,
+            height: 153,
+            excludeFromSemantics: true,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const CenteredTitle(
+          title: '확인된 거래내역이 없어요',
+          description: '카드사 조회 범위 또는 연결 상태를 확인하거나\n소비예산을 직접 입력해 플랜을 만들 수 있어요.',
+          titleSize: 23,
+          descriptionSize: 13,
+          descriptionGap: 8,
+        ),
+        const SizedBox(height: 57),
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: WordWrapText(
+            '거래내역 없이 계속하면 업종별 예산과 예정 지출을 직접 입력하게 돼요.',
+            style: AppTextStyles.caption.copyWith(fontSize: 13),
+          ),
+        ),
+      ],
     );
   }
 }

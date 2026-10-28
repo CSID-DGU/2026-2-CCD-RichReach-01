@@ -13,13 +13,16 @@ abstract interface class TransactionRepository {
 
 /// API가 나오기 전까지 쓰는 가짜 구현.
 /// 3개월 기준 값은 와이어프레임 숫자이고, 1개월은 1/3, 6개월은 2배로 계산한다.
+/// [empty]면 모든 기간에 거래내역이 없다고 돌려준다 (ONB-05A 확인용).
 class FakeTransactionRepository implements TransactionRepository {
   FakeTransactionRepository({
     this.delay = const Duration(milliseconds: 400),
+    this.empty = false,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
 
   final Duration delay;
+  final bool empty;
   final DateTime Function() _now;
 
   /// 3개월 기준 카드사별 (건수, 금액). 와이어프레임: KB 62건, 신한 80건, 우리 42건, 합계 2,480,000원
@@ -49,11 +52,13 @@ class FakeTransactionRepository implements TransactionRepository {
     final endDate = DateTime(now.year, now.month, 0);
     final startDate = DateTime(now.year, now.month - period.months, 1);
 
-    int scale(int value) => switch (period) {
-      TransactionPeriod.oneMonth => (value / 3).round(),
-      TransactionPeriod.threeMonths => value,
-      TransactionPeriod.sixMonths => value * 2,
-    };
+    int scale(int value) => empty
+        ? 0
+        : switch (period) {
+            TransactionPeriod.oneMonth => (value / 3).round(),
+            TransactionPeriod.threeMonths => value,
+            TransactionPeriod.sixMonths => value * 2,
+          };
 
     final byCompany = [
       for (final company in companies)
@@ -75,7 +80,9 @@ class FakeTransactionRepository implements TransactionRepository {
       connectedCardCount: companies.length,
       categorizedRate: 96,
       byCompany: byCompany,
-      recentTransactions: _recentTransactions(companies, endDate),
+      recentTransactions: empty
+          ? const []
+          : _recentTransactions(companies, endDate),
     );
   }
 

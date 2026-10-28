@@ -185,4 +185,77 @@ void main() {
       expect(find.byType(BudgetScreen), findsOneWidget);
     });
   });
+
+  group('ONB-05A 거래내역 없음', () {
+    testWidgets('거래내역이 없으면 안내와 두 버튼을 보여준다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.transactions,
+        transactions: FakeTransactionRepository(
+          delay: Duration.zero,
+          empty: true,
+        ),
+      );
+
+      expect(findText('확인된 거래내역이 없어요'), findsOneWidget);
+      expect(
+        findText('거래내역 없이 계속하면 업종별 예산과 예정 지출을 직접 입력하게 돼요.'),
+        findsOneWidget,
+      );
+      expect(findText('거래내역 없이 계속하기'), findsOneWidget);
+      expect(findText('다시 불러오기'), findsOneWidget);
+      expect(findText('이 거래 내역으로 분석하기'), findsNothing);
+      // 조회 기간 탭은 그대로 둔다.
+      expect(findText('6개월'), findsOneWidget);
+    });
+
+    testWidgets('거래내역 없이 계속하기를 누르면 예산 화면으로 이동한다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.transactions,
+        transactions: FakeTransactionRepository(
+          delay: Duration.zero,
+          empty: true,
+        ),
+      );
+
+      await tester.tap(findText('거래내역 없이 계속하기'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BudgetScreen), findsOneWidget);
+    });
+
+    testWidgets('다시 불러오기로 거래내역이 생기면 요약을 보여준다', (tester) async {
+      final repository = _CountingTransactions(1);
+      await pumpAppAt(tester, AppRoute.transactions, transactions: repository);
+      expect(findText('확인된 거래내역이 없어요'), findsOneWidget);
+
+      await tester.tap(findText('다시 불러오기'));
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, 2);
+      expect(findText('확인된 거래내역이 없어요'), findsNothing);
+      expect(findText('이 거래 내역으로 분석하기'), findsOneWidget);
+    });
+  });
+}
+
+/// 처음 [emptyTimes]번은 빈 결과를, 그 뒤로는 거래내역을 돌려주고 호출 횟수를 센다.
+class _CountingTransactions implements TransactionRepository {
+  _CountingTransactions(this.emptyTimes);
+
+  final int emptyTimes;
+  int calls = 0;
+
+  @override
+  Future<TransactionSummary> fetchSummary(
+    TransactionPeriod period,
+    List<CardCompany> companies,
+  ) {
+    calls++;
+    return FakeTransactionRepository(
+      delay: Duration.zero,
+      empty: calls <= emptyTimes,
+    ).fetchSummary(period, companies);
+  }
 }
