@@ -84,4 +84,7 @@ class TransactionSummary {
   final int categorizedRate;
   final List<CompanyTransactionCount> byCompany;
   final List<Transaction> recentTransactions;
+
+  /// 조회 기간에 거래가 한 건도 없음 (ONB-05A)
+  bool get isEmpty => totalCount == 0;
 }
