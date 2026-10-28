@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
 import '../../../core/formatters/phone_number_formatter.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/brand_logo.dart';
@@ -11,19 +13,25 @@ import '../../../core/widgets/labeled_text_field.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/page_title.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../application/auth_providers.dart';
+import '../data/signup_repository.dart';
 import '../domain/signup_validator.dart';
 
 /// AUTH-01 회원가입 화면.
 ///
-/// 회원가입 API가 아직 없어 검증을 통과하면 서비스 안내 화면으로 바로 이동한다.
-class SignupScreen extends StatefulWidget {
+/// 입력값 검증을 통과하면 가입을 요청하고, 성공하면(토큰 저장) 서비스 안내 화면으로 이동한다.
+/// 이미 가입된 이메일·전화번호나 서버의 입력값 오류는 해당 입력칸에 보여준다.
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+/// 서버 오류를 보여줄 입력칸. 이름은 요청 본문의 필드 이름이다.
+enum _Field { name, phoneNumber, loginId, password }
+
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _email = TextEditingController();
@@ -34,6 +42,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
   /// 가입 버튼을 한 번 누른 뒤부터 오류 문구를 보여준다.
   bool _submitted = false;
+  bool _loading = false;
+
+  /// 서버가 알려준 입력칸별 오류. 그 칸을 고치면 지운다.
+  final _serverErrors = <_Field, String>{};
 
   List<TextEditingController> get _controllers => [
     _name,
@@ -44,9 +56,15 @@ class _SignupScreenState extends State<SignupScreen> {
   ];
 
   bool get _canSubmit =>
-      _termsAgreed && _controllers.every((c) => c.text.isNotEmpty);
+      !_loading && _termsAgreed && _controllers.every((c) => c.text.isNotEmpty);
 
-  String? _errorIfSubmitted(String? error) => _submitted ? error : null;
+  /// 화면 검증 오류가 먼저이고, 없으면 서버 오류를 보여준다.
+  String? _errorFor(_Field? field, String? error) => _submitted
+      ? error ?? (field == null ? null : _serverErrors[field])
+      : null;
+
+  ValueChanged<String> _onEdited(_Field? field) =>
+      (_) => setState(() => _serverErrors.remove(field));
 
   bool get _hasError => [
     SignupValidator.name(_name.text),
@@ -64,12 +82,56 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  void _onSubmit() {
-    setState(() => _submitted = true);
+  Future<void> _onSubmit() async {
+    setState(() {
+      _submitted = true;
+      _serverErrors.clear();
+    });
     if (_hasError) return;
 
-    // TODO(#19): 회원가입 API 연동 후 요청 결과에 따라 이동한다.
-    context.go(AppRoute.serviceIntro.path);
+    setState(() => _loading = true);
+    try {
+      await ref
+          .read(signupRepositoryProvider)
+          .signup(
+            SignupForm(
+              name: _name.text,
+              phoneNumber: _phone.text,
+              email: _email.text,
+              password: _password.text,
+              termsAgreed: _termsAgreed,
+            ),
+          );
+      if (mounted) context.go(AppRoute.serviceIntro.path);
+    } on DuplicateEmailException {
+      _showServerErrors({_Field.loginId: '이미 가입된 이메일이에요.'});
+    } on DuplicatePhoneException {
+      _showServerErrors({_Field.phoneNumber: '이미 가입된 전화번호예요.'});
+    } on ApiException catch (e) {
+      final fieldErrors = {
+        for (final field in _Field.values) field: ?e.fieldMessage(field.name),
+      };
+      if (fieldErrors.isNotEmpty) {
+        _showServerErrors(fieldErrors);
+      } else {
+        _showMessage(e.userMessage);
+      }
+    } catch (_) {
+      _showMessage('회원가입하지 못했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showServerErrors(Map<_Field, String> errors) {
+    if (mounted) setState(() => _serverErrors.addAll(errors));
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _onLogin() => context.go(AppRoute.login.path);
@@ -97,8 +159,11 @@ class _SignupScreenState extends State<SignupScreen> {
               controller: _name,
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.name],
-              errorText: _errorIfSubmitted(SignupValidator.name(_name.text)),
-              onChanged: (_) => setState(() {}),
+              errorText: _errorFor(
+                _Field.name,
+                SignupValidator.name(_name.text),
+              ),
+              onChanged: _onEdited(_Field.name),
             ),
             const SizedBox(height: _fieldGap),
             LabeledTextField(
@@ -109,10 +174,11 @@ class _SignupScreenState extends State<SignupScreen> {
               textInputAction: TextInputAction.next,
               inputFormatters: [PhoneNumberFormatter()],
               autofillHints: const [AutofillHints.telephoneNumber],
-              errorText: _errorIfSubmitted(
+              errorText: _errorFor(
+                _Field.phoneNumber,
                 SignupValidator.phoneNumber(_phone.text),
               ),
-              onChanged: (_) => setState(() {}),
+              onChanged: _onEdited(_Field.phoneNumber),
             ),
             const SizedBox(height: _fieldGap),
             LabeledTextField(
@@ -122,8 +188,11 @@ class _SignupScreenState extends State<SignupScreen> {
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.email],
-              errorText: _errorIfSubmitted(SignupValidator.email(_email.text)),
-              onChanged: (_) => setState(() {}),
+              errorText: _errorFor(
+                _Field.loginId,
+                SignupValidator.email(_email.text),
+              ),
+              onChanged: _onEdited(_Field.loginId),
             ),
             const SizedBox(height: _fieldGap),
             LabeledTextField(
@@ -133,10 +202,11 @@ class _SignupScreenState extends State<SignupScreen> {
               obscureText: true,
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.newPassword],
-              errorText: _errorIfSubmitted(
+              errorText: _errorFor(
+                _Field.password,
                 SignupValidator.password(_password.text),
               ),
-              onChanged: (_) => setState(() {}),
+              onChanged: _onEdited(_Field.password),
             ),
             const SizedBox(height: _fieldGap),
             LabeledTextField(
@@ -146,13 +216,14 @@ class _SignupScreenState extends State<SignupScreen> {
               obscureText: true,
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.newPassword],
-              errorText: _errorIfSubmitted(
+              errorText: _errorFor(
+                null,
                 SignupValidator.passwordConfirm(
                   _password.text,
                   _passwordConfirm.text,
                 ),
               ),
-              onChanged: (_) => setState(() {}),
+              onChanged: _onEdited(null),
             ),
             ConsentTile(
               label: '[필수] 서비스 이용약관 및 개인정보 수집에 동의합니다.',
@@ -164,6 +235,7 @@ class _SignupScreenState extends State<SignupScreen> {
             const SizedBox(height: 4),
             PrimaryButton(
               label: '회원가입',
+              loading: _loading,
               onPressed: _canSubmit ? _onSubmit : null,
             ),
             const SizedBox(height: 6),

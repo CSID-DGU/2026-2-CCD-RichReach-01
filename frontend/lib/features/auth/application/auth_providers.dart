@@ -1,10 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_config.dart';
+import '../../../core/network/api_providers.dart';
 import '../data/auth_repository.dart';
+import '../data/signup_repository.dart';
 
 /// 로그인·계정 찾기 저장소. API 연동 전까지는 가짜 구현을 쓴다.
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => const FakeAuthRepository(),
+);
+
+/// 회원가입 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
+final signupRepositoryProvider = Provider<SignupRepository>(
+  (ref) => ApiConfig.useFakeApi
+      ? const FakeSignupRepository()
+      : ApiSignupRepository(
+          ref.watch(apiClientProvider),
+          ref.watch(tokenStorageProvider),
+        ),
 );
 
 /// 비밀번호 찾기 흐름(AUTH-03 → 03A → 03B)에서 화면 사이에 넘기는 값.
