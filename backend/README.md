@@ -40,7 +40,9 @@ com.richreach
 cp .env.example .env          # PowerShell: Copy-Item .env.example .env
 ```
 
-`.env`의 `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`를 원하는 값으로 바꾼다.
+`.env`의 `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`를 원하는 값으로 바꾸고, `DATA_ENCRYPTION_KEY`를 채운다.
+`DATA_ENCRYPTION_KEY`는 비어 있으면 앱이 시작되지 않는다. 로컬 DB 전용이라 각자 달라도 되고, `openssl rand -base64 32`로 만든다.
+`JWT_SECRET`은 비워도 실행된다. (임시 키로 시작하고 경고가 나오며, 앱을 다시 켜면 기존 로그인이 풀린다.)
 
 ### 방법 A: DB만 Docker, 앱은 로컬에서 실행 (평소 개발)
 
@@ -78,7 +80,8 @@ docker compose down -v     # DB 데이터까지 삭제
 
 - MySQL 호스트 포트 기본값은 **3307**이다. 로컬에 MySQL이 이미 설치되어 3306을 쓰고 있어도 겹치지 않는다. `.env`의 `DB_PORT`로 바꿀 수 있다.
 - 웹 클라이언트를 붙일 때는 `.env`의 `CORS_ALLOWED_ORIGINS`에 허용할 origin을 쉼표로 넣는다. 비워두면 CORS는 닫혀 있다.
-- 아직 Flyway 마이그레이션이 없어서 기동 시 `No migrations found` 경고가 나오는 것은 정상이다.
+- 처음 실행하면 Flyway가 마이그레이션을 자동으로 적용해서 1~3분 걸린다. (카드 데이터 시드가 커서 처음에만 오래 걸린다.) 로컬 DB에서는 Flyway를 켠 기본값으로 실행한다.
+- **공용 DB**에 접속해서 실행할 때는 `SPRING_FLYWAY_ENABLED=false`로 실행한다. DB 구조 변경은 DB 담당이 한 번만 적용한다.
 
 ### 문제 해결
 
