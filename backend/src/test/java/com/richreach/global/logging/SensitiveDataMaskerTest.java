@@ -160,6 +160,17 @@ class SensitiveDataMaskerTest {
     }
 
     @Test
+    @DisplayName("비밀번호 재설정의 인증번호, 재설정 토큰, 새 비밀번호는 로그에서 가린다")
+    void masksPasswordResetFields() {
+        String masked = SensitiveDataMasker.maskJson(
+            "{\"loginId\":\"a@b.com\",\"code\":\"482913\",\"resetToken\":\"abc.def.ghi\",\"newPassword\":\"abcd1234\","
+                + "\"devCode\":\"111222\"}");
+
+        assertThat(masked).doesNotContain("482913").doesNotContain("abc.def.ghi")
+            .doesNotContain("abcd1234").doesNotContain("111222");
+    }
+
+    @Test
     @DisplayName("짧은 단어(pin, pw)는 이름이 정확히 같을 때만 가리고, 다른 단어 안에 있을 때는 가리지 않는다")
     void shortWordsAreMatchedExactlyOnly() {
         assertThat(SensitiveDataMasker.isSensitive("pin")).isTrue();
