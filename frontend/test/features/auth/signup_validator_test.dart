@@ -49,6 +49,12 @@ void main() {
       expect(SignupValidator.password('abc123'), isNotNull);
       expect(SignupValidator.password('abcdefgh'), isNotNull);
       expect(SignupValidator.password('12345678'), isNotNull);
+      // 서버 규칙: 64자 이하, 한글·공백 불가
+      expect(SignupValidator.password('a1${'b' * 62}'), isNull);
+      expect(SignupValidator.password('a1${'b' * 63}'), isNotNull);
+      expect(SignupValidator.password('abcd 1234'), isNotNull);
+      expect(SignupValidator.password('abcd1234가'), isNotNull);
+      expect(SignupValidator.password('abcd!234'), isNull);
     });
   });
 

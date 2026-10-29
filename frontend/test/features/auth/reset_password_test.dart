@@ -10,6 +10,17 @@ import 'package:frontend/features/auth/presentation/reset_password_screen.dart';
 import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
 
+/// 새 비밀번호를 저장할 때 재설정 토큰이 만료된 저장소.
+class _ExpiredTokenAuth extends FakeAuthRepository {
+  const _ExpiredTokenAuth() : super(delay: Duration.zero);
+
+  @override
+  Future<void> resetPassword({
+    required String resetToken,
+    required String newPassword,
+  }) async => throw const ResetTokenExpiredException();
+}
+
 Finder _field(String hint) => find.widgetWithText(TextField, hint);
 
 Finder _button(String label) => find.widgetWithText(FilledButton, label);
@@ -22,8 +33,11 @@ Future<void> _settleTransition(WidgetTester tester) async {
 }
 
 /// 로그인 → 비밀번호 찾기 → 이메일 확인 → 인증번호 보내기까지.
-Future<void> _toCodeScreen(WidgetTester tester) async {
-  await pumpAppAt(tester, AppRoute.login);
+Future<void> _toCodeScreen(
+  WidgetTester tester, {
+  AuthRepository auth = const FakeAuthRepository(delay: Duration.zero),
+}) async {
+  await pumpAppAt(tester, AppRoute.login, auth: auth);
   await tester.tap(find.widgetWithText(TextButton, '비밀번호 찾기'));
   await tester.pumpAndSettle();
 
@@ -163,6 +177,67 @@ void main() {
       expect(findText('03:00'), findsNothing);
       expect(findText(ResetCodeScreen.expiredMessage), findsNothing);
       expect(findText('인증번호를 다시 보냈어요.'), findsOneWidget);
+    });
+
+    testWidgets('개발 서버가 준 인증번호를 debug 빌드에서 보여준다', (tester) async {
+      await _toCodeScreen(tester);
+
+      expect(
+        findText('개발용 인증번호: ${FakeAuthRepository.sampleCode}'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('서버가 만료라고 하면 만료 안내를 보여주고 확인을 막는다', (tester) async {
+      await _toCodeScreen(tester);
+
+      await tester.enterText(
+        find.byType(TextField),
+        FakeAuthRepository.expiredCode,
+      );
+      await _settleTransition(tester);
+
+      expect(findText(ResetCodeScreen.expiredMessage), findsOneWidget);
+      expect(findText('00:00'), findsOneWidget);
+      expect(tester.widget<FilledButton>(_button('인증번호 확인')).onPressed, isNull);
+    });
+
+    testWidgets('여러 번 틀려 폐기되면 다시 받으라고 안내하고, 다시 받으면 입력할 수 있다', (tester) async {
+      await _toCodeScreen(tester);
+
+      await tester.enterText(
+        find.byType(TextField),
+        FakeAuthRepository.exhaustedCode,
+      );
+      await _settleTransition(tester);
+      expect(findText(ResetCodeScreen.tooManyAttemptsMessage), findsOneWidget);
+      expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
+
+      await tester.pump(const Duration(seconds: 60));
+      await tester.tap(find.textContaining('다시 보내기'));
+      await _settleTransition(tester);
+
+      expect(findText(ResetCodeScreen.tooManyAttemptsMessage), findsNothing);
+      expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+    });
+
+    testWidgets('재설정 토큰이 만료됐으면 처음부터 다시 하도록 비밀번호 찾기로 돌아간다', (tester) async {
+      await _toCodeScreen(tester, auth: const _ExpiredTokenAuth());
+      await tester.enterText(
+        find.byType(TextField),
+        FakeAuthRepository.sampleCode,
+      );
+      await _settleTransition(tester);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(_field('영문·숫자 포함 8자 이상'), 'newpass12');
+      await tester.enterText(_field('비밀번호를 다시 입력해 주세요'), 'newpass12');
+      await tester.pump();
+      await tester.tap(_button('비밀번호 변경하기'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ResetPasswordScreen), findsOneWidget);
+      expect(findText(NewPasswordScreen.tokenExpiredMessage), findsOneWidget);
     });
   });
 }

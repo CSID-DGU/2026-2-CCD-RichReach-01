@@ -95,7 +95,7 @@ flutter run --dart-define=USE_FAKE_API=false
 - 실제 기기·내부망 주소처럼 `http://`로 붙는 것은 debug 빌드에서만 허용됩니다.
 - **앱에는 서버 주소만 넣습니다.** 공용 DB 접속 정보, 암호화 키, CODEF 키 등은 백엔드 실행용 `.env`/`.env.shared`에만 두고 git에 올리지 않습니다.
 - API가 아직 없는 기능은 `USE_FAKE_API=false`여도 가짜 데이터로 동작합니다. 연동한 기능은 저장소 provider에서 실제 구현으로 바꿉니다.
-- 지금 연동된 기능: 회원가입(AUTH-01, `POST /api/auth/signup`), 로그인(`POST /api/auth/login`), 토큰 재발급(`POST /api/auth/reissue`). 이메일 찾기·비밀번호 재설정은 API가 나오기 전까지 가짜로 동작합니다. 가짜 회원가입에서는 `taken@example.com`이 이미 가입된 이메일, `010-1111-1111`이 이미 가입된 전화번호입니다.
+- 지금 연동된 기능: 회원가입(AUTH-01, `POST /api/auth/signup`), 로그인(`POST /api/auth/login`), 토큰 재발급(`POST /api/auth/reissue`), 이메일 찾기·비밀번호 재설정(`/api/auth/find-email`, `/api/auth/password/...`). 휴대폰 인증은 SMS API가 없어 번호 형식만 확인합니다. 로컬 백엔드(`local` 프로파일)가 돌려주는 개발용 인증번호는 debug 빌드의 인증번호 화면에 표시됩니다. 가짜 회원가입에서는 `taken@example.com`이 이미 가입된 이메일, `010-1111-1111`이 이미 가입된 전화번호입니다.
 - 로그인 토큰은 기기의 안전한 저장소에 두고, 만료되면 재발급 후 다시 요청합니다. 재발급도 실패하면 세션 만료 화면(AUTH-04)으로 갑니다.
 
 ## 로그인 실패 흉내 내기 (개발용)
@@ -104,7 +104,7 @@ flutter run --dart-define=USE_FAKE_API=false
 
 이메일 찾기(AUTH-02)는 휴대폰 번호를 `010-0000-0000`으로 넣으면 "일치하는 계정이 없음"을, 그 밖의 번호는 결과 팝업(AUTH-02A)을 보여줍니다. 휴대폰 "인증"은 SMS 인증 방식이 정해지기 전까지 번호 확인만 합니다.
 
-비밀번호 찾기(AUTH-03)는 `unknown@example.com`을 "가입되지 않은 이메일"로, 그 밖의 이메일은 가입된 이메일로 봅니다. 인증번호(AUTH-03A)는 `123456`만 맞습니다.
+비밀번호 찾기(AUTH-03)는 `unknown@example.com`을 "가입되지 않은 이메일"로, 그 밖의 이메일은 가입된 이메일로 봅니다. 인증번호(AUTH-03A)는 `123456`만 맞고, `111111`은 만료, `999999`는 여러 번 틀려 폐기된 경우를 보여줍니다.
 
 ## 카드 연결 실패 흉내 내기 (개발용)
 

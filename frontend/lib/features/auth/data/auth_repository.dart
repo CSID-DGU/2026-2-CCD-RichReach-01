@@ -1,3 +1,4 @@
+import '../../../core/formatters/phone_number_formatter.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_config.dart';
 import '../../../core/network/api_exception.dart';
@@ -14,9 +15,25 @@ class AccountLockedException implements Exception {
   const AccountLockedException();
 }
 
-/// 인증번호가 틀렸거나 만료됐을 때.
+/// 인증번호가 틀렸을 때 (`AUTH-009`).
 class InvalidCodeException implements Exception {
   const InvalidCodeException();
+}
+
+/// 인증번호가 만료됐을 때 (`AUTH-010`). 다시 받아야 한다.
+class ExpiredCodeException implements Exception {
+  const ExpiredCodeException();
+}
+
+/// 요청이 너무 잦을 때 (`AUTH-011`). 인증번호를 60초 안에 다시 요청했거나,
+/// 5번 틀려 인증번호가 폐기됐을 때 온다.
+class TooManyRequestsException implements Exception {
+  const TooManyRequestsException();
+}
+
+/// 비밀번호 재설정 토큰이 만료됐거나 이미 썼을 때 (`AUTH-005`). 처음부터 다시 한다.
+class ResetTokenExpiredException implements Exception {
+  const ResetTokenExpiredException();
 }
 
 /// 로그인·계정 찾기. API 연동 시 실제 구현을 만들어 바꿔 끼운다.
@@ -39,23 +56,27 @@ abstract interface class AuthRepository {
   Future<bool> isEmailRegistered(String email);
 
   /// 비밀번호 재설정 인증번호(6자리)를 [email]로 보낸다. 3분 동안 유효하다.
-  Future<void> sendPasswordResetCode(String email);
+  /// 60초 안에 다시 요청하면 [TooManyRequestsException].
+  /// 실제 발송이 없는 개발 서버는 인증번호를 함께 돌려준다 (없으면 null).
+  Future<String?> sendPasswordResetCode(String email);
 
   /// 인증번호를 확인하고 비밀번호를 바꿀 때 쓸 일회용 토큰을 돌려준다.
-  /// 틀렸거나 만료됐으면 [InvalidCodeException].
+  /// 틀리면 [InvalidCodeException], 만료되면 [ExpiredCodeException],
+  /// 5번 틀려 폐기됐으면 [TooManyRequestsException].
   Future<String> verifyPasswordResetCode({
     required String email,
     required String code,
   });
 
   /// [resetToken]으로 비밀번호를 [newPassword]로 바꾼다.
+  /// 토큰이 만료됐거나 이미 썼으면 [ResetTokenExpiredException].
   Future<void> resetPassword({
     required String resetToken,
     required String newPassword,
   });
 }
 
-/// 로그인은 백엔드 `POST /api/auth/login`을 쓰고, API가 아직 없는 계정 찾기는 [fallback]에 맡긴다.
+/// 백엔드 인증 API. 휴대폰 인증은 SMS API가 없어 [fallback]에 맡긴다.
 class ApiAuthRepository implements AuthRepository {
   const ApiAuthRepository(
     this._api,
@@ -87,7 +108,7 @@ class ApiAuthRepository implements AuthRepository {
     await _tokens.write(tokens);
   }
 
-  // TODO: 이메일 찾기·비밀번호 재설정 API가 나오면 연동한다.
+  // TODO: SMS 인증 방식이 정해지면 연동한다 (온보딩 문서 Q1).
   @override
   Future<void> verifyPhone(String phoneNumber) =>
       _fallback.verifyPhone(phoneNumber);
@@ -96,28 +117,86 @@ class ApiAuthRepository implements AuthRepository {
   Future<String?> findEmail({
     required String name,
     required String phoneNumber,
-  }) => _fallback.findEmail(name: name, phoneNumber: phoneNumber);
+  }) async {
+    try {
+      return await _api.post(
+        ApiPaths.findEmail,
+        body: {
+          'name': name.trim(),
+          'phoneNumber': PhoneNumberFormatter.digitsOnly(phoneNumber),
+        },
+        authenticated: false,
+        parse: (data) => (data as Map)['maskedEmail'] as String,
+      );
+    } on ApiException catch (e) {
+      if (e.code == 'AUTH-013') return null;
+      rethrow;
+    }
+  }
+
+  /// 인증번호 발송은 가입 여부와 상관없이 같은 응답이라, 아이디 중복 확인으로 가입 여부를 본다.
+  @override
+  Future<bool> isEmailRegistered(String email) => _api.post(
+    ApiPaths.checkId,
+    body: {'loginId': email.trim()},
+    authenticated: false,
+    parse: (data) => !((data as Map)['available'] as bool),
+  );
 
   @override
-  Future<bool> isEmailRegistered(String email) =>
-      _fallback.isEmailRegistered(email);
-
-  @override
-  Future<void> sendPasswordResetCode(String email) =>
-      _fallback.sendPasswordResetCode(email);
+  Future<String?> sendPasswordResetCode(String email) async {
+    try {
+      return await _api.post(
+        ApiPaths.passwordCode,
+        body: {'loginId': email.trim()},
+        authenticated: false,
+        parse: (data) => (data as Map)['devCode'] as String?,
+      );
+    } on ApiException catch (e) {
+      if (e.code == 'AUTH-011') throw const TooManyRequestsException();
+      rethrow;
+    }
+  }
 
   @override
   Future<String> verifyPasswordResetCode({
     required String email,
     required String code,
-  }) => _fallback.verifyPasswordResetCode(email: email, code: code);
+  }) async {
+    try {
+      return await _api.post(
+        ApiPaths.passwordVerify,
+        body: {'loginId': email.trim(), 'code': code},
+        authenticated: false,
+        parse: (data) => (data as Map)['resetToken'] as String,
+      );
+    } on ApiException catch (e) {
+      throw switch (e.code) {
+        'AUTH-009' => const InvalidCodeException(),
+        'AUTH-010' => const ExpiredCodeException(),
+        'AUTH-011' => const TooManyRequestsException(),
+        _ => e,
+      };
+    }
+  }
 
   @override
   Future<void> resetPassword({
     required String resetToken,
     required String newPassword,
-  }) =>
-      _fallback.resetPassword(resetToken: resetToken, newPassword: newPassword);
+  }) async {
+    try {
+      await _api.patch(
+        ApiPaths.password,
+        body: {'resetToken': resetToken, 'newPassword': newPassword},
+        authenticated: false,
+        parse: (_) {},
+      );
+    } on ApiException catch (e) {
+      if (e.code == 'AUTH-005') throw const ResetTokenExpiredException();
+      rethrow;
+    }
+  }
 }
 
 /// API를 쓰지 않을 때(`USE_FAKE_API=true`)와 API가 아직 없는 기능의 가짜 구현.
@@ -142,6 +221,12 @@ class FakeAuthRepository implements AuthRepository {
   /// 가짜 인증번호
   static const sampleCode = '123456';
 
+  /// 인증번호 만료(`AUTH-010`)를 흉내 내는 인증번호
+  static const expiredCode = '111111';
+
+  /// 여러 번 틀려 폐기됨(`AUTH-011`)을 흉내 내는 인증번호
+  static const exhaustedCode = '999999';
+
   /// 로그인 잠금(`AUTH-003`)을 흉내 내는 이메일
   static const lockedEmail = 'locked@example.com';
 
@@ -151,9 +236,12 @@ class FakeAuthRepository implements AuthRepository {
     return email.trim().toLowerCase() != unknownEmail;
   }
 
+  /// 개발 서버처럼 인증번호를 돌려준다.
   @override
-  Future<void> sendPasswordResetCode(String email) =>
-      Future<void>.delayed(delay);
+  Future<String?> sendPasswordResetCode(String email) async {
+    await Future<void>.delayed(delay);
+    return sampleCode;
+  }
 
   @override
   Future<String> verifyPasswordResetCode({
@@ -161,6 +249,8 @@ class FakeAuthRepository implements AuthRepository {
     required String code,
   }) async {
     await Future<void>.delayed(delay);
+    if (code == expiredCode) throw const ExpiredCodeException();
+    if (code == exhaustedCode) throw const TooManyRequestsException();
     if (code != sampleCode) throw const InvalidCodeException();
     return 'fake-reset-token';
   }

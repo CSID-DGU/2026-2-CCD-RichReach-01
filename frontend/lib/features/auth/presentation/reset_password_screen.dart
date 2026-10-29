@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/labeled_text_field.dart';
@@ -11,6 +12,7 @@ import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
 import '../application/auth_providers.dart';
+import '../data/auth_repository.dart';
 import '../domain/signup_validator.dart';
 import 'auth_page_title.dart';
 
@@ -19,6 +21,9 @@ class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key});
 
   static const notRegisteredMessage = '가입되지 않은 이메일이에요.';
+
+  /// 1분 안에 다시 보내 달라고 했을 때
+  static const alreadySentMessage = '인증번호를 이미 보냈어요. 받은 인증번호를 입력해 주세요.';
 
   @override
   ConsumerState<ResetPasswordScreen> createState() =>
@@ -57,6 +62,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           .read(authRepositoryProvider)
           .isEmailRegistered(_email.text.trim());
       if (mounted) setState(() => _registered = registered);
+    } on ApiException catch (e) {
+      _showError(e.userMessage);
     } catch (_) {
       _showError('이메일을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.');
     } finally {
@@ -67,8 +74,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   Future<void> _sendCode() async {
     final email = _email.text.trim();
     setState(() => _sending = true);
+    String? devCode;
     try {
-      await ref.read(authRepositoryProvider).sendPasswordResetCode(email);
+      devCode = await ref
+          .read(authRepositoryProvider)
+          .sendPasswordResetCode(email);
+    } on TooManyRequestsException {
+      // 1분 안에 이미 보냈다. 그 인증번호는 아직 쓸 수 있으니 입력 화면으로 보낸다.
+      _showError(ResetPasswordScreen.alreadySentMessage);
+    } on ApiException catch (e) {
+      _showError(e.userMessage);
+      return;
     } catch (_) {
       _showError('인증번호를 보내지 못했어요. 잠시 후 다시 시도해 주세요.');
       return;
@@ -76,7 +92,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       if (mounted) setState(() => _sending = false);
     }
     if (!mounted) return;
-    ref.read(passwordResetProvider.notifier).codeSent(email);
+    ref.read(passwordResetProvider.notifier).codeSent(email, devCode: devCode);
     context.push(AppRoute.resetPasswordCode.path);
   }
 

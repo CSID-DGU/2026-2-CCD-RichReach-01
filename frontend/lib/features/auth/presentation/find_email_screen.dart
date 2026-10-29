@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/formatters/phone_number_formatter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -75,6 +76,9 @@ class _FindEmailScreenState extends ConsumerState<FindEmailScreen> {
       email = await ref
           .read(authRepositoryProvider)
           .findEmail(name: _name.text.trim(), phoneNumber: _phone.text);
+    } on ApiException catch (e) {
+      _showError(e.userMessage);
+      return;
     } catch (_) {
       _showError('이메일을 찾지 못했어요. 잠시 후 다시 시도해 주세요.');
       return;

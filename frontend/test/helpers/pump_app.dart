@@ -35,6 +35,7 @@ final testNow = DateTime(2026, 10, 20, 14, 0);
 Future<void> pumpAppAt(
   WidgetTester tester,
   AppRoute initial, {
+  AuthRepository auth = const FakeAuthRepository(delay: Duration.zero),
   CardConnectionRepository connection = instantCardConnection,
   CardRepository cards = const FakeCardRepository(delay: Duration.zero),
   TransactionRepository? transactions,
@@ -50,9 +51,7 @@ Future<void> pumpAppAt(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        authRepositoryProvider.overrideWithValue(
-          const FakeAuthRepository(delay: Duration.zero),
-        ),
+        authRepositoryProvider.overrideWithValue(auth),
         signupRepositoryProvider.overrideWithValue(
           const FakeSignupRepository(delay: Duration.zero),
         ),
