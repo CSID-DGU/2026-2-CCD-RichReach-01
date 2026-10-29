@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/brand_symbol_mark.dart';
@@ -13,12 +14,15 @@ import '../application/auth_providers.dart';
 import '../data/auth_repository.dart';
 import '../domain/signup_validator.dart';
 
-/// 로그인 화면. 로그인에 실패하면 비밀번호 칸에 오류를 보여준다 (AUTH-00A).
+/// 로그인 화면. 로그인에 실패하거나 잠겼으면 비밀번호 칸에 오류를 보여준다 (AUTH-00A).
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   /// 이메일·비밀번호가 맞지 않을 때 문구 (어느 쪽이 틀렸는지는 알려주지 않는다)
   static const invalidCredentialsMessage = '입력한 정보를 다시 확인해 주세요';
+
+  /// 연속 실패로 잠겼을 때 문구 (남은 시간은 서버가 알려주지 않는다)
+  static const lockedMessage = '로그인 시도가 너무 많아요. 잠시 후 다시 시도해 주세요';
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -34,8 +38,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   /// 로그인 요청 중
   bool _loading = false;
 
-  /// 이메일·비밀번호가 맞지 않아 실패했고, 그 뒤로 입력을 고치지 않았다
-  bool _loginFailed = false;
+  /// 로그인 실패 문구. 입력을 고치면 지운다.
+  String? _loginError;
 
   bool get _canSubmit =>
       !_loading && _email.text.isNotEmpty && _password.text.isNotEmpty;
@@ -50,7 +54,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _onEdited(String _) => setState(() => _loginFailed = false);
+  void _onEdited(String _) => setState(() => _loginError = null);
 
   Future<void> _onSubmit() async {
     setState(() => _submitted = true);
@@ -61,20 +65,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authRepositoryProvider)
           .login(email: _email.text.trim(), password: _password.text);
-      // TODO(#19): 온보딩을 마친 사용자는 월간 플랜으로 보낸다 (온보딩 문서 Q8).
+      // TODO: 카드 연결·플랜 조회 API가 나오면 온보딩을 마친 사용자는 월간 플랜으로 보낸다 (온보딩 문서 Q8).
       if (mounted) context.go(AppRoute.serviceIntro.path);
     } on InvalidCredentialsException {
-      if (mounted) setState(() => _loginFailed = true);
+      _showLoginError(LoginScreen.invalidCredentialsMessage);
+    } on AccountLockedException {
+      _showLoginError(LoginScreen.lockedMessage);
+    } on ApiException catch (e) {
+      _showMessage(e.userMessage);
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('로그인하지 못했어요. 잠시 후 다시 시도해 주세요.')),
-        );
+      _showMessage('로그인하지 못했어요. 잠시 후 다시 시도해 주세요.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _showLoginError(String message) {
+    if (mounted) setState(() => _loginError = message);
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -105,9 +119,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               obscureText: true,
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.password],
-              errorText: _loginFailed
-                  ? LoginScreen.invalidCredentialsMessage
-                  : null,
+              errorText: _loginError,
               onChanged: _onEdited,
             ),
             const SizedBox(height: 12),

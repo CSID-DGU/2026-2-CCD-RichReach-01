@@ -197,6 +197,26 @@ void main() {
     expect(expiredCount, 1);
   });
 
+  test('토큰이 위조·형식 오류(AUTH-005)면 재발급하지 않고 세션 만료를 알린다', () async {
+    final server = _FakeServer(
+      (_) async => _json(401, _fail('AUTH-005', '유효하지 않은 인증 정보입니다.')),
+    );
+
+    await expectLater(
+      client(server).get('/api/me', parse: (_) {}),
+      throwsA(
+        isA<ApiException>().having(
+          (e) => e.kind,
+          'kind',
+          ApiErrorKind.unauthorized,
+        ),
+      ),
+    );
+    expect(server.requests.map((r) => r.path), ['/api/me']);
+    expect(await storage.read(), isNull);
+    expect(expiredCount, 1);
+  });
+
   test('로그인 전 요청의 401은 재발급하지 않는다 (예: 비밀번호 틀림)', () async {
     final server = _FakeServer(
       (_) async => _json(401, _fail('AUTH-401', '이메일 또는 비밀번호가 맞지 않아요.')),

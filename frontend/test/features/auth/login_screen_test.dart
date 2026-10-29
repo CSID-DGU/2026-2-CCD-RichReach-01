@@ -143,6 +143,17 @@ void main() {
       expect(findText(LoginScreen.invalidCredentialsMessage), findsNothing);
     });
 
+    testWidgets('연속 실패로 잠긴 계정이면 잠시 후 다시 시도하라는 오류를 보여준다', (tester) async {
+      await pumpAppAt(tester, AppRoute.login);
+
+      await _fill(tester, email: FakeAuthRepository.lockedEmail);
+      await tester.tap(_loginButton);
+      await tester.pumpAndSettle();
+
+      expect(findText(LoginScreen.lockedMessage), findsOneWidget);
+      expect(find.byType(ServiceIntroScreen), findsNothing);
+    });
+
     testWidgets('그 밖의 오류는 잠시 후 다시 시도하라는 안내를 보여준다', (tester) async {
       tester.view.physicalSize = const Size(414, 896);
       tester.view.devicePixelRatio = 1;
