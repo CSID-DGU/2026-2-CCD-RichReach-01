@@ -28,8 +28,7 @@ public record SignupRequest(
     String loginId,
 
     @NotBlank(message = "비밀번호를 입력해 주세요.")
-    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)[\\x21-\\x7E]{8,64}$",
-        message = "비밀번호는 영문과 숫자를 포함해 8~64자(공백 제외)여야 합니다.")
+    @Pattern(regexp = PasswordPolicy.REGEX, message = PasswordPolicy.MESSAGE)
     String password,
 
     boolean termsAgreed) {
