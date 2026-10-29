@@ -4,6 +4,12 @@ spring:
   jpa:
     show-sql: false
 
+# 비밀번호 재설정 통합 테스트(AccountRecoveryApiTest)가 응답에 담긴 인증번호로 흐름을 확인한다.
+app:
+  auth:
+    password-reset:
+      expose-code: true
+
 # app.encryption.key는 여기 두지 않는다. ConnectedIdConverter가 @Component라
 # 컨텍스트 로딩 시 빈 생성을 시도하므로 값이 필요한데, 레포에 키 문자열을
 # 남기지 않기 위해 RichReachApplicationTests의 @DynamicPropertySource에서
