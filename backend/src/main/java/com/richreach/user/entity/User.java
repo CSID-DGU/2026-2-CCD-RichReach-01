@@ -78,6 +78,11 @@ public class User extends BaseEntity {
         }
     }
 
+    /** 비밀번호를 바꾼다. 호출하는 쪽에서 이미 해시한 값을 넘긴다. */
+    public void changePasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     public void resetLoginFailures() {
         failedLoginCount = 0;
         lockedUntil = null;

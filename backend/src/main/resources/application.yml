@@ -25,11 +25,20 @@ app:
     access-token-ttl: 30m
     refresh-token-ttl: 14d
     secret: ${JWT_SECRET:}
-  # 로그인 실패 잠금: max-failures번 연속으로 틀리면 lock-duration 동안 로그인할 수 없다.
   auth:
+    # 로그인 실패 잠금: max-failures번 연속으로 틀리면 lock-duration 동안 로그인할 수 없다.
     login-lock:
       max-failures: 5
       lock-duration: 10m
+    # 비밀번호 재설정 인증번호. expose-code가 true면 인증번호를 응답에도 담는다.
+    # 실제 이메일/SMS 발송이 없는 개발 단계에서만 켜야 해서 기본값은 false이고,
+    # 로컬 개발(local 프로파일, application-local.yml)에서만 true로 켠다.
+    password-reset:
+      code-ttl: 3m
+      resend-interval: 60s
+      max-attempts: 5
+      reset-token-ttl: 10m
+      expose-code: false
   # 현재 약관 버전. 약관 본문은 앱에 있고 서버는 동의한 버전만 기록한다. 약관을 고치면 이 값을 바꾼다.
   terms:
     signup-version: 2026-10-01
