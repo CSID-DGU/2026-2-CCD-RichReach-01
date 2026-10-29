@@ -1,5 +1,6 @@
 -- 비밀번호 재설정 인증번호. 사용자당 하나만 두고, 다시 발송하면 같은 행을 새 값으로 바꾼다.
--- 인증번호 원문은 저장하지 않고 BCrypt 해시만 저장한다. 확인에 성공하거나 5번 틀리면 행을 지운다.
+-- 인증번호 원문은 저장하지 않고 BCrypt 해시만 저장한다. 확인에 성공하면 행을 지운다.
+-- 5번 틀리거나 만료돼도 행은 지우지 않는다. 마지막 발송 시각(sent_at) 기준의 재전송 대기 시간을 계속 적용하려는 것이다.
 CREATE TABLE password_reset_codes (
     id               BIGINT       NOT NULL AUTO_INCREMENT,
     user_id          BIGINT       NOT NULL,

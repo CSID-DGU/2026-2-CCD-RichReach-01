@@ -37,6 +37,22 @@ class PasswordResetCodeTest {
     }
 
     @Test
+    @DisplayName("틀린 횟수가 최대치에 닿으면 소진 상태가 되고, 다시 발급하면 풀린다")
+    void exhaustedAtMaxAttempts() {
+        PasswordResetCode code = code();
+        for (int i = 0; i < 4; i++) {
+            code.recordFailure();
+        }
+        assertThat(code.isExhausted(5)).isFalse();
+
+        code.recordFailure();
+        assertThat(code.isExhausted(5)).isTrue();
+
+        code.renew("new-hash", NOW.plusMinutes(2), TTL);
+        assertThat(code.isExhausted(5)).isFalse();
+    }
+
+    @Test
     @DisplayName("틀릴 때마다 횟수가 늘고, 다시 발급하면 횟수와 시각이 새로 시작된다")
     void renewResetsEverything() {
         PasswordResetCode code = code();

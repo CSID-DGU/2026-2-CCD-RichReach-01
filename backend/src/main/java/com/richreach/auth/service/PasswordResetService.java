@@ -102,7 +102,8 @@ public class PasswordResetService {
 
     /**
      * 인증번호를 확인하고 재설정 토큰을 발급한다. 틀린 횟수는 오류를 던져도 남겨야 해서 되돌리지 않는다.
-     * 맞으면 인증번호를 지워서 다시 쓸 수 없게 하고, 최대 횟수만큼 틀리면 그 인증번호를 폐기한다.
+     * 맞으면 인증번호를 지워서 다시 쓸 수 없게 한다. 최대 횟수만큼 틀리면 그 인증번호는 소진되어
+     * (맞는 번호를 보내도 거부) 마지막 발송 후 재전송 대기 시간이 지나야 새로 발급할 수 있다.
      */
     @Transactional(noRollbackFor = BusinessException.class)
     public PasswordVerifyResponse verifyCode(PasswordVerifyRequest request) {
@@ -112,14 +113,17 @@ public class PasswordResetService {
         PasswordResetCode stored = codes.findByUserIdForUpdate(user.getId())
             .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID));
 
+        // 만료되거나 소진된 인증번호도 행을 지우지 않는다. 지우면 재전송 대기 시간 검사 없이 바로 새로 발급되어
+        // "발송 → 추측 → 즉시 재발송"으로 대기 시간을 우회할 수 있다. 재발급은 마지막 발송 시각 기준으로만 한다.
         if (stored.isExpired(now)) {
-            codes.delete(stored);
             throw new BusinessException(ErrorCode.VERIFICATION_CODE_EXPIRED);
+        }
+        if (stored.isExhausted(properties.maxAttempts())) {
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS);
         }
         if (!passwordEncoder.matches(request.code(), stored.getCodeHash())) {
             if (stored.recordFailure() >= properties.maxAttempts()) {
-                log.warn("인증번호를 {}번 틀려 사용자 {}의 인증번호를 폐기합니다.", properties.maxAttempts(), user.getId());
-                codes.delete(stored);
+                log.warn("인증번호를 {}번 틀려 사용자 {}의 인증번호를 소진 처리합니다.", properties.maxAttempts(), user.getId());
                 throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS);
             }
             throw new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID);

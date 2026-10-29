@@ -222,8 +222,8 @@ class AccountRecoveryApiTest {
     }
 
     @Test
-    @DisplayName("5번 틀리면 그 인증번호는 폐기되어 맞는 번호도 쓸 수 없고 429(AUTH-011)가 먼저 내려간다")
-    void tooManyWrongAttemptsDiscardTheCode() throws Exception {
+    @DisplayName("5번 틀리면 그 인증번호는 소진되어 맞는 번호도 429(AUTH-011)로 거부된다")
+    void tooManyWrongAttemptsExhaustTheCode() throws Exception {
         String code = requestCode();
         String wrong = code.equals("000000") ? "000001" : "000000";
 
@@ -232,8 +232,38 @@ class AccountRecoveryApiTest {
         }
         verify(EMAIL, wrong).andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("AUTH-011"));
 
-        assertThat(codes.count()).isZero();
-        verify(EMAIL, code).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("AUTH-009"));
+        // 행은 남아 있고(재전송 대기 시간이 계속 적용되도록), 맞는 번호도 더는 받아주지 않는다.
+        assertThat(codes.count()).isEqualTo(1);
+        assertThat(codes.findByUserId(user.getId()).orElseThrow().getFailedAttempts()).isEqualTo(5);
+        verify(EMAIL, code).andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("AUTH-011"));
+    }
+
+    @Test
+    @DisplayName("소진된 뒤 바로 다시 발송할 수 없다 (발송→추측→즉시 재발송으로 대기 시간을 우회할 수 없다)")
+    void exhaustedCodeCannotBeReplacedImmediately() throws Exception {
+        String code = requestCode();
+        String wrong = code.equals("000000") ? "000001" : "000000";
+        for (int i = 0; i < 5; i++) {
+            verify(EMAIL, wrong);
+        }
+
+        sendCode(EMAIL).andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("AUTH-011"));
+    }
+
+    @Test
+    @DisplayName("소진된 인증번호도 마지막 발송 후 60초가 지나면 새로 발급되고 틀린 횟수가 초기화된다")
+    void exhaustedCodeIsReplacedAfterTheWaitingTime() throws Exception {
+        String code = requestCode();
+        String wrong = code.equals("000000") ? "000001" : "000000";
+        for (int i = 0; i < 5; i++) {
+            verify(EMAIL, wrong);
+        }
+
+        ageCode(Duration.ofSeconds(61));
+        String fresh = requestCode();
+
+        assertThat(codes.findByUserId(user.getId()).orElseThrow().getFailedAttempts()).isZero();
+        verify(EMAIL, fresh).andExpect(status().isOk()).andExpect(jsonPath("$.data.resetToken").isNotEmpty());
     }
 
     @Test
@@ -250,7 +280,7 @@ class AccountRecoveryApiTest {
     }
 
     @Test
-    @DisplayName("유효 시간이 지난 인증번호는 400(AUTH-010)이다")
+    @DisplayName("유효 시간이 지난 인증번호는 400(AUTH-010)이고 행은 남는다")
     void expiredCodeIsRejected() throws Exception {
         String code = requestCode();
         PasswordResetCode stored = codes.findByUserId(user.getId()).orElseThrow();
@@ -258,6 +288,7 @@ class AccountRecoveryApiTest {
         codes.saveAndFlush(stored);
 
         verify(EMAIL, code).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("AUTH-010"));
+        assertThat(codes.count()).isEqualTo(1);
     }
 
     @Test

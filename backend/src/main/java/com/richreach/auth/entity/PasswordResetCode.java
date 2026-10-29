@@ -64,6 +64,11 @@ public class PasswordResetCode extends BaseEntity {
         return !sentAt.plus(interval).isAfter(now);
     }
 
+    /** 틀린 횟수가 최대치에 닿아 더는 확인할 수 없는 상태. 행은 남겨 두어 재전송 대기 시간이 계속 적용되게 한다. */
+    public boolean isExhausted(int maxAttempts) {
+        return failedAttempts >= maxAttempts;
+    }
+
     public int recordFailure() {
         return ++failedAttempts;
     }
