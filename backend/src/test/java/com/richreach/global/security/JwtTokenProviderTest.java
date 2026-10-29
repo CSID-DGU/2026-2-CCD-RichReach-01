@@ -66,6 +66,40 @@ class JwtTokenProviderTest {
     }
 
     @Test
+    @DisplayName("비밀번호 재설정 토큰은 묶어 둔 값을 그대로 돌려주고, access/refresh 토큰에는 묶인 값이 없다")
+    void passwordResetTokenCarriesBinding() {
+        IssuedToken reset = provider.createPasswordResetToken(9L, "binding-value", Duration.ofMinutes(10));
+
+        TokenClaims claims = provider.parse(reset.value(), TokenType.PASSWORD_RESET);
+
+        assertThat(claims.userId()).isEqualTo(9L);
+        assertThat(claims.binding()).isEqualTo("binding-value");
+        assertThat(claims.expiresAt()).isEqualTo(clock.instant().plus(Duration.ofMinutes(10)));
+        assertThat(provider.parse(provider.createAccessToken(9L).value(), TokenType.ACCESS).binding()).isNull();
+    }
+
+    @Test
+    @DisplayName("재설정 토큰은 access/refresh 토큰 자리에서 쓸 수 없고 반대도 마찬가지다")
+    void passwordResetTokenCannotBeUsedElsewhere() {
+        String reset = provider.createPasswordResetToken(9L, "b", Duration.ofMinutes(10)).value();
+        String access = provider.createAccessToken(9L).value();
+
+        assertRejectedWith(ErrorCode.INVALID_TOKEN, () -> provider.parse(reset, TokenType.ACCESS));
+        assertRejectedWith(ErrorCode.INVALID_TOKEN, () -> provider.parse(reset, TokenType.REFRESH));
+        assertRejectedWith(ErrorCode.INVALID_TOKEN, () -> provider.parse(access, TokenType.PASSWORD_RESET));
+    }
+
+    @Test
+    @DisplayName("재설정 토큰은 유효 시간이 지나면 만료된다")
+    void passwordResetTokenExpires() {
+        String reset = provider.createPasswordResetToken(9L, "b", Duration.ofMinutes(10)).value();
+
+        clock.advance(Duration.ofMinutes(10));
+
+        assertRejectedWith(ErrorCode.TOKEN_EXPIRED, () -> provider.parse(reset, TokenType.PASSWORD_RESET));
+    }
+
+    @Test
     @DisplayName("토큰마다 고유 ID가 달라서 같은 시각에 발급해도 값이 겹치지 않는다")
     void tokensAreUnique() {
         assertThat(provider.createRefreshToken(1L).value()).isNotEqualTo(provider.createRefreshToken(1L).value());

@@ -4,7 +4,9 @@ package com.richreach.global.security;
 public enum TokenType {
 
     ACCESS("access"),
-    REFRESH("refresh");
+    REFRESH("refresh"),
+    /** 인증번호 확인 뒤 새 비밀번호를 설정할 때만 쓰는 짧은 유효시간의 토큰 */
+    PASSWORD_RESET("password-reset");
 
     private final String claimValue;
 

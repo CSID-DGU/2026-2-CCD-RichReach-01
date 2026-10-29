@@ -34,6 +34,7 @@ public enum ErrorCode {
     VERIFICATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "AUTH-010", "인증번호가 만료되었습니다. 다시 요청해 주세요."),
     TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "AUTH-011", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     DUPLICATE_PHONE(HttpStatus.CONFLICT, "AUTH-012", "이미 가입된 전화번호입니다."),
+    ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH-013", "일치하는 계정을 찾을 수 없습니다."),
 
     // 카드사 연결
     CONNECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "CONN-001", "카드사 연결 정보를 찾을 수 없습니다."),

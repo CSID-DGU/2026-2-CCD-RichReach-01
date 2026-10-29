@@ -25,13 +25,18 @@ import org.springframework.stereotype.Component;
 public class JwtTokenProvider {
 
     private static final String TYPE_CLAIM = "type";
+    private static final String BINDING_CLAIM = "bind";
 
     /** 발급한 토큰. {@code id}는 토큰마다 달라서 같은 시각에 발급해도 값이 겹치지 않는다. */
     public record IssuedToken(String value, String id, Instant expiresAt) {
     }
 
-    /** 검증을 통과한 토큰의 내용 */
-    public record TokenClaims(long userId, String id, TokenType type, Instant expiresAt) {
+    /**
+     * 검증을 통과한 토큰의 내용.
+     *
+     * @param binding 토큰을 만들 때 묶어 둔 값. 비밀번호 재설정 토큰에만 있고 나머지는 null이다.
+     */
+    public record TokenClaims(long userId, String id, TokenType type, Instant expiresAt, String binding) {
     }
 
     private final JwtEncoder encoder;
@@ -47,25 +52,36 @@ public class JwtTokenProvider {
     }
 
     public IssuedToken createAccessToken(long userId) {
-        return create(userId, TokenType.ACCESS, properties.accessTokenTtl());
+        return create(userId, TokenType.ACCESS, properties.accessTokenTtl(), null);
     }
 
     public IssuedToken createRefreshToken(long userId) {
-        return create(userId, TokenType.REFRESH, properties.refreshTokenTtl());
+        return create(userId, TokenType.REFRESH, properties.refreshTokenTtl(), null);
     }
 
-    private IssuedToken create(long userId, TokenType type, Duration ttl) {
+    /**
+     * 비밀번호 재설정 토큰. {@code binding}에 현재 비밀번호를 가리키는 값을 묶어 두면, 비밀번호가 바뀐 뒤에는
+     * 같은 토큰을 다시 쓸 수 없다. (저장소 없이 1회용으로 만드는 방법이다.)
+     */
+    public IssuedToken createPasswordResetToken(long userId, String binding, Duration ttl) {
+        return create(userId, TokenType.PASSWORD_RESET, ttl, binding);
+    }
+
+    private IssuedToken create(long userId, TokenType type, Duration ttl, String binding) {
         Instant now = clock.instant();
         Instant expiresAt = now.plus(ttl);
         String id = UUID.randomUUID().toString();
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder builder = JwtClaimsSet.builder()
             .issuer(properties.issuer())
             .subject(String.valueOf(userId))
             .id(id)
             .issuedAt(now)
             .expiresAt(expiresAt)
-            .claim(TYPE_CLAIM, type.claimValue())
-            .build();
+            .claim(TYPE_CLAIM, type.claimValue());
+        if (binding != null) {
+            builder.claim(BINDING_CLAIM, binding);
+        }
+        JwtClaimsSet claims = builder.build();
         String value = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
             .getTokenValue();
         return new IssuedToken(value, id, expiresAt);
@@ -95,7 +111,8 @@ public class JwtTokenProvider {
             throw new BusinessException(ErrorCode.TOKEN_EXPIRED);
         }
         try {
-            return new TokenClaims(Long.parseLong(jwt.getSubject()), jwt.getId(), expected, expiresAt);
+            return new TokenClaims(Long.parseLong(jwt.getSubject()), jwt.getId(), expected, expiresAt,
+                jwt.getClaimAsString(BINDING_CLAIM));
         } catch (NumberFormatException e) {
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
