@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
 import '../../../core/formatters/korean_particle.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
@@ -30,6 +31,8 @@ class ResetCodeScreen extends ConsumerStatefulWidget {
 
   static const wrongCodeMessage = '인증번호가 맞지 않아요. 다시 확인해 주세요.';
   static const expiredMessage = '인증번호가 만료됐어요. 다시 보내 주세요.';
+  static const tooManyAttemptsMessage = '인증번호를 여러 번 틀렸어요. 인증번호를 다시 받아 주세요.';
+  static const resendTooSoonMessage = '인증번호는 1분 뒤에 다시 보낼 수 있어요.';
 
   @override
   ConsumerState<ResetCodeScreen> createState() => _ResetCodeScreenState();
@@ -44,7 +47,12 @@ class _ResetCodeScreenState extends ConsumerState<ResetCodeScreen> {
   late int _resendWait;
   bool _verifying = false;
   bool _resending = false;
-  bool _wrongCode = false;
+
+  /// 인증번호 오류 문구. 다시 입력하면 지운다.
+  String? _codeError;
+
+  /// 여러 번 틀려 인증번호가 폐기됐다. 다시 받아야 확인할 수 있다.
+  bool _mustResend = false;
 
   /// 화면을 바로 열었을 때(debug 빌드) 쓸 예시 이메일
   static const _devSampleEmail = 'rich@example.com';
@@ -58,6 +66,7 @@ class _ResetCodeScreenState extends ConsumerState<ResetCodeScreen> {
   bool get _canVerify =>
       !_verifying &&
       !_expired &&
+      !_mustResend &&
       _code.text.length == ResetCodeScreen.codeLength;
 
   @override
@@ -106,7 +115,21 @@ class _ResetCodeScreenState extends ConsumerState<ResetCodeScreen> {
       ref.read(passwordResetProvider.notifier).verified(token);
       context.pushReplacement(AppRoute.newPassword.path);
     } on InvalidCodeException {
-      if (mounted) setState(() => _wrongCode = true);
+      if (mounted) {
+        setState(() => _codeError = ResetCodeScreen.wrongCodeMessage);
+      }
+    } on ExpiredCodeException {
+      // 서버 기준으로 만료됐다. 남은 시간을 0으로 맞춰 만료 안내를 보여준다.
+      if (mounted) setState(() => _remaining = 0);
+    } on TooManyRequestsException {
+      if (mounted) {
+        setState(() {
+          _mustResend = true;
+          _codeError = ResetCodeScreen.tooManyAttemptsMessage;
+        });
+      }
+    } on ApiException catch (e) {
+      _showMessage(e.userMessage);
     } catch (_) {
       _showMessage('인증번호를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.');
     } finally {
@@ -119,14 +142,24 @@ class _ResetCodeScreenState extends ConsumerState<ResetCodeScreen> {
     if (email == null) return;
     setState(() => _resending = true);
     try {
-      await ref.read(authRepositoryProvider).sendPasswordResetCode(email);
+      final devCode = await ref
+          .read(authRepositoryProvider)
+          .sendPasswordResetCode(email);
       if (!mounted) return;
+      ref
+          .read(passwordResetProvider.notifier)
+          .codeSent(email, devCode: devCode);
       setState(() {
         _code.clear();
-        _wrongCode = false;
+        _codeError = null;
+        _mustResend = false;
         _startTimer();
       });
       _showMessage('인증번호를 다시 보냈어요.');
+    } on TooManyRequestsException {
+      _showMessage(ResetCodeScreen.resendTooSoonMessage);
+    } on ApiException catch (e) {
+      _showMessage(e.userMessage);
     } catch (_) {
       _showMessage('인증번호를 보내지 못했어요. 잠시 후 다시 시도해 주세요.');
     } finally {
@@ -152,10 +185,10 @@ class _ResetCodeScreenState extends ConsumerState<ResetCodeScreen> {
     final particle = endsWithFinalConsonant(masked) && !masked.endsWith('l')
         ? '으로'
         : '로';
-    final error = _expired
-        ? ResetCodeScreen.expiredMessage
-        : _wrongCode
-        ? ResetCodeScreen.wrongCodeMessage
+    final error =
+        _codeError ?? (_expired ? ResetCodeScreen.expiredMessage : null);
+    final devCode = kDebugMode
+        ? ref.watch(passwordResetProvider).devCode
         : null;
     final small = AppTextStyles.caption.copyWith(fontSize: 10, height: 1.4);
 
@@ -183,8 +216,8 @@ class _ResetCodeScreenState extends ConsumerState<ResetCodeScreen> {
                   controller: _code,
                   focusNode: _focus,
                   hasError: error != null,
-                  enabled: !_expired,
-                  onChanged: (_) => setState(() => _wrongCode = false),
+                  enabled: !_expired && !_mustResend,
+                  onChanged: (_) => setState(() => _codeError = null),
                   onCompleted: _verify,
                 ),
                 const SizedBox(height: 10),
@@ -231,6 +264,14 @@ class _ResetCodeScreenState extends ConsumerState<ResetCodeScreen> {
               ],
             ),
           ),
+          // 실제 메일 발송이 없는 개발 서버에서 받은 인증번호 (debug 빌드에서만)
+          if (devCode != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              '개발용 인증번호: $devCode',
+              style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+            ),
+          ],
           if (error != null) ...[
             const SizedBox(height: 8),
             Semantics(

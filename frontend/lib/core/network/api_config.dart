@@ -36,4 +36,10 @@ abstract final class ApiPaths {
   static const login = '/api/auth/login';
   static const reissue = '/api/auth/reissue';
   static const logout = '/api/auth/logout';
+
+  // 계정 찾기 (#122)
+  static const findEmail = '/api/auth/find-email';
+  static const passwordCode = '/api/auth/password/code';
+  static const passwordVerify = '/api/auth/password/verify';
+  static const password = '/api/auth/password';
 }

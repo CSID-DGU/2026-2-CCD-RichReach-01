@@ -33,7 +33,7 @@ class _BrokenAuthRepository implements AuthRepository {
       throw Exception('network');
 
   @override
-  Future<void> sendPasswordResetCode(String email) async =>
+  Future<String?> sendPasswordResetCode(String email) async =>
       throw Exception('network');
 
   @override

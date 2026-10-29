@@ -6,12 +6,12 @@
 
 ## 구성
 
-| 디렉터리 | 설명 | 기술 |
-|---|---|---|
-| [frontend/](frontend/) | 클라이언트 | Flutter |
-| [backend/](backend/) | API 서버 (도메인별 controller/service/repository) | Spring Boot, MySQL, Flyway |
-| [ai/](ai/) | AI 파트 | 미정 |
-| [docs/](docs/) | API 명세, ERD, 회의록, 협업 규칙 | - |
+| 디렉터리 | 설명 | 기술                                                                                                                                                                                                                                                                                                                  |
+|---|---|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [frontend/](frontend/) | 클라이언트 | <img src="https://img.shields.io/badge/Flutter-02569B?style=flat-square&logo=flutter&logoColor=white">                                                                                                                                                                                                                |
+| [backend/](backend/) | API 서버 (도메인별 controller/service/repository) | <img src="https://img.shields.io/badge/Spring_Boot-6DB33F?style=flat-square&logo=springboot&logoColor=white"> <img src="https://img.shields.io/badge/MySQL-4479A1?style=flat-square&logo=mysql&logoColor=white"> <img src="https://img.shields.io/badge/Flyway-CC0200?style=flat-square&logo=flyway&logoColor=white"> |
+| [ai/](ai/) | AI 파트 | 미정                                                                                                                                                                                                                                                                                                                  |
+| [docs/](docs/) | API 명세, ERD, 회의록, 협업 규칙 | -                                                                                                                                                                                                                                                                                                                     |
 
 ## 협업 규칙
 

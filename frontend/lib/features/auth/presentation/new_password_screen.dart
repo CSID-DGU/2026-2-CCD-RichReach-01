@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/labeled_text_field.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
 import '../application/auth_providers.dart';
+import '../data/auth_repository.dart';
 import '../domain/signup_validator.dart';
 import 'auth_page_title.dart';
 
@@ -17,6 +19,9 @@ class NewPasswordScreen extends ConsumerStatefulWidget {
   const NewPasswordScreen({super.key});
 
   static const doneMessage = '비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.';
+
+  /// 재설정 토큰이 만료됐거나 이미 썼을 때
+  static const tokenExpiredMessage = '인증 시간이 지났어요. 인증번호를 다시 받아 주세요.';
 
   @override
   ConsumerState<NewPasswordScreen> createState() => _NewPasswordScreenState();
@@ -72,14 +77,18 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
       await ref
           .read(authRepositoryProvider)
           .resetPassword(resetToken: token, newPassword: _password.text);
+    } on ResetTokenExpiredException {
+      // 인증한 지 10분이 지났거나 이미 바꿨다. 처음부터 다시 인증한다.
+      if (!mounted) return;
+      ref.read(passwordResetProvider.notifier).clear();
+      _showMessage(NewPasswordScreen.tokenExpiredMessage);
+      context.go(AppRoute.resetPassword.path);
+      return;
+    } on ApiException catch (e) {
+      _showMessage(e.fieldMessage('newPassword') ?? e.userMessage);
+      return;
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            const SnackBar(content: Text('비밀번호를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.')),
-          );
-      }
+      _showMessage('비밀번호를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.');
       return;
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -93,6 +102,13 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
       ..showSnackBar(
         const SnackBar(content: Text(NewPasswordScreen.doneMessage)),
       );
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
