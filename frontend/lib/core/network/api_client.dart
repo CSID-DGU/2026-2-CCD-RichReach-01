@@ -176,6 +176,7 @@ const _retriedKey = 'retried';
 
 /// 토큰을 붙이고, 401이면 재발급 후 한 번 다시 보낸다.
 /// 동시에 여러 요청이 401을 받아도 재발급은 한 번만 하도록 차례로 처리한다.
+/// 토큰이 위조됐거나 형식이 틀리면(`AUTH-005`) 재발급하지 않고 바로 세션 만료로 처리한다.
 class _AuthInterceptor extends QueuedInterceptor {
   _AuthInterceptor({
     required this.dio,
@@ -216,7 +217,9 @@ class _AuthInterceptor extends QueuedInterceptor {
     if (!shouldRefresh) return handler.next(error);
 
     final saved = await tokens.read();
-    if (saved == null) return _expire(error, handler);
+    if (saved == null || _codeOf(error) == invalidTokenCode) {
+      return _expire(error, handler);
+    }
 
     // 앞선 요청이 이미 재발급했으면 새 토큰으로 바로 다시 보낸다.
     final sentWith = options.headers['Authorization'];
@@ -239,6 +242,14 @@ class _AuthInterceptor extends QueuedInterceptor {
       handler.next(retryError);
     }
   }
+
+  /// 위조·형식 오류 등으로 다시 쓸 수 없는 토큰 (인증 API 문서의 토큰 오류 처리)
+  static const invalidTokenCode = 'AUTH-005';
+
+  static String? _codeOf(DioException error) => switch (error.response?.data) {
+    {'code': final String code} => code,
+    _ => null,
+  };
 
   Future<AuthTokens?> _refresh(String refreshToken) async {
     try {

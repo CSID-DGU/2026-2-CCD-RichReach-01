@@ -5,9 +5,14 @@ import '../../../core/network/api_providers.dart';
 import '../data/auth_repository.dart';
 import '../data/signup_repository.dart';
 
-/// 로그인·계정 찾기 저장소. API 연동 전까지는 가짜 구현을 쓴다.
+/// 로그인·계정 찾기 저장소. `USE_FAKE_API=false`면 로그인은 백엔드 API를 쓴다.
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => const FakeAuthRepository(),
+  (ref) => ApiConfig.useFakeApi
+      ? const FakeAuthRepository()
+      : ApiAuthRepository(
+          ref.watch(apiClientProvider),
+          ref.watch(tokenStorageProvider),
+        ),
 );
 
 /// 회원가입 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
