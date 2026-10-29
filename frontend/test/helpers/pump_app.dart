@@ -6,6 +6,7 @@ import 'package:frontend/app/router.dart';
 import 'package:frontend/core/theme/app_theme.dart';
 import 'package:frontend/features/auth/application/auth_providers.dart';
 import 'package:frontend/features/auth/data/auth_repository.dart';
+import 'package:frontend/features/auth/data/signup_repository.dart';
 import 'package:frontend/features/onboarding/application/budget_plan_providers.dart';
 import 'package:frontend/features/onboarding/application/card_connection_providers.dart';
 import 'package:frontend/features/onboarding/application/onboarding_data_providers.dart';
@@ -51,6 +52,9 @@ Future<void> pumpAppAt(
       overrides: [
         authRepositoryProvider.overrideWithValue(
           const FakeAuthRepository(delay: Duration.zero),
+        ),
+        signupRepositoryProvider.overrideWithValue(
+          const FakeSignupRepository(delay: Duration.zero),
         ),
         cardConnectionRepositoryProvider.overrideWithValue(connection),
         cardRepositoryProvider.overrideWithValue(cards),

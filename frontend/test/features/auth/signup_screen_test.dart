@@ -1,23 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/app/router.dart';
+import 'package:frontend/core/network/api_exception.dart';
 import 'package:frontend/core/theme/app_theme.dart';
+import 'package:frontend/features/auth/application/auth_providers.dart';
+import 'package:frontend/features/auth/data/signup_repository.dart';
 import 'package:frontend/features/auth/presentation/login_screen.dart';
 import 'package:frontend/features/onboarding/presentation/service_intro_screen.dart';
 
 import '../../helpers/finders.dart';
 
-Future<void> _pumpSignup(WidgetTester tester) async {
+/// 요청을 기록하고, [error]가 있으면 그것을 던지는 테스트용 저장소.
+class _RecordingSignup implements SignupRepository {
+  _RecordingSignup([this.error]);
+
+  final Object? error;
+  final forms = <SignupForm>[];
+
+  @override
+  Future<void> signup(SignupForm form) async {
+    forms.add(form);
+    if (error case final error?) throw error;
+  }
+}
+
+Future<void> _pumpSignup(
+  WidgetTester tester, {
+  SignupRepository signup = const FakeSignupRepository(delay: Duration.zero),
+}) async {
   // 화면 전체가 보이도록 와이어프레임 크기(414×896)로 맞춘다.
   tester.view.physicalSize = const Size(414, 896);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
-    MaterialApp.router(
-      theme: AppTheme.light,
-      routerConfig: createRouter(initialLocation: AppRoute.signup.path),
+    ProviderScope(
+      overrides: [signupRepositoryProvider.overrideWithValue(signup)],
+      child: MaterialApp.router(
+        theme: AppTheme.light,
+        routerConfig: createRouter(initialLocation: AppRoute.signup.path),
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -87,14 +111,89 @@ void main() {
     expect(find.byType(ServiceIntroScreen), findsNothing);
   });
 
-  testWidgets('올바르게 입력하고 가입하면 서비스 안내 화면으로 이동한다', (tester) async {
-    await _pumpSignup(tester);
+  testWidgets('올바르게 입력하고 가입하면 가입을 요청하고 서비스 안내 화면으로 이동한다', (tester) async {
+    final signup = _RecordingSignup();
+    await _pumpSignup(tester, signup: signup);
 
     await _fillForm(tester);
     await _agreeTerms(tester);
     await _submit(tester);
 
     expect(find.byType(ServiceIntroScreen), findsOneWidget);
+    final body = signup.forms.single.toJson();
+    expect(body, {
+      'name': '박지현',
+      'phoneNumber': '01012345678',
+      'loginId': 'user@example.com',
+      'password': 'abcd1234',
+      'termsAgreed': true,
+    });
+  });
+
+  testWidgets('이미 가입된 이메일이면 이메일 칸에 오류를 보여주고, 고치면 지운다', (tester) async {
+    await _pumpSignup(
+      tester,
+      signup: _RecordingSignup(const DuplicateEmailException()),
+    );
+
+    await _fillForm(tester);
+    await _agreeTerms(tester);
+    await _submit(tester);
+
+    expect(findText('이미 가입된 이메일이에요.'), findsOneWidget);
+    expect(find.byType(ServiceIntroScreen), findsNothing);
+
+    await tester.enterText(_field('user@example.com'), 'new@example.com');
+    await tester.pump();
+    expect(findText('이미 가입된 이메일이에요.'), findsNothing);
+  });
+
+  testWidgets('이미 가입된 전화번호면 전화번호 칸에 오류를 보여준다', (tester) async {
+    await _pumpSignup(
+      tester,
+      signup: _RecordingSignup(const DuplicatePhoneException()),
+    );
+
+    await _fillForm(tester);
+    await _agreeTerms(tester);
+    await _submit(tester);
+
+    expect(findText('이미 가입된 전화번호예요.'), findsOneWidget);
+  });
+
+  testWidgets('서버의 입력값 오류는 해당 칸에 서버 문구로 보여준다', (tester) async {
+    await _pumpSignup(
+      tester,
+      signup: _RecordingSignup(
+        const ApiException(
+          ApiErrorKind.server,
+          code: 'COMMON-400',
+          fieldErrors: [
+            FieldError(field: 'name', message: '이름은 100자 이하여야 합니다.'),
+          ],
+        ),
+      ),
+    );
+
+    await _fillForm(tester);
+    await _agreeTerms(tester);
+    await _submit(tester);
+
+    expect(findText('이름은 100자 이하여야 합니다.'), findsOneWidget);
+  });
+
+  testWidgets('그 밖의 실패는 안내 메시지를 보여주고 머문다', (tester) async {
+    await _pumpSignup(
+      tester,
+      signup: _RecordingSignup(const ApiException(ApiErrorKind.network)),
+    );
+
+    await _fillForm(tester);
+    await _agreeTerms(tester);
+    await _submit(tester);
+
+    expect(find.text('인터넷 연결을 확인해 주세요.'), findsOneWidget);
+    expect(find.byType(ServiceIntroScreen), findsNothing);
   });
 
   testWidgets('로그인을 누르면 로그인 화면으로 이동한다', (tester) async {
