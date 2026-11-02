@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/core/widgets/app_checkbox.dart';
+import 'package:frontend/core/network/api_exception.dart';
 import 'package:frontend/core/widgets/notice_box.dart';
+import 'package:frontend/features/onboarding/data/connection_setup_repository.dart';
 import 'package:frontend/features/onboarding/domain/codef_consent.dart';
 import 'package:frontend/features/onboarding/presentation/card_company_select_screen.dart';
 
@@ -21,6 +23,20 @@ int _checkedCount(WidgetTester tester) => tester
 Future<void> _tap(WidgetTester tester, String text) async {
   await tester.tap(findText(text));
   await tester.pump();
+}
+
+/// 저장한 동의를 기록하고, [error]가 있으면 던지는 저장소.
+class _RecordingSetup extends FakeConnectionSetupRepository {
+  _RecordingSetup([this.error]) : super(delay: Duration.zero);
+
+  final Object? error;
+  final saved = <Set<CodefConsent>>[];
+
+  @override
+  Future<void> saveAgreements(Set<CodefConsent> consents) async {
+    saved.add(consents);
+    if (error case final error?) throw error;
+  }
 }
 
 void main() {
@@ -141,13 +157,32 @@ void main() {
     });
   });
 
-  testWidgets('동의 후 버튼을 누르면 카드사 선택 화면으로 이동한다', (tester) async {
-    await pumpAppAt(tester, AppRoute.codefConsent);
+  testWidgets('동의 후 버튼을 누르면 동의 3개를 저장하고 카드사 선택 화면으로 이동한다', (tester) async {
+    final setup = _RecordingSetup();
+    await pumpAppAt(tester, AppRoute.codefConsent, connectionSetup: setup);
 
     await _tap(tester, '전체 동의');
     await tester.tap(findText('동의하고 카드사 선택하기'));
     await tester.pumpAndSettle();
 
+    expect(setup.saved.single, CodefConsent.values.toSet());
     expect(find.byType(CardCompanySelectScreen), findsOneWidget);
+  });
+
+  testWidgets('동의를 저장하지 못하면 안내하고 머문다', (tester) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.codefConsent,
+      connectionSetup: _RecordingSetup(
+        const ApiException(ApiErrorKind.network),
+      ),
+    );
+
+    await _tap(tester, '전체 동의');
+    await tester.tap(findText('동의하고 카드사 선택하기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('인터넷 연결을 확인해 주세요.'), findsOneWidget);
+    expect(find.byType(CardCompanySelectScreen), findsNothing);
   });
 }

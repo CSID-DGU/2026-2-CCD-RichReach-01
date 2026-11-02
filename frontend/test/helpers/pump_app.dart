@@ -13,6 +13,7 @@ import 'package:frontend/features/onboarding/application/onboarding_data_provide
 import 'package:frontend/features/onboarding/data/card_repository.dart';
 import 'package:frontend/features/onboarding/data/budget_repository.dart';
 import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
+import 'package:frontend/features/onboarding/data/connection_setup_repository.dart';
 import 'package:frontend/features/onboarding/data/plan_repository.dart';
 import 'package:frontend/features/onboarding/data/transaction_repository.dart';
 import 'package:frontend/features/plan/application/monthly_plan_providers.dart';
@@ -37,6 +38,8 @@ Future<void> pumpAppAt(
   AppRoute initial, {
   AuthRepository auth = const FakeAuthRepository(delay: Duration.zero),
   CardConnectionRepository connection = instantCardConnection,
+  ConnectionSetupRepository connectionSetup =
+      const FakeConnectionSetupRepository(delay: Duration.zero),
   CardRepository cards = const FakeCardRepository(delay: Duration.zero),
   TransactionRepository? transactions,
   BudgetRepository? budget,
@@ -56,6 +59,7 @@ Future<void> pumpAppAt(
           const FakeSignupRepository(delay: Duration.zero),
         ),
         cardConnectionRepositoryProvider.overrideWithValue(connection),
+        connectionSetupRepositoryProvider.overrideWithValue(connectionSetup),
         cardRepositoryProvider.overrideWithValue(cards),
         transactionRepositoryProvider.overrideWithValue(
           transactions ?? FakeTransactionRepository(delay: Duration.zero),

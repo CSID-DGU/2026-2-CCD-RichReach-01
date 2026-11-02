@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
+import 'package:frontend/features/onboarding/data/connection_setup_repository.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
 import 'package:frontend/features/onboarding/presentation/card_company_auth_dialog.dart';
 
@@ -142,6 +143,31 @@ void main() {
 
     await _authenticate(tester);
     expect(submit().onPressed, isNotNull);
+  });
+
+  testWidgets('지원하지 않는 카드사는 누를 수 없고 전체 선택에서도 빠진다', (tester) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.cardCompanySelect,
+      connectionSetup: const FakeConnectionSetupRepository(
+        delay: Duration.zero,
+        unsupported: {CardCompany.citi},
+      ),
+    );
+
+    await _select(tester, CardCompany.citi);
+    expect(findText('연결할 카드사를 선택해 주세요'), findsOneWidget);
+
+    await tester.tap(findText('전체 카드사 선택'));
+    await tester.pump();
+    expect(findText('선택한 카드사 6곳 연결하기'), findsOneWidget);
+    expect(
+      find.ancestor(
+        of: findText(CardCompany.citi.name),
+        matching: find.byType(Opacity),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('계정 정보가 틀리면 팝업에 오류를 보여주고, 다시 입력하면 오류를 지운다', (tester) async {

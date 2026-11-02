@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
 import '../../../core/assets/app_assets.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/consent_tile.dart';
 import '../../../core/widgets/notice_box.dart';
@@ -10,21 +12,23 @@ import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/page_title.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
+import '../application/card_connection_providers.dart';
 import '../domain/codef_consent.dart';
 import 'consent_terms_sheet.dart';
 
 /// ONB-02 CODEF 연결 안내 · 동의 화면.
 ///
-/// 동의 저장 API가 아직 없어 필수 동의를 모두 하면 카드사 선택 화면으로 바로 이동한다.
-class CodefConsentScreen extends StatefulWidget {
+/// 필수 동의를 모두 하고 다음을 누르면 동의를 저장한 뒤 카드사 선택 화면으로 이동한다.
+class CodefConsentScreen extends ConsumerStatefulWidget {
   const CodefConsentScreen({super.key});
 
   @override
-  State<CodefConsentScreen> createState() => _CodefConsentScreenState();
+  ConsumerState<CodefConsentScreen> createState() => _CodefConsentScreenState();
 }
 
-class _CodefConsentScreenState extends State<CodefConsentScreen> {
+class _CodefConsentScreenState extends ConsumerState<CodefConsentScreen> {
   final _agreed = <CodefConsent>{};
+  bool _saving = false;
 
   bool get _allAgreed => _agreed.length == CodefConsent.values.length;
 
@@ -56,9 +60,28 @@ class _CodefConsentScreenState extends State<CodefConsentScreen> {
     if (agreed != null && mounted) _toggleAll(agreed);
   }
 
-  void _onNext() {
-    // TODO(#21): 동의 저장 API 연동 후 저장에 성공하면 이동한다.
-    context.push(AppRoute.cardCompanySelect.path);
+  Future<void> _onNext() async {
+    setState(() => _saving = true);
+    try {
+      await ref.read(connectionSetupRepositoryProvider).saveAgreements({
+        ..._agreed,
+      });
+      if (mounted) context.push(AppRoute.cardCompanySelect.path);
+    } on ApiException catch (e) {
+      // 로그인이 만료됐으면 세션 만료 화면으로 이미 이동한다.
+      if (e.kind != ApiErrorKind.unauthorized) _showMessage(e.userMessage);
+    } catch (_) {
+      _showMessage('동의를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -101,7 +124,8 @@ class _CodefConsentScreenState extends State<CodefConsentScreen> {
       ),
       bottom: PrimaryButton(
         label: '동의하고 카드사 선택하기',
-        onPressed: _allAgreed ? _onNext : null,
+        loading: _saving,
+        onPressed: _allAgreed && !_saving ? _onNext : null,
       ),
     );
   }
