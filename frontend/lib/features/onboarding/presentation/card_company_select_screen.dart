@@ -32,7 +32,19 @@ class _CardCompanySelectScreenState
     extends ConsumerState<CardCompanySelectScreen> {
   final _selected = <CardCompany>{};
 
-  bool get _allSelected => _selected.length == CardCompany.values.length;
+  /// 연결할 수 있는 카드사. 목록을 받기 전이나 받지 못했으면 모두 연결할 수 있다고 본다.
+  /// (지원 여부는 연결 요청 때 서버가 다시 확인한다)
+  Set<CardCompany> get _supported {
+    final statuses = ref.watch(cardCompanyStatusesProvider).value;
+    if (statuses == null) return CardCompany.values.toSet();
+    return {
+      for (final s in statuses)
+        if (s.supported) s.company,
+    };
+  }
+
+  bool get _allSelected =>
+      _supported.isNotEmpty && _selected.containsAll(_supported);
 
   void _toggle(CardCompany company) {
     setState(() {
@@ -45,7 +57,7 @@ class _CardCompanySelectScreenState
       if (_allSelected) {
         _selected.clear();
       } else {
-        _selected.addAll(CardCompany.values);
+        _selected.addAll(_supported);
       }
     });
   }
@@ -64,6 +76,9 @@ class _CardCompanySelectScreenState
 
   @override
   Widget build(BuildContext context) {
+    final supported = _supported;
+    // 목록을 받은 뒤 지원하지 않게 된 카드사는 선택에서 뺀다.
+    _selected.retainAll(supported);
     final count = _selected.length;
 
     return OnboardingScaffold(
@@ -79,7 +94,11 @@ class _CardCompanySelectScreenState
           const SizedBox(height: 20),
           _SelectAllRow(checked: _allSelected, onTap: _toggleAll),
           const SizedBox(height: 26),
-          _CompanyGrid(selected: _selected, onTap: _toggle),
+          _CompanyGrid(
+            selected: _selected,
+            supported: supported,
+            onTap: _toggle,
+          ),
           const SizedBox(height: 5),
           const _SelectionHelper(),
           const SizedBox(height: 26),
@@ -134,9 +153,14 @@ class _SelectAllRow extends StatelessWidget {
 
 /// 카드사 로고 격자 (3열, 마지막 줄은 가운데 정렬).
 class _CompanyGrid extends StatelessWidget {
-  const _CompanyGrid({required this.selected, required this.onTap});
+  const _CompanyGrid({
+    required this.selected,
+    required this.supported,
+    required this.onTap,
+  });
 
   final Set<CardCompany> selected;
+  final Set<CardCompany> supported;
   final ValueChanged<CardCompany> onTap;
 
   static const _columns = 3;
@@ -158,7 +182,9 @@ class _CompanyGrid extends StatelessWidget {
                 _CompanyTile(
                   company: company,
                   selected: selected.contains(company),
-                  onTap: () => onTap(company),
+                  onTap: supported.contains(company)
+                      ? () => onTap(company)
+                      : null,
                 ),
               ],
             ],
@@ -170,6 +196,7 @@ class _CompanyGrid extends StatelessWidget {
 }
 
 /// 카드사 타일 하나 (76×76, 로고 + 이름). 선택하면 보라 테두리.
+/// [onTap]이 null이면 지원하지 않는 카드사로, 흐리게 보이고 누를 수 없다.
 class _CompanyTile extends StatelessWidget {
   const _CompanyTile({
     required this.company,
@@ -179,15 +206,17 @@ class _CompanyTile extends StatelessWidget {
 
   final CardCompany company;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   static const _size = 76.0;
 
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(AppDimens.radiusBadge);
-    return Semantics(
+    final enabled = onTap != null;
+    final tile = Semantics(
       button: true,
+      enabled: enabled,
       selected: selected,
       child: Container(
         width: _size,
@@ -239,6 +268,7 @@ class _CompanyTile extends StatelessWidget {
         ),
       ),
     );
+    return enabled ? tile : Opacity(opacity: 0.4, child: tile);
   }
 }
 

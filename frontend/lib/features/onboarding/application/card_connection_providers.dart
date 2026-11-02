@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_config.dart';
+import '../../../core/network/api_providers.dart';
 import '../data/card_connection_repository.dart';
+import '../data/connection_setup_repository.dart';
 import '../domain/card_company.dart';
 import '../domain/card_connection.dart';
 
@@ -14,6 +17,20 @@ final cardConnectionRepositoryProvider = Provider<CardConnectionRepository>(
     ),
   ),
 );
+
+/// 카드사 목록·동의 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
+final connectionSetupRepositoryProvider = Provider<ConnectionSetupRepository>(
+  (ref) => ApiConfig.useFakeApi
+      ? const FakeConnectionSetupRepository()
+      : ApiConnectionSetupRepository(ref.watch(apiClientProvider)),
+);
+
+/// 카드사별 지원·연결 상태 (ONB-02A).
+final cardCompanyStatusesProvider =
+    FutureProvider.autoDispose<List<CardCompanyStatus>>(
+      (ref) =>
+          ref.watch(connectionSetupRepositoryProvider).fetchCardCompanies(),
+    );
 
 /// 이번에 연결할 카드사 (카드사 선택 화면, 다시 연결하기에서 정한다).
 final connectingCompaniesProvider =

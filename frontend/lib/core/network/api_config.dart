@@ -42,4 +42,8 @@ abstract final class ApiPaths {
   static const passwordCode = '/api/auth/password/code';
   static const passwordVerify = '/api/auth/password/verify';
   static const password = '/api/auth/password';
+
+  // 카드 연결 준비 (#126, 로그인 필요)
+  static const cardCompanies = '/api/card-companies';
+  static const connectionAgreements = '/api/connections/agreements';
 }
