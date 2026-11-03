@@ -21,6 +21,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CodefOrgAccount {
 
+    public static final String STATUS_ACTIVE = "ACTIVE";
+    public static final String STATUS_NEEDS_CARD_AUTH = "NEEDS_CARD_AUTH";
+    public static final String STATUS_DELETED = "DELETED";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -61,6 +65,17 @@ public class CodefOrgAccount {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /** 카드사 인증에 성공한 상태로 되돌린다. (처음 연결하거나, 실패했던 카드사를 다시 연결할 때) */
+    public void markConnected() {
+        this.status = STATUS_ACTIVE;
+        this.lastErrorCode = null;
+    }
+
+    /** 사용자에게 연결된 것으로 보여줄 상태인지. 해제(DELETED)나 실패한 계정은 연결로 보지 않는다. */
+    public boolean isConnected() {
+        return STATUS_ACTIVE.equals(status) || STATUS_NEEDS_CARD_AUTH.equals(status);
+    }
 
     public CodefOrgAccount(CodefConnection connection, CodefOrgPolicy policy, String organization,
         String businessType, String clientType, String loginType, String status, LocalDateTime createdAt) {

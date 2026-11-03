@@ -3,7 +3,9 @@ package com.richreach.codef.controller;
 import com.richreach.codef.dto.CardCompanyResponse;
 import com.richreach.codef.service.CardCompanyService;
 import com.richreach.global.response.ApiResponse;
+import com.richreach.global.security.AuthenticatedUser;
 import java.util.List;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,10 +21,13 @@ public class CardCompanyController {
         this.cardCompanyService = cardCompanyService;
     }
 
-    /** 연결할 카드사 목록. 지원하지 않는 카드사는 {@code supported=false}로 내려간다. */
+    /**
+     * 연결할 카드사 목록. 지원하지 않는 카드사는 {@code supported=false}로, 이미 연결한 카드사는
+     * {@code connected=true}로 내려간다.
+     */
     @GetMapping
-    public ApiResponse<List<CardCompanyResponse>> list() {
-        return ApiResponse.ok(cardCompanyService.list());
+    public ApiResponse<List<CardCompanyResponse>> list(@AuthenticationPrincipal AuthenticatedUser user) {
+        return ApiResponse.ok(cardCompanyService.list(user.userId()));
     }
 
 }

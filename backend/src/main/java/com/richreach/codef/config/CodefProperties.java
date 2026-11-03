@@ -39,6 +39,15 @@ public record CodefProperties(
         return publicKey != null && !publicKey.isBlank();
     }
 
+    /** 연결을 만든 환경(codef_connections.env). 상품 API 주소로 구분한다. SANDBOX, DEMO, PROD 중 하나다. */
+    public String env() {
+        String url = apiBaseUrl == null ? "" : apiBaseUrl;
+        if (url.contains("sandbox")) {
+            return "SANDBOX";
+        }
+        return url.contains("//api.codef.io") ? "PROD" : "DEMO";
+    }
+
     /** 로그 등에 실수로 출력되어도 시크릿이 노출되지 않도록 마스킹한다. */
     @Override
     public String toString() {
