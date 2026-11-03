@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
+import 'package:frontend/core/network/api_exception.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
 import 'package:frontend/features/onboarding/data/connection_setup_repository.dart';
@@ -36,6 +37,22 @@ Future<void> _authenticate(
     password,
   );
   await tester.pump();
+}
+
+/// 카드사 연동 서버에 닿지 못하는 저장소.
+class _UnavailableConnection extends FakeCardConnectionRepository {
+  const _UnavailableConnection() : super(stepDelay: Duration.zero);
+
+  @override
+  Future<void> authenticate(
+    CardCompany company, {
+    required String loginId,
+    required String password,
+  }) async => throw const ApiException(
+    ApiErrorKind.server,
+    code: 'CONN-005',
+    message: '카드사 연동 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  );
 }
 
 void main() {
@@ -194,6 +211,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(CardCompanyAuthDialog), findsNothing);
+  });
+
+  testWidgets('카드사 연동 서버 오류는 서버 문구를 팝업에 보여주고 닫지 않는다', (tester) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.cardCompanySelect,
+      connection: const _UnavailableConnection(),
+    );
+    await _select(tester, CardCompany.kb);
+    await tester.tap(findText('선택한 카드사 1곳 연결하기'));
+    await tester.pumpAndSettle();
+
+    await _authenticate(tester);
+    await tester.tap(findText('인증하고 연결하기'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CardCompanyAuthDialog), findsOneWidget);
+    expect(findText('카드사 연동 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'), findsOneWidget);
   });
 
   testWidgets('취소하면 팝업이 닫히고 카드사 선택 화면에 머문다', (tester) async {

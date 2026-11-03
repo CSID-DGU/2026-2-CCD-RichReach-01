@@ -46,4 +46,5 @@ abstract final class ApiPaths {
   // 카드 연결 준비 (#126, 로그인 필요)
   static const cardCompanies = '/api/card-companies';
   static const connectionAgreements = '/api/connections/agreements';
+  static const connections = '/api/connections';
 }
