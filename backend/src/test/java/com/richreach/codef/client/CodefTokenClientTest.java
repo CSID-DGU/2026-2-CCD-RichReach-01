@@ -87,6 +87,18 @@ class CodefTokenClientTest {
     }
 
     @Test
+    @DisplayName("퍼센트 인코딩이 깨진 응답은 500이 아니라 외부 API 오류(502)다")
+    void rejectsBrokenPercentEncoding() {
+        MockRestServiceServer[] holder = new MockRestServiceServer[1];
+        CodefTokenClient client = clientFor(holder, properties("test-client-id", "test-client-secret"));
+        holder[0].expect(requestTo(TOKEN_URL)).andRespond(withSuccess("%7", MediaType.TEXT_PLAIN));
+
+        assertThatThrownBy(client::issueToken)
+            .isInstanceOfSatisfying(BusinessException.class,
+                e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.EXTERNAL_API_ERROR));
+    }
+
+    @Test
     @DisplayName("응답에 토큰이 없으면 외부 API 오류다")
     void rejectsResponseWithoutToken() {
         MockRestServiceServer[] holder = new MockRestServiceServer[1];

@@ -1,13 +1,17 @@
 package com.richreach.codef.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.richreach.codef.config.CodefProperties;
 import com.richreach.codef.dto.CodefTokenResponse;
+import com.richreach.global.exception.BusinessException;
+import com.richreach.global.exception.ErrorCode;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -69,13 +73,54 @@ class CodefTokenProviderTest {
     }
 
     @Test
-    @DisplayName("invalidate 하면 다음 호출에서 새로 발급한다")
+    @DisplayName("거부된 토큰으로 invalidate 하면 다음 호출에서 새로 발급한다")
     void invalidateForcesReissue() {
         provider.getAccessToken();
 
-        provider.invalidate();
+        provider.invalidate("test-token-1");
 
         assertThat(provider.getAccessToken()).isEqualTo("test-token-2");
+    }
+
+    @Test
+    @DisplayName("이미 바뀐 토큰(다른 값)으로 invalidate 해도 현재 캐시는 지우지 않는다")
+    void invalidateIgnoresStaleToken() {
+        provider.getAccessToken();
+
+        provider.invalidate("some-older-token");
+
+        assertThat(provider.getAccessToken()).isEqualTo("test-token-1");
+        verify(tokenClient, times(1)).issueToken();
+    }
+
+    @Test
+    @DisplayName("재발급에 실패해도 캐시 토큰이 만료 전이면 계속 쓴다")
+    void keepsCachedTokenWhenReissueFailsBeforeExpiry() {
+        reset(tokenClient);
+        when(tokenClient.issueToken())
+            .thenReturn(new CodefTokenResponse("test-token-1", "bearer", EXPIRES_IN_SECONDS, "read"))
+            .thenThrow(new BusinessException(ErrorCode.EXTERNAL_API_ERROR));
+        provider.getAccessToken();
+
+        clock.advance(Duration.ofSeconds(EXPIRES_IN_SECONDS).minus(Duration.ofMinutes(30)));
+
+        assertThat(provider.getAccessToken()).isEqualTo("test-token-1");
+    }
+
+    @Test
+    @DisplayName("재발급에 실패했고 캐시 토큰도 만료되었다면 오류를 그대로 던진다")
+    void throwsWhenReissueFailsAfterExpiry() {
+        reset(tokenClient);
+        when(tokenClient.issueToken())
+            .thenReturn(new CodefTokenResponse("test-token-1", "bearer", EXPIRES_IN_SECONDS, "read"))
+            .thenThrow(new BusinessException(ErrorCode.EXTERNAL_API_ERROR));
+        provider.getAccessToken();
+
+        clock.advance(Duration.ofSeconds(EXPIRES_IN_SECONDS).plus(Duration.ofMinutes(1)));
+
+        assertThatThrownBy(() -> provider.getAccessToken())
+            .isInstanceOfSatisfying(BusinessException.class,
+                e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.EXTERNAL_API_ERROR));
     }
 
     @Test

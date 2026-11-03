@@ -87,7 +87,7 @@ class CodefApiClientTest {
         JsonNode response = client.post(PATH, Map.of());
 
         assertThat(response.path("result").path("code").asString("")).isEqualTo("CF-00000");
-        verify(tokenProvider, times(1)).invalidate();
+        verify(tokenProvider, times(1)).invalidate("test-token-1");
         server.verify();
     }
 
@@ -101,7 +101,7 @@ class CodefApiClientTest {
 
         client.post(PATH, Map.of());
 
-        verify(tokenProvider, times(1)).invalidate();
+        verify(tokenProvider, times(1)).invalidate("test-token-1");
         server.verify();
     }
 
@@ -137,6 +137,16 @@ class CodefApiClientTest {
     @DisplayName("응답이 비어 있거나 JSON이 아니면 외부 API 오류다")
     void rejectsMalformedResponse() {
         server.expect(requestTo(URL)).andRespond(withSuccess("%7Bbroken", MediaType.TEXT_PLAIN));
+
+        assertThatThrownBy(() -> client.post(PATH, Map.of()))
+            .isInstanceOfSatisfying(BusinessException.class,
+                e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.EXTERNAL_API_ERROR));
+    }
+
+    @Test
+    @DisplayName("퍼센트 인코딩이 깨진 응답은 500이 아니라 외부 API 오류(502)다")
+    void rejectsBrokenPercentEncoding() {
+        server.expect(requestTo(URL)).andRespond(withSuccess("%7", MediaType.TEXT_PLAIN));
 
         assertThatThrownBy(() -> client.post(PATH, Map.of()))
             .isInstanceOfSatisfying(BusinessException.class,

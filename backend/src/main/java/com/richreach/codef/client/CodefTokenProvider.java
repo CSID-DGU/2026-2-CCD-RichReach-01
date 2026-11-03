@@ -3,7 +3,9 @@ package com.richreach.codef.client;
 import com.richreach.codef.config.CodefProperties;
 import com.richreach.codef.dto.CodefTokenResponse;
 import java.time.Clock;
+import com.richreach.global.exception.BusinessException;
 import java.time.Instant;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Component;
  * 현재는 서버 메모리에만 캐시하므로 재시작하면 새로 발급받는다.
  * 서버를 여러 대로 늘리면 공유 저장소(DB/Redis)로 옮겨야 한다.
  */
+@Slf4j
 @Component
 public class CodefTokenProvider {
 
@@ -37,7 +40,17 @@ public class CodefTokenProvider {
             return new IssuedToken(accessToken, tokenType, expiresAt, true);
         }
 
-        CodefTokenResponse response = tokenClient.issueToken();
+        CodefTokenResponse response;
+        try {
+            response = tokenClient.issueToken();
+        } catch (BusinessException e) {
+            // 재발급에 실패해도 캐시된 토큰이 아직 만료 전이면 계속 쓴다. (만료 여부는 실패한 시점의 시각으로 다시 확인한다.)
+            if (accessToken != null && clock.instant().isBefore(expiresAt)) {
+                log.warn("CODEF 토큰 재발급에 실패해 만료 전 캐시 토큰을 계속 사용합니다.");
+                return new IssuedToken(accessToken, tokenType, expiresAt, true);
+            }
+            throw e;
+        }
         this.accessToken = response.accessToken();
         this.tokenType = response.tokenType();
         this.expiresAt = now.plusSeconds(response.expiresIn());
@@ -49,11 +62,16 @@ public class CodefTokenProvider {
         return getToken().value();
     }
 
-    /** 캐시를 비운다. (API가 401을 반환하는 등 토큰을 다시 발급받아야 할 때) */
-    public synchronized void invalidate() {
-        this.accessToken = null;
-        this.tokenType = null;
-        this.expiresAt = null;
+    /**
+     * 거부된 토큰이 캐시된 토큰과 같을 때만 캐시를 비운다. (API가 401을 반환하는 등 토큰을 다시 발급받아야 할 때)
+     * 동시 요청이 이미 새 토큰으로 바꿔 놓았다면 그 토큰은 지우지 않는다.
+     */
+    public synchronized void invalidate(String rejectedToken) {
+        if (accessToken != null && accessToken.equals(rejectedToken)) {
+            this.accessToken = null;
+            this.tokenType = null;
+            this.expiresAt = null;
+        }
     }
 
     /**

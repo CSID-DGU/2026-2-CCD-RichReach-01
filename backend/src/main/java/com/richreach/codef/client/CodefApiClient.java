@@ -51,7 +51,7 @@ public class CodefApiClient {
         Response response = send(path, encodedBody);
         if (response.status() == 401 || isInvalidTokenResult(response.json())) {
             log.info("CODEF 토큰이 거부되어 새로 발급 후 재시도합니다. path={}", path);
-            tokenProvider.invalidate();
+            tokenProvider.invalidate(response.token());
             response = send(path, encodedBody);
         }
 
@@ -86,7 +86,7 @@ public class CodefApiClient {
 
         int status = entity.getStatusCode().value();
         JsonNode json = entity.getStatusCode().is2xxSuccessful() ? parse(entity.getBody()) : null;
-        return new Response(status, json);
+        return new Response(status, json, token);
     }
 
     private String encode(Object body) {
@@ -103,12 +103,13 @@ public class CodefApiClient {
             throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 응답이 비어 있습니다.");
         }
         String json = body.strip();
-        if (!json.startsWith("{") && !json.startsWith("[")) {
-            json = URLDecoder.decode(json, StandardCharsets.UTF_8);
-        }
         try {
+            if (!json.startsWith("{") && !json.startsWith("[")) {
+                json = URLDecoder.decode(json, StandardCharsets.UTF_8);
+            }
             return JSON_MAPPER.readTree(json);
-        } catch (JacksonException e) {
+        } catch (IllegalArgumentException | JacksonException e) {
+            // 잘못된 퍼센트 인코딩(IllegalArgumentException)도 외부 서비스 문제이므로 같은 오류로 처리한다.
             throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 응답 형식이 올바르지 않습니다.");
         }
     }
@@ -118,7 +119,13 @@ public class CodefApiClient {
             && INVALID_TOKEN_RESULT_CODE.equals(json.path("result").path("code").asString(""));
     }
 
-    private record Response(int status, JsonNode json) {
+    /** @param token 이 요청에 사용한 액세스 토큰. 거부되었을 때 그 토큰만 캐시에서 지우기 위해 들고 다닌다. */
+    private record Response(int status, JsonNode json, String token) {
+
+        @Override
+        public String toString() {
+            return "Response[status=" + status + "]";
+        }
 
     }
 

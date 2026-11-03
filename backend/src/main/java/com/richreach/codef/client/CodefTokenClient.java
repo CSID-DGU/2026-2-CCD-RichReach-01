@@ -77,14 +77,15 @@ public class CodefTokenClient {
             throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 토큰 응답이 비어 있습니다.");
         }
         String json = body.strip();
-        if (!json.startsWith("{")) {
-            json = URLDecoder.decode(json, StandardCharsets.UTF_8);
-        }
 
         CodefTokenResponse response;
         try {
+            if (!json.startsWith("{")) {
+                json = URLDecoder.decode(json, StandardCharsets.UTF_8);
+            }
             response = JSON_MAPPER.readValue(json, CodefTokenResponse.class);
-        } catch (JacksonException e) {
+        } catch (IllegalArgumentException | JacksonException e) {
+            // 잘못된 퍼센트 인코딩(IllegalArgumentException)도 외부 서비스 문제이므로 같은 오류로 처리한다.
             throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 토큰 응답 형식이 올바르지 않습니다.");
         }
         if (response.accessToken() == null || response.accessToken().isBlank()) {
