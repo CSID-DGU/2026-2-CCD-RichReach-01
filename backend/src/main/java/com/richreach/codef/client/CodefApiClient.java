@@ -57,8 +57,7 @@ public class CodefApiClient {
 
         if (response.status() < 200 || response.status() >= 300) {
             log.warn("CODEF API 호출 실패: path={}, HTTP {}", path, response.status());
-            throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR,
-                "CODEF API 호출에 실패했습니다. (HTTP " + response.status() + ")");
+            throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR);
         }
 
         log.info("CODEF API 호출: path={}, resultCode={}", path,

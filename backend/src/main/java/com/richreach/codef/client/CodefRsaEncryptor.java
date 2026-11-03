@@ -10,6 +10,7 @@ import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import javax.crypto.Cipher;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
  * CODEF 요구 방식: X.509 공개키(Base64) + RSA(PKCS1 패딩) 암호화 후 Base64 인코딩.
  * 평문은 로그에 남기지 않는다.
  */
+@Slf4j
 @Component
 public class CodefRsaEncryptor {
 
@@ -30,8 +32,9 @@ public class CodefRsaEncryptor {
 
     public String encrypt(String plainText) {
         if (!properties.hasPublicKey()) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
-                "CODEF RSA 공개키가 설정되지 않았습니다. .env의 CODEF_PUBLIC_KEY를 확인하세요.");
+            // 설정 안내는 서버 로그에만 남긴다. 응답에는 내부 설정 이름을 내보내지 않는다.
+            log.error("CODEF RSA 공개키가 설정되지 않았습니다. CODEF_PUBLIC_KEY를 확인하세요.");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
         try {
             byte[] keyBytes = Base64.getMimeDecoder().decode(stripPemHeaders(properties.publicKey()));
@@ -42,8 +45,9 @@ public class CodefRsaEncryptor {
             byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(encrypted);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
-                "RSA 암호화에 실패했습니다. CODEF_PUBLIC_KEY 형식을 확인하세요.");
+            // 예외 객체와 평문은 로그에 남기지 않는다.
+            log.error("RSA 암호화에 실패했습니다. CODEF_PUBLIC_KEY 형식을 확인하세요. ({})", e.getClass().getSimpleName());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 

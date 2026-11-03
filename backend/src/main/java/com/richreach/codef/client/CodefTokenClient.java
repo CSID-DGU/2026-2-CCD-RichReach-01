@@ -41,8 +41,9 @@ public class CodefTokenClient {
 
     public CodefTokenResponse issueToken() {
         if (!properties.hasCredentials()) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
-                "CODEF 클라이언트 정보가 설정되지 않았습니다. .env의 CODEF_CLIENT_ID, CODEF_CLIENT_SECRET을 확인하세요.");
+            // 설정 안내는 서버 로그에만 남긴다. 응답에는 내부 설정 이름을 내보내지 않는다.
+            log.error("CODEF 클라이언트 정보가 설정되지 않았습니다. CODEF_CLIENT_ID, CODEF_CLIENT_SECRET을 확인하세요.");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
@@ -60,9 +61,8 @@ public class CodefTokenClient {
                 .body(String.class);
         } catch (RestClientResponseException e) {
             int status = e.getStatusCode().value();
-            log.warn("CODEF 토큰 발급 실패: HTTP {}", status);
-            throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR,
-                "CODEF 토큰 발급에 실패했습니다. (HTTP " + status + ") 클라이언트 ID/시크릿과 서비스 승인 상태를 확인하세요.");
+            log.warn("CODEF 토큰 발급 실패: HTTP {}. 클라이언트 ID/시크릿과 서비스 승인 상태를 확인하세요.", status);
+            throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR);
         } catch (RestClientException e) {
             log.warn("CODEF 토큰 발급 요청 실패: {}", e.getClass().getSimpleName());
             throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 서버에 연결하지 못했습니다.");
