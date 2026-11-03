@@ -22,6 +22,12 @@ app:
       # 서버를 외부에 공개할 때는 local 프로파일을 쓰지 않고, 실제 발송 구현으로 교체한다.
       expose-code: true
 
+# CODEF 연동 (값은 .env에서 주입한다. 비어 있으면 CODEF 호출 시 안내 오류가 난다.)
+codef:
+  client-id: ${CODEF_CLIENT_ID:}
+  client-secret: ${CODEF_CLIENT_SECRET:}
+  public-key: ${CODEF_PUBLIC_KEY:}   # 카드사 비밀번호 암호화용 RSA 공개키
+
 logging:
   level:
     org.hibernate.SQL: debug
