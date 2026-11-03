@@ -1,11 +1,15 @@
+import '../../../core/network/api_client.dart';
+import '../../../core/network/api_config.dart';
+import '../../../core/network/api_exception.dart';
 import '../domain/card_company.dart';
 import '../domain/card_connection.dart';
 
-/// 카드 연결 요청. API 연동 시 이 인터페이스의 실제 구현을 만들어 바꿔 끼운다.
+/// 카드 연결 요청. 카드사 인증(연결 생성)과, 연결한 카드사의 데이터 불러오기(동기화)로 나뉜다.
 abstract interface class CardConnectionRepository {
-  /// [company] 계정으로 인증한다. 아이디·비밀번호가 맞지 않으면 [CardCompanyAuthException].
+  /// [company] 계정으로 인증해 연결한다. 이미 연결한 카드사면 다시 연결한다.
+  /// 아이디·비밀번호가 맞지 않으면 [CardCompanyAuthException].
   ///
-  /// 비밀번호는 이 요청에만 쓰고 저장하거나 로그로 남기지 않는다.
+  /// 아이디·비밀번호는 이 요청에만 쓰고 저장하거나 로그로 남기지 않는다.
   Future<void> authenticate(
     CardCompany company, {
     required String loginId,
@@ -21,7 +25,46 @@ class CardCompanyAuthException implements Exception {
   const CardCompanyAuthException();
 }
 
-/// API가 나오기 전까지 쓰는 가짜 구현. 단계마다 [stepDelay]만큼 기다린 뒤
+/// 카드사 인증은 백엔드 `POST /api/connections`를 쓰고,
+/// 동기화는 API가 나오기 전까지 [fallback]에 맡긴다.
+class ApiCardConnectionRepository implements CardConnectionRepository {
+  const ApiCardConnectionRepository(
+    this._api, {
+    this._fallback = const FakeCardConnectionRepository(),
+  });
+
+  final ApiClient _api;
+  final CardConnectionRepository _fallback;
+
+  @override
+  Future<void> authenticate(
+    CardCompany company, {
+    required String loginId,
+    required String password,
+  }) async {
+    try {
+      await _api.post(
+        ApiPaths.connections,
+        body: {
+          'cardCompany': company.code,
+          'loginId': loginId,
+          'password': password,
+        },
+        parse: (_) {},
+      );
+    } on ApiException catch (e) {
+      if (e.code == 'CONN-003') throw const CardCompanyAuthException();
+      rethrow;
+    }
+  }
+
+  // TODO: 동기화 API(작업 시작 → 상태 조회)가 나오면 연동한다 (온보딩 문서 Q2).
+  @override
+  Stream<ConnectionProgress> connect(List<CardCompany> companies) =>
+      _fallback.connect(companies);
+}
+
+/// API를 쓰지 않을 때(`USE_FAKE_API=true`)와 동기화 API가 나오기 전까지 쓰는 가짜 구현. 단계마다 [stepDelay]만큼 기다린 뒤
 /// [failingCompanies]에 있는 카드사는 실패, 나머지는 카드 1장 연결 성공으로 돌려준다.
 /// 인증은 비밀번호가 [wrongPassword]일 때만 실패한다.
 class FakeCardConnectionRepository implements CardConnectionRepository {

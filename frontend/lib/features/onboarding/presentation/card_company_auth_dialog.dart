@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
@@ -111,6 +112,11 @@ class _CardCompanyAuthDialogState extends ConsumerState<CardCompanyAuthDialog> {
       if (mounted) Navigator.of(context).pop(true);
     } on CardCompanyAuthException {
       if (mounted) setState(() => _error = '입력한 정보를 다시 확인해 주세요');
+    } on ApiException catch (e) {
+      // 로그인이 만료됐으면 앱이 세션 만료 화면으로 보낸다.
+      if (mounted && e.kind != ApiErrorKind.unauthorized) {
+        setState(() => _error = e.userMessage);
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _error = '카드사에 연결하지 못했어요. 잠시 후 다시 시도해 주세요');

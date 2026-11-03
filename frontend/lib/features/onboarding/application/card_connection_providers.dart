@@ -9,14 +9,22 @@ import '../domain/card_connection.dart';
 
 const _fakeFailCompanies = String.fromEnvironment('FAKE_FAIL_COMPANIES');
 
-/// 카드 연결 저장소. API 연동 전까지는 가짜 구현을 쓴다.
-final cardConnectionRepositoryProvider = Provider<CardConnectionRepository>(
-  (ref) => FakeCardConnectionRepository(
+/// 카드 연결 저장소. `USE_FAKE_API=false`면 카드사 인증은 백엔드 API를 쓴다.
+final cardConnectionRepositoryProvider = Provider<CardConnectionRepository>((
+  ref,
+) {
+  final fake = FakeCardConnectionRepository(
     failingCompanies: FakeCardConnectionRepository.parseFailingCompanies(
       _fakeFailCompanies,
     ),
-  ),
-);
+  );
+  return ApiConfig.useFakeApi
+      ? fake
+      : ApiCardConnectionRepository(
+          ref.watch(apiClientProvider),
+          fallback: fake,
+        );
+});
 
 /// 카드사 목록·동의 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
 final connectionSetupRepositoryProvider = Provider<ConnectionSetupRepository>(
