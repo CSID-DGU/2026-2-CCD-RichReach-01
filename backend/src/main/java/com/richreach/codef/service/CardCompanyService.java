@@ -2,21 +2,38 @@ package com.richreach.codef.service;
 
 import com.richreach.codef.dto.CardCompanyResponse;
 import com.richreach.codef.entity.CardCompany;
+import com.richreach.codef.entity.CodefOrgAccount;
+import com.richreach.codef.repository.CodefConnectionRepository;
+import com.richreach.codef.repository.CodefOrgAccountRepository;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-/** 연결할 카드사 목록. 지금은 고정된 7개를 화면 순서대로 내려준다. */
+/** 연결할 카드사 목록. 고정된 7개를 화면 순서대로 내려주고, 사용자가 이미 연결한 카드사를 표시한다. */
 @Service
 public class CardCompanyService {
 
-    /**
-     * 기존 연결 여부는 카드사 연결을 만드는 API(POST /api/connections)가 생기면 그 결과로 채운다.
-     * 그 전에는 연결이 있을 수 없으므로 모두 false다.
-     */
-    public List<CardCompanyResponse> list() {
+    private final CodefConnectionRepository connections;
+    private final CodefOrgAccountRepository orgAccounts;
+
+    public CardCompanyService(CodefConnectionRepository connections, CodefOrgAccountRepository orgAccounts) {
+        this.connections = connections;
+        this.orgAccounts = orgAccounts;
+    }
+
+    @Transactional(readOnly = true)
+    public List<CardCompanyResponse> list(long userId) {
+        Set<String> connected = connections.findByUserId(userId)
+            .map(connection -> orgAccounts.findByConnectionId(connection.getId()).stream()
+                .filter(CodefOrgAccount::isConnected)
+                .map(CodefOrgAccount::getOrganization)
+                .collect(Collectors.toSet()))
+            .orElse(Set.of());
         return Arrays.stream(CardCompany.values())
-            .map(company -> CardCompanyResponse.of(company, false))
+            .map(company -> CardCompanyResponse.of(company, connected.contains(company.organizationCode())))
             .toList();
     }
 
