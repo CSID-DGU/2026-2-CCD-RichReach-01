@@ -177,7 +177,7 @@ public class ConnectionSyncService {
     private Result toResult(CodefSyncJob job, LocalDateTime now) {
         CardCompany company = CardCompany.fromOrganizationCode(job.getOrgAccount().getOrganization());
         Long connectionId = job.getOrgAccount().getId();
-        boolean timedOut = job.isInProgress() && job.getStartedAt().plus(properties.timeout()).isBefore(now);
+        boolean timedOut = job.isTimedOut(properties.timeout(), now);
 
         if (job.isInProgress() && !timedOut) {
             return new Result(connectionId, company, IN_PROGRESS, 0, null, null);

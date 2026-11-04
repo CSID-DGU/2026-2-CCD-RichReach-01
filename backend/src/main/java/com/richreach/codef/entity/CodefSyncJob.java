@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -119,6 +120,14 @@ public class CodefSyncJob {
 
     public boolean isInProgress() {
         return STATUS_IN_PROGRESS.equals(status);
+    }
+
+    /**
+     * 진행 중인 채로 제한 시간이 지났는지. 시작한 지 {@code timeout}이 정확히 지난 순간도 지난 것으로 본다.
+     * 새 동기화를 시작할 때의 판정(진행 중인 작업이 있는지)과 상태 조회, 결과 기록이 모두 같은 기준을 쓰도록 한 곳에 둔다.
+     */
+    public boolean isTimedOut(Duration timeout, LocalDateTime now) {
+        return isInProgress() && !startedAt.plus(timeout).isAfter(now);
     }
 
 }

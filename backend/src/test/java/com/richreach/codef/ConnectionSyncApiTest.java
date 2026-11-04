@@ -25,6 +25,7 @@ import com.richreach.codef.entity.CodefSyncJob;
 import com.richreach.codef.repository.CodefConnectionRepository;
 import com.richreach.codef.repository.CodefOrgAccountRepository;
 import com.richreach.codef.repository.CodefSyncJobRepository;
+import com.richreach.codef.service.CardSyncWorker;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
 import com.richreach.user.entity.User;
@@ -95,6 +96,8 @@ class ConnectionSyncApiTest {
     private RefreshTokenRepository refreshTokens;
     @Autowired
     private AuthTokenService authTokenService;
+    @Autowired
+    private CardSyncWorker worker;
 
     private User user;
     private String accessToken;
@@ -400,6 +403,25 @@ class ConnectionSyncApiTest {
             .andExpect(jsonPath("$.data.results[0].failureCode").value("SYNC_TIMEOUT"));
 
         startSync(accessToken, null).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("제한 시간이 지난 뒤 끝난 결과는 반영하지 않는다 (작업과 계정 모두 그대로)")
+    void lateResultAfterTimeoutIsNotApplied() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        CodefSyncJob stale = syncJobs.save(
+            CodefSyncJob.startCardList(kb, "late-batch", LocalDateTime.now().minusMinutes(30)));
+        stubResult(KB, new CardListResult(true, 7, "CF-00000"));
+
+        worker.run(stale.getId());
+
+        CodefSyncJob reloaded = syncJobs.findById(stale.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(CodefSyncJob.STATUS_IN_PROGRESS);
+        assertThat(reloaded.getFetchedCount()).isNull();
+        assertThat(orgAccounts.findById(kb.getId()).orElseThrow().getLastSyncedAt()).isNull();
+        syncStatus(accessToken, "late-batch")
+            .andExpect(jsonPath("$.data.status").value("FAILED"))
+            .andExpect(jsonPath("$.data.results[0].failureCode").value("SYNC_TIMEOUT"));
     }
 
     // ---- 연결 목록 ----
