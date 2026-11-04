@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_route.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/assets/app_assets.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/step_header.dart';
@@ -32,6 +33,8 @@ class ConnectingScreen extends ConsumerStatefulWidget {
 class _ConnectingScreenState extends ConsumerState<ConnectingScreen> {
   StreamSubscription<ConnectionProgress>? _subscription;
   int _completedSteps = 0;
+  int _completedCount = 0;
+  int _totalCount = 0;
 
   /// 화면을 바로 열었을 때(개발용 시작 화면 지정) 연결할 예시 카드사
   static const _devSampleCompanies = [
@@ -46,10 +49,37 @@ class _ConnectingScreenState extends ConsumerState<ConnectingScreen> {
     var companies = ref.read(connectingCompaniesProvider);
     if (companies.isEmpty && kDebugMode) companies = _devSampleCompanies;
 
+    _companies = companies;
     _subscription = ref
         .read(cardConnectionRepositoryProvider)
-        .connect(companies)
-        .listen(_onProgress);
+        .connect(companies, connectionIds: ref.read(connectionIdsProvider))
+        .listen(_onProgress, onError: _onError);
+  }
+
+  late final List<CardCompany> _companies;
+
+  /// 동기화를 시작하거나 상태를 조회하지 못하면 이번 카드사를 모두 실패로 보고 결과 화면으로 간다.
+  void _onError(Object error) {
+    final reason = error is ApiException
+        ? error.userMessage
+        : '카드 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.';
+    // 로그인이 만료됐으면 앱이 세션 만료 화면으로 보낸다.
+    if (error is ApiException && error.kind == ApiErrorKind.unauthorized) {
+      return;
+    }
+    _onProgress(
+      ConnectionProgress(
+        completedSteps: ConnectionStep.values.length,
+        results: [
+          for (final company in _companies)
+            CardConnectionResult(
+              company: company,
+              status: ConnectionStatus.failed,
+              failureReason: reason,
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -60,7 +90,11 @@ class _ConnectingScreenState extends ConsumerState<ConnectingScreen> {
 
   void _onProgress(ConnectionProgress progress) {
     if (!mounted) return;
-    setState(() => _completedSteps = progress.completedSteps);
+    setState(() {
+      _completedSteps = progress.completedSteps;
+      _completedCount = progress.completedCount;
+      _totalCount = progress.totalCount;
+    });
 
     final results = progress.results;
     if (results == null) return;
@@ -78,8 +112,11 @@ class _ConnectingScreenState extends ConsumerState<ConnectingScreen> {
   @override
   Widget build(BuildContext context) {
     const steps = ConnectionStep.values;
-    // 단계마다 한 칸씩 채우고, 연결이 끝나면 가득 채운다.
-    final progress = (_completedSteps + 1) / (steps.length + 1);
+    // 단계마다 한 칸씩 채우고, 카드 정보를 불러오는 단계에서는 끝난 카드사 비율만큼 더 채운다.
+    final synced = _totalCount == 0 || _completedSteps >= steps.length
+        ? 0.0
+        : _completedCount / _totalCount;
+    final progress = (_completedSteps + 1 + synced) / (steps.length + 1);
     final message = steps[_completedSteps.clamp(0, steps.length - 1)].message;
 
     return PopScope(

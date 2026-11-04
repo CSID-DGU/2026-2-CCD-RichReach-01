@@ -36,10 +36,19 @@ enum ConnectionStep {
 
 /// 연결 진행 상황. [results]가 있으면 연결이 끝난 것이다.
 class ConnectionProgress {
-  const ConnectionProgress({required this.completedSteps, this.results});
+  const ConnectionProgress({
+    required this.completedSteps,
+    this.completedCount = 0,
+    this.totalCount = 0,
+    this.results,
+  });
 
   /// 끝난 단계 수 (0 ~ [ConnectionStep.values].length)
   final int completedSteps;
+
+  /// 데이터를 다 불러온 카드사 수와 전체 카드사 수 (동기화 상태 조회). 모르면 둘 다 0.
+  final int completedCount;
+  final int totalCount;
   final List<CardConnectionResult>? results;
 
   bool get isDone => results != null;

@@ -11,12 +11,11 @@ import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/step_header.dart';
 import '../application/card_connection_providers.dart';
 import '../domain/card_company.dart';
-import 'card_company_auth_dialog.dart';
 import 'connection_widgets.dart';
 
 /// ONB-03D 전체 연결 실패 화면.
 ///
-/// "다시 연결하기"는 같은 카드사를 다시 인증한 뒤 연결 진행 화면으로 돌아가고,
+/// "다시 연결하기"는 같은 카드사의 카드 정보를 다시 불러오고(인증은 다시 하지 않는다),
 /// "연결할 카드사 다시 선택"은 카드사 선택 화면으로 돌아간다.
 class ConnectFailureScreen extends ConsumerWidget {
   const ConnectFailureScreen({super.key});
@@ -30,15 +29,12 @@ class ConnectFailureScreen extends ConsumerWidget {
 
   static const _checklist = ['카드사 아이디·비밀번호', '카드사 서비스 점검 여부', '네트워크 연결 상태'];
 
-  Future<void> _retry(BuildContext context, WidgetRef ref) async {
+  void _retry(BuildContext context, WidgetRef ref) {
     var companies = [
       for (final r in ref.read(cardConnectionResultsProvider))
         if (!r.isSuccess) r.company,
     ];
     if (companies.isEmpty) companies = _devSampleCompanies;
-
-    final authenticated = await runCardCompanyAuthFlow(context, companies);
-    if (!authenticated || !context.mounted) return;
 
     ref.read(connectingCompaniesProvider.notifier).set(companies);
     context.pushReplacement(AppRoute.connecting.path);

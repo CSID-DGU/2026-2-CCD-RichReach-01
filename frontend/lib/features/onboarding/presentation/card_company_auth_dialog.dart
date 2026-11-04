@@ -102,13 +102,14 @@ class _CardCompanyAuthDialogState extends ConsumerState<CardCompanyAuthDialog> {
     });
     try {
       // 비밀번호는 요청에만 쓰고 저장하거나 로그로 남기지 않는다.
-      await ref
+      final connectionId = await ref
           .read(cardConnectionRepositoryProvider)
           .authenticate(
             _company,
             loginId: _loginId.text.trim(),
             password: _password.text,
           );
+      ref.read(connectionIdsProvider.notifier).put(_company, connectionId);
       if (mounted) Navigator.of(context).pop(true);
     } on CardCompanyAuthException {
       if (mounted) setState(() => _error = '입력한 정보를 다시 확인해 주세요');
