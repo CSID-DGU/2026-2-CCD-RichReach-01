@@ -10,24 +10,20 @@ import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/step_header.dart';
 import '../application/card_connection_providers.dart';
 import '../domain/card_connection.dart';
-import 'card_company_auth_dialog.dart';
 import 'connection_widgets.dart';
 
 /// ONB-03C 일부 연결 실패 화면.
 ///
-/// "실패한 카드 다시 연결하기"는 실패한 카드사만 다시 인증한 뒤 연결 진행 화면으로 돌아간다.
+/// "실패한 카드 다시 연결하기"는 실패한 카드사의 카드 정보만 다시 불러온다 (인증은 다시 하지 않는다).
 class ConnectPartialFailureScreen extends ConsumerWidget {
   const ConnectPartialFailureScreen({super.key});
 
-  Future<void> _retry(
+  void _retry(
     BuildContext context,
     WidgetRef ref,
     List<CardConnectionResult> failed,
-  ) async {
+  ) {
     final companies = [for (final r in failed) r.company];
-    final authenticated = await runCardCompanyAuthFlow(context, companies);
-    if (!authenticated || !context.mounted) return;
-
     ref.read(connectingCompaniesProvider.notifier).set(companies);
     context.pushReplacement(AppRoute.connecting.path);
   }

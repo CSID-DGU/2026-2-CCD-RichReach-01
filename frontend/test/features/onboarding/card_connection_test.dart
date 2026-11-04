@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
+import 'package:frontend/core/network/api_exception.dart';
 import 'package:frontend/core/widgets/app_button.dart';
 import 'package:frontend/features/onboarding/application/card_connection_providers.dart';
 import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
 import 'package:frontend/features/onboarding/domain/card_connection.dart';
 import 'package:frontend/features/onboarding/presentation/card_company_select_screen.dart';
+import 'package:frontend/features/onboarding/presentation/card_company_auth_dialog.dart';
 import 'package:frontend/features/onboarding/presentation/card_select_screen.dart';
 import 'package:frontend/features/onboarding/presentation/connect_complete_screen.dart';
 import 'package:frontend/features/onboarding/presentation/connect_failure_screen.dart';
@@ -17,22 +19,29 @@ import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/text_lines.dart';
 
-/// 처음 연결할 때만 [failOnce]를 실패시키고, 다시 연결하면 성공시키는 테스트용 저장소.
+/// 처음 불러올 때만 [failOnce]를 실패시키고, 다시 불러오면 성공시키는 테스트용 저장소.
 class _FailOnceRepository implements CardConnectionRepository {
   _FailOnceRepository(this.failOnce);
 
   final Set<CardCompany> failOnce;
   final requested = <List<CardCompany>>[];
+  var authenticated = 0;
 
   @override
-  Future<void> authenticate(
+  Future<int> authenticate(
     CardCompany company, {
     required String loginId,
     required String password,
-  }) async {}
+  }) async {
+    authenticated++;
+    return company.index + 1;
+  }
 
   @override
-  Stream<ConnectionProgress> connect(List<CardCompany> companies) {
+  Stream<ConnectionProgress> connect(
+    List<CardCompany> companies, {
+    Map<CardCompany, int> connectionIds = const {},
+  }) {
     requested.add(companies);
     final failing = requested.length == 1 ? failOnce : <CardCompany>{};
     return FakeCardConnectionRepository(
@@ -40,6 +49,23 @@ class _FailOnceRepository implements CardConnectionRepository {
       failingCompanies: failing,
     ).connect(companies);
   }
+}
+
+/// 동기화를 시작하지 못하는 저장소 (예: 이미 진행 중).
+class _SyncErrorRepository extends FakeCardConnectionRepository {
+  const _SyncErrorRepository() : super(stepDelay: Duration.zero);
+
+  @override
+  Stream<ConnectionProgress> connect(
+    List<CardCompany> companies, {
+    Map<CardCompany, int> connectionIds = const {},
+  }) => Stream.error(
+    const ApiException(
+      ApiErrorKind.server,
+      code: 'CONN-007',
+      message: '이미 동기화가 진행 중입니다.',
+    ),
+  );
 }
 
 CardConnectionResult _success(CardCompany company) => CardConnectionResult(
@@ -51,22 +77,8 @@ CardConnectionResult _success(CardCompany company) => CardConnectionResult(
 CardConnectionResult _failure(CardCompany company) => CardConnectionResult(
   company: company,
   status: ConnectionStatus.failed,
-  failureReason: '카드사 인증 시간이 만료됐어요.',
+  failureReason: FakeCardConnectionRepository.failureReason,
 );
-
-Future<void> _authenticateAndSubmit(WidgetTester tester, String submit) async {
-  await tester.enterText(
-    find.widgetWithText(TextField, '아이디를 입력해 주세요'),
-    'user',
-  );
-  await tester.enterText(
-    find.widgetWithText(TextField, '비밀번호를 입력해 주세요'),
-    'secret',
-  );
-  await tester.pump();
-  await tester.tap(findText(submit));
-  await tester.pumpAndSettle();
-}
 
 const _allSamples = {CardCompany.kb, CardCompany.woori, CardCompany.shinhan};
 
@@ -186,12 +198,17 @@ void main() {
     expect(findText('일부 카드를 불러오지 못했어요'), findsOneWidget);
     expect(findText('연결 완료'), findsOneWidget);
     expect(findText('연결 실패'), findsOneWidget);
-    expect(findText('카드사 인증 시간이 만료됐어요.'), findsOneWidget);
+    expect(
+      findText(FakeCardConnectionRepository.failureReason),
+      findsOneWidget,
+    );
     expect(findText('실패'), findsOneWidget);
     expect(findText('완료'), findsNWidgets(2));
   });
 
-  testWidgets('다시 연결하기는 실패한 카드사만 다시 인증해 연결하고, 성공하면 완료 화면으로 간다', (tester) async {
+  testWidgets('다시 연결하기는 인증 없이 실패한 카드사만 다시 불러오고, 성공하면 완료 화면으로 간다', (
+    tester,
+  ) async {
     final repository = _FailOnceRepository({CardCompany.woori});
     await pumpAppAt(tester, AppRoute.connecting, connection: repository);
     expect(find.byType(ConnectPartialFailureScreen), findsOneWidget);
@@ -199,24 +216,27 @@ void main() {
     await tester.tap(findText('실패한 카드 다시 연결하기'));
     await tester.pumpAndSettle();
 
-    // 실패한 우리카드 하나만 인증한다.
-    expect(findText('우리카드'), findsWidgets);
-    expect(findText('1 / 1'), findsOneWidget);
-    await tester.enterText(
-      find.widgetWithText(TextField, '아이디를 입력해 주세요'),
-      'user',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, '비밀번호를 입력해 주세요'),
-      'secret',
-    );
-    await tester.pump();
-    await tester.tap(findText('인증하고 연결하기'));
-    await tester.pumpAndSettle();
-
+    expect(find.byType(CardCompanyAuthDialog), findsNothing);
+    expect(repository.authenticated, 0);
     expect(repository.requested.last, [CardCompany.woori]);
     expect(find.byType(ConnectCompleteScreen), findsOneWidget);
     expect(findText('카드 3장이 연결됐어요'), findsOneWidget);
+  });
+
+  testWidgets('동기화를 시작하지 못하면 고른 카드사를 모두 실패로 보고 서버 문구를 보여준다', (tester) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.connecting,
+      connection: const _SyncErrorRepository(),
+    );
+
+    expect(find.byType(ConnectFailureScreen), findsOneWidget);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ConnectFailureScreen)),
+    );
+    final results = container.read(cardConnectionResultsProvider);
+    expect(results, hasLength(3));
+    expect(results.map((r) => r.failureReason).toSet(), {'이미 동기화가 진행 중입니다.'});
   });
 
   testWidgets('모두 실패하면 전체 실패 화면에서 확인할 항목을 보여준다', (tester) async {
@@ -235,7 +255,7 @@ void main() {
     expect(find.textContaining('카드사 서비스 점검 여부'), findsOneWidget);
   });
 
-  testWidgets('전체 실패에서 다시 연결하기는 같은 카드사를 모두 다시 인증해 연결한다', (tester) async {
+  testWidgets('전체 실패에서 다시 연결하기는 인증 없이 같은 카드사를 모두 다시 불러온다', (tester) async {
     final repository = _FailOnceRepository(_allSamples);
     await pumpAppAt(tester, AppRoute.connecting, connection: repository);
     expect(find.byType(ConnectFailureScreen), findsOneWidget);
@@ -243,11 +263,7 @@ void main() {
     await tester.tap(findText('다시 연결하기'));
     await tester.pumpAndSettle();
 
-    expect(findText('1 / 3'), findsOneWidget);
-    await _authenticateAndSubmit(tester, '인증하고 다음');
-    await _authenticateAndSubmit(tester, '인증하고 다음');
-    await _authenticateAndSubmit(tester, '인증하고 연결하기');
-
+    expect(repository.authenticated, 0);
     expect(repository.requested.last, [
       CardCompany.kb,
       CardCompany.woori,

@@ -13,17 +13,14 @@ const _fakeFailCompanies = String.fromEnvironment('FAKE_FAIL_COMPANIES');
 final cardConnectionRepositoryProvider = Provider<CardConnectionRepository>((
   ref,
 ) {
-  final fake = FakeCardConnectionRepository(
+  if (!ApiConfig.useFakeApi) {
+    return ApiCardConnectionRepository(ref.watch(apiClientProvider));
+  }
+  return FakeCardConnectionRepository(
     failingCompanies: FakeCardConnectionRepository.parseFailingCompanies(
       _fakeFailCompanies,
     ),
   );
-  return ApiConfig.useFakeApi
-      ? fake
-      : ApiCardConnectionRepository(
-          ref.watch(apiClientProvider),
-          fallback: fake,
-        );
 });
 
 /// 카드사 목록·동의 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
@@ -39,6 +36,18 @@ final cardCompanyStatusesProvider =
       (ref) =>
           ref.watch(connectionSetupRepositoryProvider).fetchCardCompanies(),
     );
+
+/// 카드사별 연결 ID (카드사 인증 때 받는다). 실패한 카드사의 데이터만 다시 불러올 때도 쓴다.
+final connectionIdsProvider =
+    NotifierProvider<ConnectionIds, Map<CardCompany, int>>(ConnectionIds.new);
+
+class ConnectionIds extends Notifier<Map<CardCompany, int>> {
+  @override
+  Map<CardCompany, int> build() => const {};
+
+  void put(CardCompany company, int connectionId) =>
+      state = Map.unmodifiable({...state, company: connectionId});
+}
 
 /// 이번에 연결할 카드사 (카드사 선택 화면, 다시 연결하기에서 정한다).
 final connectingCompaniesProvider =

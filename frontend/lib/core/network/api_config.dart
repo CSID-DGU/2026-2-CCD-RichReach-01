@@ -47,4 +47,7 @@ abstract final class ApiPaths {
   static const cardCompanies = '/api/card-companies';
   static const connectionAgreements = '/api/connections/agreements';
   static const connections = '/api/connections';
+  static const connectionSync = '/api/connections/sync';
+  static String connectionSyncJob(String jobId) =>
+      '/api/connections/sync/${Uri.encodeComponent(jobId)}';
 }

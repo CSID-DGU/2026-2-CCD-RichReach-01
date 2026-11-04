@@ -44,7 +44,7 @@ class _UnavailableConnection extends FakeCardConnectionRepository {
   const _UnavailableConnection() : super(stepDelay: Duration.zero);
 
   @override
-  Future<void> authenticate(
+  Future<int> authenticate(
     CardCompany company, {
     required String loginId,
     required String password,
