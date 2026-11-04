@@ -4,6 +4,7 @@ import com.richreach.codef.entity.CardCompany;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 
@@ -17,6 +18,7 @@ import tools.jackson.databind.JsonNode;
  * <p>요청·응답 필드는 CODEF 문서를 기준으로 한 것이다. 실제 응답(특히 실패 코드)은 샌드박스로 확인해서 보완한다.
  */
 @Component
+@RequiredArgsConstructor
 public class CodefAccountClient {
 
     static final String CREATE_PATH = "/v1/account/create";
@@ -27,11 +29,6 @@ public class CodefAccountClient {
 
     private final CodefApiClient apiClient;
     private final CodefRsaEncryptor encryptor;
-
-    public CodefAccountClient(CodefApiClient apiClient, CodefRsaEncryptor encryptor) {
-        this.apiClient = apiClient;
-        this.encryptor = encryptor;
-    }
 
     /** 처음 연결하는 사용자. 성공하면 새 connectedId를 돌려준다. */
     public AccountResult create(CardCompany company, String loginId, String password) {

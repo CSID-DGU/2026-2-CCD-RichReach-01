@@ -4,8 +4,7 @@ import com.richreach.codef.config.CodefProperties;
 import com.richreach.codef.dto.CodefTokenResponse;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
@@ -15,8 +14,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * CODEF 토큰 발급 API(OAuth2 client_credentials) 호출.
@@ -25,19 +22,15 @@ import tools.jackson.databind.json.JsonMapper;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class CodefTokenClient {
 
     private static final String TOKEN_PATH = "/oauth/token";
-    private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
 
+    @Qualifier("codefOauthRestClient")
     private final RestClient restClient;
     private final CodefProperties properties;
-
-    public CodefTokenClient(@Qualifier("codefOauthRestClient") RestClient codefOauthRestClient,
-        CodefProperties properties) {
-        this.restClient = codefOauthRestClient;
-        this.properties = properties;
-    }
+    private final CodefJsonCodec codec;
 
     public CodefTokenResponse issueToken() {
         if (!properties.hasCredentials()) {
@@ -68,26 +61,7 @@ public class CodefTokenClient {
             throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 서버에 연결하지 못했습니다.");
         }
 
-        return parse(body);
-    }
-
-    /** 응답이 JSON이면 그대로, URL 인코딩되어 있으면 디코딩한 뒤 파싱한다. */
-    private CodefTokenResponse parse(String body) {
-        if (body == null || body.isBlank()) {
-            throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 토큰 응답이 비어 있습니다.");
-        }
-        String json = body.strip();
-
-        CodefTokenResponse response;
-        try {
-            if (!json.startsWith("{")) {
-                json = URLDecoder.decode(json, StandardCharsets.UTF_8);
-            }
-            response = JSON_MAPPER.readValue(json, CodefTokenResponse.class);
-        } catch (IllegalArgumentException | JacksonException e) {
-            // 잘못된 퍼센트 인코딩(IllegalArgumentException)도 외부 서비스 문제이므로 같은 오류로 처리한다.
-            throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 토큰 응답 형식이 올바르지 않습니다.");
-        }
+        CodefTokenResponse response = codec.read(body, CodefTokenResponse.class);
         if (response.accessToken() == null || response.accessToken().isBlank()) {
             throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 토큰 응답에 토큰이 없습니다.");
         }

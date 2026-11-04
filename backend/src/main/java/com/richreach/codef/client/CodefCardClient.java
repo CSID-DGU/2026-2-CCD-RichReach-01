@@ -2,6 +2,7 @@ package com.richreach.codef.client;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 
@@ -12,6 +13,7 @@ import tools.jackson.databind.JsonNode;
  * <p>요청·응답 필드는 CODEF 문서를 기준으로 한 것이다. 실제 응답은 샌드박스로 확인해서 보완한다.
  */
 @Component
+@RequiredArgsConstructor
 public class CodefCardClient {
 
     static final String CARD_LIST_PATH = "/v1/kr/card/p/account/card-list";
@@ -19,10 +21,6 @@ public class CodefCardClient {
     private static final String SUCCESS_CODE = "CF-00000";
 
     private final CodefApiClient apiClient;
-
-    public CodefCardClient(CodefApiClient apiClient) {
-        this.apiClient = apiClient;
-    }
 
     /**
      * 카드사에 등록된 보유 카드 개수를 가져온다.
