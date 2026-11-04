@@ -150,6 +150,11 @@ class ConnectionSyncApiTest {
         return mockMvc.perform(get("/api/connections/sync/" + jobId).header("Authorization", "Bearer " + token));
     }
 
+    /** 로그인한 사용자로 연결 목록을 조회한다. */
+    private ResultActions listConnections() throws Exception {
+        return mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken));
+    }
+
     private String startAndGetJobId() throws Exception {
         String body = startSync(accessToken, null).andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString();
@@ -429,7 +434,7 @@ class ConnectionSyncApiTest {
     @Test
     @DisplayName("연결한 카드사가 없으면 목록은 빈 배열이다")
     void emptyConnectionList() throws Exception {
-        mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken))
+        listConnections()
             .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(0)));
     }
 
@@ -441,7 +446,7 @@ class ConnectionSyncApiTest {
         stubResult(KB, new CardListResult(true, 4, "CF-00000"));
         stubResult(SHINHAN, new CardListResult(false, 0, "CF-09999"));
 
-        mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken))
+        listConnections()
             .andExpect(jsonPath("$.data", hasSize(2)))
             .andExpect(jsonPath("$.data[0].status").value("NOT_SYNCED"))
             .andExpect(jsonPath("$.data[0].lastSyncedAt").doesNotExist());
@@ -449,7 +454,7 @@ class ConnectionSyncApiTest {
         String jobId = startAndGetJobId();
         awaitStatus(jobId, "PARTIAL_SUCCESS");
 
-        mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken))
+        listConnections()
             .andExpect(jsonPath("$.data[0].connectionId").value(kb.getId()))
             .andExpect(jsonPath("$.data[0].cardCompany").value("KB"))
             .andExpect(jsonPath("$.data[0].status").value("SUCCESS"))
@@ -468,7 +473,7 @@ class ConnectionSyncApiTest {
         User other = newUser();
         connect(other, "0302", "ACTIVE");
 
-        mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken))
+        listConnections()
             .andExpect(jsonPath("$.data", hasSize(1)))
             .andExpect(jsonPath("$.data[0].cardCompany").value("KB"));
     }
@@ -484,7 +489,7 @@ class ConnectionSyncApiTest {
         String jobId = startAndGetJobId();
         awaitStatus(jobId, "FAILED");
         String status = syncStatus(accessToken, jobId).andReturn().getResponse().getContentAsString();
-        String list = mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken))
+        String list = listConnections()
             .andReturn().getResponse().getContentAsString();
 
         assertThat(status).doesNotContain(CONNECTED_ID);
