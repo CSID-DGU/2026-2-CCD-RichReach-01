@@ -27,6 +27,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 class CodefApiClientTest {
 
@@ -45,7 +46,7 @@ class CodefApiClientTest {
         server = MockRestServiceServer.bindTo(builder).build();
         tokenProvider = mock(CodefTokenProvider.class);
         when(tokenProvider.getAccessToken()).thenReturn("test-token-1", "test-token-2");
-        client = new CodefApiClient(builder.build(), tokenProvider);
+        client = new CodefApiClient(builder.build(), tokenProvider, new CodefJsonCodec(JsonMapper.builder().build()));
     }
 
     @Test

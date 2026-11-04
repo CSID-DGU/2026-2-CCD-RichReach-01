@@ -2,9 +2,7 @@ package com.richreach.codef.client;
 
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
@@ -13,9 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * CODEF 상품 API 호출.
@@ -26,19 +22,15 @@ import tools.jackson.databind.json.JsonMapper;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class CodefApiClient {
 
-    private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
     private static final String INVALID_TOKEN_RESULT_CODE = "CF-00401";
 
+    @Qualifier("codefApiRestClient")
     private final RestClient restClient;
     private final CodefTokenProvider tokenProvider;
-
-    public CodefApiClient(@Qualifier("codefApiRestClient") RestClient codefApiRestClient,
-        CodefTokenProvider tokenProvider) {
-        this.restClient = codefApiRestClient;
-        this.tokenProvider = tokenProvider;
-    }
+    private final CodefJsonCodec codec;
 
     /**
      * @param path 상품 경로 (예: /v1/kr/card/p/account/card-list)
@@ -46,7 +38,7 @@ public class CodefApiClient {
      * @return CODEF 응답 전체 (result.code가 CF-00000이면 성공)
      */
     public JsonNode post(String path, Object body) {
-        String encodedBody = encode(body);
+        String encodedBody = codec.encodeBody(body);
 
         Response response = send(path, encodedBody);
         if (response.status() == 401 || isInvalidTokenResult(response.json())) {
@@ -85,33 +77,8 @@ public class CodefApiClient {
         }
 
         int status = entity.getStatusCode().value();
-        JsonNode json = entity.getStatusCode().is2xxSuccessful() ? parse(entity.getBody()) : null;
+        JsonNode json = entity.getStatusCode().is2xxSuccessful() ? codec.readTree(entity.getBody()) : null;
         return new Response(status, json, token);
-    }
-
-    private String encode(Object body) {
-        try {
-            return URLEncoder.encode(JSON_MAPPER.writeValueAsString(body), StandardCharsets.UTF_8);
-        } catch (JacksonException e) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "CODEF 요청 본문을 만들지 못했습니다.");
-        }
-    }
-
-    /** 응답이 JSON이면 그대로, URL 인코딩되어 있으면 디코딩한 뒤 파싱한다. */
-    private JsonNode parse(String body) {
-        if (body == null || body.isBlank()) {
-            throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 응답이 비어 있습니다.");
-        }
-        String json = body.strip();
-        try {
-            if (!json.startsWith("{") && !json.startsWith("[")) {
-                json = URLDecoder.decode(json, StandardCharsets.UTF_8);
-            }
-            return JSON_MAPPER.readTree(json);
-        } catch (IllegalArgumentException | JacksonException e) {
-            // 잘못된 퍼센트 인코딩(IllegalArgumentException)도 외부 서비스 문제이므로 같은 오류로 처리한다.
-            throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, "CODEF 응답 형식이 올바르지 않습니다.");
-        }
     }
 
     private boolean isInvalidTokenResult(JsonNode json) {

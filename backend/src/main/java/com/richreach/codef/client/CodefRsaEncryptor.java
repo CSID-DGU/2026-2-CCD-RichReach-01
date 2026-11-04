@@ -10,6 +10,7 @@ import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import javax.crypto.Cipher;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -20,15 +21,12 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class CodefRsaEncryptor {
 
     private static final String TRANSFORMATION = "RSA/ECB/PKCS1Padding";
 
     private final CodefProperties properties;
-
-    public CodefRsaEncryptor(CodefProperties properties) {
-        this.properties = properties;
-    }
 
     public String encrypt(String plainText) {
         if (!properties.hasPublicKey()) {

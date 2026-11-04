@@ -5,6 +5,7 @@ import com.richreach.codef.dto.CodefTokenResponse;
 import java.time.Clock;
 import com.richreach.global.exception.BusinessException;
 import java.time.Instant;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class CodefTokenProvider {
 
     private final CodefTokenClient tokenClient;
@@ -26,12 +28,6 @@ public class CodefTokenProvider {
     private String accessToken;
     private String tokenType;
     private Instant expiresAt;
-
-    public CodefTokenProvider(CodefTokenClient tokenClient, CodefProperties properties, Clock clock) {
-        this.tokenClient = tokenClient;
-        this.properties = properties;
-        this.clock = clock;
-    }
 
     /** 캐시된 토큰이 유효하면 재사용하고, 없거나 만료가 임박했으면 새로 발급한다. */
     public synchronized IssuedToken getToken() {

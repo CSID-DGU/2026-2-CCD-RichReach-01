@@ -27,6 +27,16 @@ public enum CardCompany {
         this.supported = supported;
     }
 
+    /** CODEF 기관 코드에 해당하는 카드사. 모르는 코드면 {@code null}이다. */
+    public static CardCompany fromOrganizationCode(String organizationCode) {
+        for (CardCompany company : values()) {
+            if (company.organizationCode.equals(organizationCode)) {
+                return company;
+            }
+        }
+        return null;
+    }
+
     public String displayName() {
         return displayName;
     }

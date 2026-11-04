@@ -72,6 +72,17 @@ public class CodefOrgAccount {
         this.lastErrorCode = null;
     }
 
+    /** 카드 목록을 가져와 동기화를 마쳤다. */
+    public void markSynced(LocalDateTime syncedAt) {
+        this.lastSyncedAt = syncedAt;
+        this.lastErrorCode = null;
+    }
+
+    /** 동기화에 실패한 오류 코드를 남긴다. 연결 상태(status)는 바꾸지 않는다. */
+    public void recordSyncError(String errorCode) {
+        this.lastErrorCode = errorCode;
+    }
+
     /** 사용자에게 연결된 것으로 보여줄 상태인지. 해제(DELETED)나 실패한 계정은 연결로 보지 않는다. */
     public boolean isConnected() {
         return STATUS_ACTIVE.equals(status) || STATUS_NEEDS_CARD_AUTH.equals(status);

@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.json.JsonMapper;
 
 class CodefTokenClientTest {
 
@@ -33,7 +34,7 @@ class CodefTokenClientTest {
     private static CodefTokenClient clientFor(MockRestServiceServer[] serverHolder, CodefProperties properties) {
         RestClient.Builder builder = RestClient.builder().baseUrl("https://oauth.test");
         serverHolder[0] = MockRestServiceServer.bindTo(builder).build();
-        return new CodefTokenClient(builder.build(), properties);
+        return new CodefTokenClient(builder.build(), properties, new CodefJsonCodec(JsonMapper.builder().build()));
     }
 
     @Test
