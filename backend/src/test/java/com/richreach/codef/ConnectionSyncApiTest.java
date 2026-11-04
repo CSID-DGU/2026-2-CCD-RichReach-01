@@ -1,0 +1,473 @@
+package com.richreach.codef;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.jayway.jsonpath.JsonPath;
+import com.richreach.TestcontainersConfiguration;
+import com.richreach.auth.repository.RefreshTokenRepository;
+import com.richreach.auth.service.AuthTokenService;
+import com.richreach.codef.client.CodefCardClient;
+import com.richreach.codef.client.CodefCardClient.CardListResult;
+import com.richreach.codef.entity.CodefConnection;
+import com.richreach.codef.entity.CodefOrgAccount;
+import com.richreach.codef.entity.CodefSyncJob;
+import com.richreach.codef.repository.CodefConnectionRepository;
+import com.richreach.codef.repository.CodefOrgAccountRepository;
+import com.richreach.codef.repository.CodefSyncJobRepository;
+import com.richreach.global.exception.BusinessException;
+import com.richreach.global.exception.ErrorCode;
+import com.richreach.user.entity.User;
+import com.richreach.user.repository.UserRepository;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+/**
+ * 카드 데이터 동기화 시작·상태 조회·연결 목록 API를 보안 필터와 실제 MySQL로 확인한다.
+ * CODEF 카드 조회는 모킹하고, 별도 스레드에서 실행되는 수집이 끝날 때까지 상태를 조회하며 기다린다.
+ */
+@ExtendWith(OutputCaptureExtension.class)
+@ActiveProfiles("test")
+@Import(TestcontainersConfiguration.class)
+@SpringBootTest
+@AutoConfigureMockMvc
+class ConnectionSyncApiTest {
+
+    /** ConnectedIdConverter가 요구하는 app.encryption.key를 레포에 값으로 남기지 않고 실행 시마다 생성한다. */
+    @DynamicPropertySource
+    static void encryptionKey(DynamicPropertyRegistry registry) {
+        byte[] key = new byte[32];
+        new SecureRandom().nextBytes(key);
+        registry.add("app.encryption.key", () -> Base64.getEncoder().encodeToString(key));
+    }
+
+    private static final String KB = "0301";
+    private static final String SHINHAN = "0306";
+    private static final String CONNECTED_ID = "test-connected-id-sync";
+    private static final AtomicInteger SEQUENCE = new AtomicInteger();
+
+    @MockitoBean
+    private CodefCardClient cards;
+
+    @Autowired
+    private MockMvc mockMvc;
+    @Autowired
+    private UserRepository users;
+    @Autowired
+    private CodefConnectionRepository connections;
+    @Autowired
+    private CodefOrgAccountRepository orgAccounts;
+    @Autowired
+    private CodefSyncJobRepository syncJobs;
+    @Autowired
+    private RefreshTokenRepository refreshTokens;
+    @Autowired
+    private AuthTokenService authTokenService;
+
+    private User user;
+    private String accessToken;
+    private CountDownLatch release;
+
+    @BeforeEach
+    void createUserAndLogin() {
+        user = newUser();
+        accessToken = authTokenService.issue(user.getId()).accessToken();
+        release = new CountDownLatch(1);
+    }
+
+    @AfterEach
+    void cleanUp() throws Exception {
+        release.countDown();
+        awaitNoRunningJobs();
+        syncJobs.deleteAll();
+        orgAccounts.deleteAll();
+        connections.deleteAll();
+        refreshTokens.deleteAll();
+        users.deleteAll();
+    }
+
+    private User newUser() {
+        int n = SEQUENCE.incrementAndGet();
+        return users.save(new User("sync" + n + "@example.com", "hash", "김리치", "010%08d".formatted(8000000 + n),
+            "REAL", LocalDateTime.now()));
+    }
+
+    private CodefOrgAccount connect(User owner, String organization, String status) {
+        LocalDateTime now = LocalDateTime.now().withNano(0);
+        CodefConnection connection = connections.findByUserId(owner.getId()).orElseGet(() -> connections.save(
+            new CodefConnection(owner, CONNECTED_ID + owner.getId(), "DEMO", now, now, now, now)));
+        return orgAccounts.save(new CodefOrgAccount(connection, null, organization, "CD", "P", "1", status, now));
+    }
+
+    private CodefOrgAccount connect(String organization) {
+        return connect(user, organization, "ACTIVE");
+    }
+
+    private ResultActions startSync(String token, String json) throws Exception {
+        var request = post("/api/connections/sync");
+        if (json != null) {
+            request = request.contentType(MediaType.APPLICATION_JSON).content(json);
+        }
+        return mockMvc.perform(token == null ? request : request.header("Authorization", "Bearer " + token));
+    }
+
+    private ResultActions syncStatus(String token, String jobId) throws Exception {
+        return mockMvc.perform(get("/api/connections/sync/" + jobId).header("Authorization", "Bearer " + token));
+    }
+
+    private String startAndGetJobId() throws Exception {
+        String body = startSync(accessToken, null).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.data.jobId");
+    }
+
+    /** 상태가 expected가 될 때까지 최대 10초 기다린다. */
+    private void awaitStatus(String jobId, String expected) throws Exception {
+        long deadline = System.currentTimeMillis() + 10_000;
+        String last = null;
+        while (System.currentTimeMillis() < deadline) {
+            String body = syncStatus(accessToken, jobId).andReturn().getResponse().getContentAsString();
+            last = JsonPath.read(body, "$.data.status");
+            if (expected.equals(last)) {
+                return;
+            }
+            Thread.sleep(50);
+        }
+        throw new AssertionError("상태가 " + expected + "가 되지 않았습니다. 마지막 상태: " + last);
+    }
+
+    private void awaitNoRunningJobs() throws Exception {
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (System.currentTimeMillis() < deadline) {
+            if (syncJobs.findAll().stream().noneMatch(CodefSyncJob::isInProgress)) {
+                return;
+            }
+            Thread.sleep(50);
+        }
+    }
+
+    /** release가 열릴 때까지 기다렸다가 count장을 가져온 것으로 응답한다. */
+    private void stubBlocking(String organization, int count) {
+        when(cards.fetchCardList(anyString(), eq(organization))).thenAnswer(invocation -> {
+            release.await(10, TimeUnit.SECONDS);
+            return new CardListResult(true, count, "CF-00000");
+        });
+    }
+
+    private void stubResult(String organization, CardListResult result) {
+        when(cards.fetchCardList(anyString(), eq(organization))).thenReturn(result);
+    }
+
+    // ---- 로그인·입력 ----
+
+    @Test
+    @DisplayName("세 API 모두 로그인이 필요하다 (토큰이 없으면 401 AUTH-001)")
+    void requiresLogin() throws Exception {
+        startSync(null, null).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("AUTH-001"));
+        mockMvc.perform(get("/api/connections/sync/any")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/connections")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("연결한 카드사가 없으면 404 CONN-001이고 CODEF를 부르지 않는다")
+    void noConnectionToSync() throws Exception {
+        startSync(accessToken, null).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("CONN-001"));
+
+        verify(cards, never()).fetchCardList(any(), any());
+    }
+
+    @Test
+    @DisplayName("연결에 실패한 상태(ERROR)의 카드사만 있으면 동기화할 수 없다 (404 CONN-001)")
+    void failedAccountIsNotSynced() throws Exception {
+        connect(user, KB, "ERROR");
+
+        startSync(accessToken, null).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("CONN-001"));
+    }
+
+    // ---- 시작과 진행 ----
+
+    @Test
+    @DisplayName("시작하면 jobId를 바로 돌려주고, 진행 중에는 IN_PROGRESS, 끝나면 SUCCESS와 카드 수를 보여준다")
+    void startAndPollUntilSuccess() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubBlocking(KB, 2);
+
+        String jobId = startAndGetJobId();
+
+        syncStatus(accessToken, jobId).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.jobId").value(jobId))
+            .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.data.totalCount").value(1))
+            .andExpect(jsonPath("$.data.completedCount").value(0))
+            .andExpect(jsonPath("$.data.results[0].status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.data.results[0].cardCompany").value("KB"))
+            .andExpect(jsonPath("$.data.results[0].cardCount").value(0))
+            .andExpect(jsonPath("$.data.results[0].failureCode").doesNotExist());
+
+        release.countDown();
+        awaitStatus(jobId, "SUCCESS");
+
+        syncStatus(accessToken, jobId)
+            .andExpect(jsonPath("$.data.completedCount").value(1))
+            .andExpect(jsonPath("$.data.results[0].connectionId").value(kb.getId()))
+            .andExpect(jsonPath("$.data.results[0].status").value("SUCCESS"))
+            .andExpect(jsonPath("$.data.results[0].cardCount").value(2));
+        assertThat(orgAccounts.findById(kb.getId()).orElseThrow().getLastSyncedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("진행 중에 다시 시작하면 409 CONN-007이고, 끝난 뒤에는 다시 시작할 수 있다")
+    void cannotStartWhileRunning() throws Exception {
+        connect(KB);
+        stubBlocking(KB, 1);
+        String jobId = startAndGetJobId();
+
+        startSync(accessToken, null).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONN-007"));
+
+        release.countDown();
+        awaitStatus(jobId, "SUCCESS");
+        startSync(accessToken, null).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("카드사 하나가 성공하고 하나가 실패하면 PARTIAL_SUCCESS다")
+    void partialSuccess() throws Exception {
+        connect(KB);
+        CodefOrgAccount shinhan = connect(SHINHAN);
+        stubResult(KB, new CardListResult(true, 3, "CF-00000"));
+        stubResult(SHINHAN, new CardListResult(false, 0, "CF-12345"));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "PARTIAL_SUCCESS");
+
+        syncStatus(accessToken, jobId)
+            .andExpect(jsonPath("$.data.totalCount").value(2))
+            .andExpect(jsonPath("$.data.completedCount").value(2))
+            .andExpect(jsonPath("$.data.results[0].status").value("SUCCESS"))
+            .andExpect(jsonPath("$.data.results[0].cardCount").value(3))
+            .andExpect(jsonPath("$.data.results[1].cardCompany").value("SHINHAN"))
+            .andExpect(jsonPath("$.data.results[1].status").value("FAILED"));
+        assertThat(orgAccounts.findById(shinhan.getId()).orElseThrow().getLastErrorCode()).isEqualTo("CF-12345");
+    }
+
+    @Test
+    @DisplayName("실패하면 FAILED와 화면용 코드·문구를 주고, CODEF 응답 코드는 내보내지 않는다")
+    void failureHidesCodefCode() throws Exception {
+        connect(KB);
+        stubResult(KB, new CardListResult(false, 0, "CF-12345"));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "FAILED");
+
+        String body = syncStatus(accessToken, jobId)
+            .andExpect(jsonPath("$.data.results[0].failureCode").value("SYNC_FAILED"))
+            .andExpect(jsonPath("$.data.results[0].failureReason").isNotEmpty())
+            .andReturn().getResponse().getContentAsString();
+        assertThat(body).doesNotContain("CF-12345");
+    }
+
+    @Test
+    @DisplayName("CODEF에 연결하지 못하면 FAILED이고 failureCode는 CODEF_UNAVAILABLE이다")
+    void codefUnavailable() throws Exception {
+        connect(KB);
+        when(cards.fetchCardList(anyString(), eq(KB))).thenThrow(new BusinessException(ErrorCode.EXTERNAL_API_ERROR));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "FAILED");
+
+        syncStatus(accessToken, jobId).andExpect(jsonPath("$.data.results[0].failureCode").value("CODEF_UNAVAILABLE"));
+    }
+
+    @Test
+    @DisplayName("예상하지 못한 오류가 나도 진행 중으로 남지 않고 FAILED가 된다")
+    void unexpectedErrorEndsAsFailed() throws Exception {
+        connect(KB);
+        when(cards.fetchCardList(anyString(), eq(KB))).thenThrow(new IllegalStateException("boom"));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "FAILED");
+    }
+
+    @Test
+    @DisplayName("가져온 카드가 없으면 성공이고 카드 수는 0이다")
+    void noCardsIsSuccess() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, new CardListResult(true, 0, "CF-00000"));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "SUCCESS");
+
+        syncStatus(accessToken, jobId).andExpect(jsonPath("$.data.results[0].cardCount").value(0));
+        assertThat(syncJobs.findByOrgAccountIdOrderByStartedAtDesc(kb.getId()).get(0).getStatus())
+            .isEqualTo(CodefSyncJob.STATUS_NO_DATA);
+    }
+
+    // ---- 카드사 지정 ----
+
+    @Test
+    @DisplayName("connectionIds를 보내면 그 카드사만 동기화한다")
+    void syncsOnlySelectedAccounts() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        connect(SHINHAN);
+        stubResult(KB, new CardListResult(true, 1, "CF-00000"));
+
+        String body = startSync(accessToken, "{\"connectionIds\":[" + kb.getId() + "]}")
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String jobId = JsonPath.read(body, "$.data.jobId");
+        awaitStatus(jobId, "SUCCESS");
+
+        syncStatus(accessToken, jobId).andExpect(jsonPath("$.data.totalCount").value(1))
+            .andExpect(jsonPath("$.data.results[0].cardCompany").value("KB"));
+        verify(cards, never()).fetchCardList(anyString(), eq(SHINHAN));
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 연결이나 없는 연결을 지정하면 404 CONN-001이고 아무것도 시작하지 않는다")
+    void rejectsForeignOrUnknownConnection() throws Exception {
+        CodefOrgAccount mine = connect(KB);
+        User other = newUser();
+        CodefOrgAccount theirs = connect(other, SHINHAN, "ACTIVE");
+
+        startSync(accessToken, "{\"connectionIds\":[" + mine.getId() + "," + theirs.getId() + "]}")
+            .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("CONN-001"));
+        startSync(accessToken, "{\"connectionIds\":[999999999]}")
+            .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("CONN-001"));
+
+        assertThat(syncJobs.count()).isZero();
+        verify(cards, never()).fetchCardList(any(), any());
+    }
+
+    // ---- 조회 권한 ----
+
+    @Test
+    @DisplayName("없는 jobId나 다른 사용자의 jobId는 404 CONN-006이다")
+    void unknownOrForeignJobIsNotFound() throws Exception {
+        connect(KB);
+        stubResult(KB, new CardListResult(true, 1, "CF-00000"));
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "SUCCESS");
+        User other = newUser();
+        String otherToken = authTokenService.issue(other.getId()).accessToken();
+
+        syncStatus(accessToken, "no-such-job").andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("CONN-006"));
+        syncStatus(otherToken, jobId).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("CONN-006"));
+    }
+
+    // ---- 멈춘 작업 ----
+
+    @Test
+    @DisplayName("오래전에 시작해 멈춘 작업은 SYNC_TIMEOUT 실패로 보이고, 새 동기화를 막지 않는다")
+    void staleJobIsReportedAsTimedOutAndDoesNotBlock() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        syncJobs.save(CodefSyncJob.startCardList(kb, "stale-batch", LocalDateTime.now().minusMinutes(30)));
+        stubResult(KB, new CardListResult(true, 1, "CF-00000"));
+
+        syncStatus(accessToken, "stale-batch")
+            .andExpect(jsonPath("$.data.status").value("FAILED"))
+            .andExpect(jsonPath("$.data.results[0].failureCode").value("SYNC_TIMEOUT"));
+
+        startSync(accessToken, null).andExpect(status().isOk());
+    }
+
+    // ---- 연결 목록 ----
+
+    @Test
+    @DisplayName("연결한 카드사가 없으면 목록은 빈 배열이다")
+    void emptyConnectionList() throws Exception {
+        mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("목록은 카드사별 상태를 보여주고, 동기화 전이면 NOT_SYNCED, 끝나면 SUCCESS와 카드 수다")
+    void connectionListShowsStatus() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        connect(SHINHAN);
+        stubResult(KB, new CardListResult(true, 4, "CF-00000"));
+        stubResult(SHINHAN, new CardListResult(false, 0, "CF-09999"));
+
+        mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken))
+            .andExpect(jsonPath("$.data", hasSize(2)))
+            .andExpect(jsonPath("$.data[0].status").value("NOT_SYNCED"))
+            .andExpect(jsonPath("$.data[0].lastSyncedAt").doesNotExist());
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "PARTIAL_SUCCESS");
+
+        mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken))
+            .andExpect(jsonPath("$.data[0].connectionId").value(kb.getId()))
+            .andExpect(jsonPath("$.data[0].cardCompany").value("KB"))
+            .andExpect(jsonPath("$.data[0].status").value("SUCCESS"))
+            .andExpect(jsonPath("$.data[0].cardCount").value(4))
+            .andExpect(jsonPath("$.data[0].lastSyncedAt").isNotEmpty())
+            .andExpect(jsonPath("$.data[1].cardCompany").value("SHINHAN"))
+            .andExpect(jsonPath("$.data[1].status").value("FAILED"))
+            .andExpect(jsonPath("$.data[1].failureCode").value("CODEF_UNAVAILABLE"));
+    }
+
+    @Test
+    @DisplayName("목록에는 해제한 카드사와 다른 사용자의 카드사가 나오지 않는다")
+    void connectionListExcludesDeletedAndOthers() throws Exception {
+        connect(KB);
+        connect(user, SHINHAN, "DELETED");
+        User other = newUser();
+        connect(other, "0302", "ACTIVE");
+
+        mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken))
+            .andExpect(jsonPath("$.data", hasSize(1)))
+            .andExpect(jsonPath("$.data[0].cardCompany").value("KB"));
+    }
+
+    // ---- 보안 ----
+
+    @Test
+    @DisplayName("connectedId는 응답과 로그에 나오지 않는다")
+    void connectedIdIsNeverExposed(CapturedOutput output) throws Exception {
+        connect(KB);
+        stubResult(KB, new CardListResult(false, 0, "CF-12345"));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "FAILED");
+        String status = syncStatus(accessToken, jobId).andReturn().getResponse().getContentAsString();
+        String list = mockMvc.perform(get("/api/connections").header("Authorization", "Bearer " + accessToken))
+            .andReturn().getResponse().getContentAsString();
+
+        assertThat(status).doesNotContain(CONNECTED_ID);
+        assertThat(list).doesNotContain(CONNECTED_ID);
+        assertThat(output.getAll()).doesNotContain(CONNECTED_ID);
+    }
+
+}
