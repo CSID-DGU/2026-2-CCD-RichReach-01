@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ConnectionCreateService {
 
     /** CODEF 서버 쪽 일시 오류. 사용자의 입력과 상관없으므로 인증 실패가 아니라 연동 서버 오류로 알린다. */
@@ -58,20 +60,6 @@ public class ConnectionCreateService {
     private final CodefProperties codefProperties;
     private final TermsProperties terms;
     private final Clock clock;
-
-    public ConnectionCreateService(UserRepository users, UserTermAgreementRepository agreements,
-                                   CodefConnectionRepository connections, CodefOrgAccountRepository orgAccounts,
-                                   CodefAccountClient codef, CodefProperties codefProperties,
-                                   TermsProperties terms, Clock clock) {
-        this.users = users;
-        this.agreements = agreements;
-        this.connections = connections;
-        this.orgAccounts = orgAccounts;
-        this.codef = codef;
-        this.codefProperties = codefProperties;
-        this.terms = terms;
-        this.clock = clock;
-    }
 
     @Transactional
     public ConnectionResponse create(long userId, ConnectionCreateRequest request) {

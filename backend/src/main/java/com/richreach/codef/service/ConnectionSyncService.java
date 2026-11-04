@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskExecutor;
@@ -43,6 +44,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ConnectionSyncService {
 
     static final String IN_PROGRESS = "IN_PROGRESS";
@@ -55,24 +57,11 @@ public class ConnectionSyncService {
     private final CodefOrgAccountRepository orgAccounts;
     private final CodefSyncJobRepository jobs;
     private final CardSyncWorker worker;
+    @Qualifier("codefSyncExecutor")
     private final TaskExecutor executor;
     private final TransactionTemplate transaction;
     private final CodefSyncProperties properties;
     private final Clock clock;
-
-    public ConnectionSyncService(UserRepository users, CodefOrgAccountRepository orgAccounts,
-                                 CodefSyncJobRepository jobs, CardSyncWorker worker,
-                                 @Qualifier("codefSyncExecutor") TaskExecutor executor,
-                                 TransactionTemplate transaction, CodefSyncProperties properties, Clock clock) {
-        this.users = users;
-        this.orgAccounts = orgAccounts;
-        this.jobs = jobs;
-        this.worker = worker;
-        this.executor = executor;
-        this.transaction = transaction;
-        this.properties = properties;
-        this.clock = clock;
-    }
 
     /** 동기화를 시작한다. 작업 기록이 저장된 뒤에 수집을 실행기에 넘기므로, 응답을 받은 시점에 상태를 조회할 수 있다. */
     public ConnectionSyncStartResponse start(long userId, ConnectionSyncRequest request) {

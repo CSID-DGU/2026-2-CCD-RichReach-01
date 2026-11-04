@@ -18,6 +18,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Service;
  * 이후 카드사 연결을 만들 때 이 기록이 있어야 한다.
  */
 @Service
+@RequiredArgsConstructor
 public class ConnectionAgreementService {
 
     /** 모두 동의해야 카드를 연결할 수 있다. */
@@ -36,14 +38,6 @@ public class ConnectionAgreementService {
     private final UserTermAgreementRepository agreements;
     private final TermsProperties terms;
     private final Clock clock;
-
-    public ConnectionAgreementService(UserRepository users, UserTermAgreementRepository agreements,
-                                      TermsProperties terms, Clock clock) {
-        this.users = users;
-        this.agreements = agreements;
-        this.terms = terms;
-        this.clock = clock;
-    }
 
     /**
      * 동의를 기록한다. 같은 약관 버전에 이미 동의한 항목은 다시 만들지 않으므로 여러 번 호출해도 결과가 같다.

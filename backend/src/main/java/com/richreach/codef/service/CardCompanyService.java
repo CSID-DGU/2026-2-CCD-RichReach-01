@@ -9,20 +9,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 연결할 카드사 목록. 고정된 7개를 화면 순서대로 내려주고, 사용자가 이미 연결한 카드사를 표시한다. */
 @Service
+@RequiredArgsConstructor
 public class CardCompanyService {
 
     private final CodefConnectionRepository connections;
     private final CodefOrgAccountRepository orgAccounts;
-
-    public CardCompanyService(CodefConnectionRepository connections, CodefOrgAccountRepository orgAccounts) {
-        this.connections = connections;
-        this.orgAccounts = orgAccounts;
-    }
 
     @Transactional(readOnly = true)
     public List<CardCompanyResponse> list(long userId) {

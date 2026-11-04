@@ -15,6 +15,7 @@ import com.richreach.global.response.ApiResponse;
 import com.richreach.global.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,18 +27,12 @@ import org.springframework.web.bind.annotation.RestController;
 /** 카드 연동 API. 로그인이 필요하다. */
 @RestController
 @RequestMapping("/api/connections")
+@RequiredArgsConstructor
 public class ConnectionController {
 
     private final ConnectionAgreementService agreementService;
     private final ConnectionCreateService createService;
     private final ConnectionSyncService syncService;
-
-    public ConnectionController(ConnectionAgreementService agreementService, ConnectionCreateService createService,
-                                ConnectionSyncService syncService) {
-        this.agreementService = agreementService;
-        this.createService = createService;
-        this.syncService = syncService;
-    }
 
     /**
      * 카드 연동 동의(카드정보 조회, 거래내역 조회, 개인정보 수집 및 이용)를 저장한다. 3개 모두 필요하고

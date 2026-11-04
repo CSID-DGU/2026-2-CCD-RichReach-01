@@ -11,6 +11,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.function.Consumer;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -25,6 +26,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class CardSyncWorker {
 
     private final CodefSyncJobRepository jobs;
@@ -32,15 +34,6 @@ public class CardSyncWorker {
     private final TransactionTemplate transaction;
     private final CodefSyncProperties properties;
     private final Clock clock;
-
-    public CardSyncWorker(CodefSyncJobRepository jobs, CodefCardClient cards, TransactionTemplate transaction,
-                          CodefSyncProperties properties, Clock clock) {
-        this.jobs = jobs;
-        this.cards = cards;
-        this.transaction = transaction;
-        this.properties = properties;
-        this.clock = clock;
-    }
 
     public void run(long jobId) {
         Consumer<CodefSyncJob> update;
