@@ -21,6 +21,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CodefSyncJob {
 
+    public static final String API_CARD_LIST = "CARD_LIST";
+
+    public static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
+    public static final String STATUS_SUCCESS = "SUCCESS";
+    /** 성공했지만 가져온 데이터가 없는 경우 */
+    public static final String STATUS_NO_DATA = "NO_DATA";
+    public static final String STATUS_FAIL = "FAIL";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -28,6 +36,10 @@ public class CodefSyncJob {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "org_account_id", nullable = false)
     private CodefOrgAccount orgAccount;
+
+    /** 한 번의 동기화 요청을 묶는 ID. 화면에는 jobId로 내려간다. 묶음이 생기기 전의 이력은 null이다. */
+    @Column(name = "batch_id", length = 36)
+    private String batchId;
 
     /** CARD_LIST, APPROVAL, RESULT_CHECK, BILLING */
     @Column(name = "api_type", nullable = false, length = 30)
@@ -60,7 +72,7 @@ public class CodefSyncJob {
     @Column(name = "updated_count")
     private Integer updatedCount;
 
-    /** SUCCESS, FAIL, NO_DATA */
+    /** IN_PROGRESS, SUCCESS, NO_DATA, FAIL */
     @Column(nullable = false, length = 20)
     private String status;
 
@@ -80,6 +92,33 @@ public class CodefSyncJob {
         this.status = status;
         this.retryable = retryable;
         this.startedAt = startedAt;
+    }
+
+    /** 한 번의 동기화 요청에 속한, 막 시작한 카드 목록 수집 작업. */
+    public static CodefSyncJob startCardList(CodefOrgAccount orgAccount, String batchId, LocalDateTime startedAt) {
+        CodefSyncJob job = new CodefSyncJob(orgAccount, API_CARD_LIST, STATUS_IN_PROGRESS, true, startedAt);
+        job.batchId = batchId;
+        return job;
+    }
+
+    /** 카드 목록을 가져왔다. 한 장도 없으면 NO_DATA로 남긴다. */
+    public void markFetched(int cardCount, String resultCode, LocalDateTime finishedAt) {
+        this.status = cardCount > 0 ? STATUS_SUCCESS : STATUS_NO_DATA;
+        this.fetchedCount = cardCount;
+        this.resultCode = resultCode;
+        this.finishedAt = finishedAt;
+    }
+
+    /** 실패로 끝났다. {@code retryable}이 false면 다시 시도하면 안 되는 오류다(계정 잠김 위험 등). */
+    public void markFailed(String resultCode, boolean retryable, LocalDateTime finishedAt) {
+        this.status = STATUS_FAIL;
+        this.resultCode = resultCode;
+        this.retryable = retryable;
+        this.finishedAt = finishedAt;
+    }
+
+    public boolean isInProgress() {
+        return STATUS_IN_PROGRESS.equals(status);
     }
 
 }
