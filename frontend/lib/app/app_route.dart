@@ -70,6 +70,9 @@ enum AppRoute {
   cardPlanDetail('/plan/cards/:cardId', 'PLAN-02', '카드별 플랜 상세'),
   categoryPlanDetail('/plan/categories/:category', 'PLAN-03', '업종별 플랜 상세'),
 
+  // 홈 탭 안의 화면
+  transactionHistory('/home/transactions', 'HOME-03', '거래내역'),
+
   // 카드 추천 탭 안의 화면
   recommendationHistory('/recommendation/history', 'RECOMMEND-00', '대화 기록'),
   recommendationCardDetail(
@@ -84,6 +87,7 @@ enum AppRoute {
 
   /// 탭 안에서 여는 하위 화면. 하단 네비게이션이 그대로 보인다.
   static const tabChildren = {
+    home: [transactionHistory],
     monthlyPlan: [cardPlanDetail, categoryPlanDetail],
     cardRecommendation: [recommendationHistory, recommendationCardDetail],
   };

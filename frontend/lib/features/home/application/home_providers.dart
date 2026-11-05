@@ -9,10 +9,10 @@ final spendingRepositoryProvider = Provider<SpendingRepository>(
   (ref) => const FakeSpendingRepository(),
 );
 
-/// 이번 달 카드 사용 내역 (최근 결제가 앞).
-final currentMonthTransactionsProvider =
-    FutureProvider.autoDispose<List<SpendingTransaction>>(
+/// 이번 달 카드 사용 내역과 요약 (홈 최근 사용 내역, 거래내역 화면).
+final currentMonthSpendingProvider =
+    FutureProvider.autoDispose<SpendingHistory>(
       (ref) => ref
           .watch(spendingRepositoryProvider)
-          .fetchTransactions(ref.watch(currentMonthProvider)),
+          .fetchHistory(ref.watch(currentMonthProvider)),
     );
