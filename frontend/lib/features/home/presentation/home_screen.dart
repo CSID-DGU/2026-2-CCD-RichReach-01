@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
-import '../../../core/formatters/money_formatter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -11,13 +10,13 @@ import '../../../core/widgets/more_link.dart';
 import '../../../core/widgets/step_header.dart';
 import '../../../core/widgets/word_wrap_text.dart';
 import '../../onboarding/presentation/load_failure_view.dart';
-import '../../onboarding/presentation/onboarding_images.dart';
 import '../../plan/application/monthly_plan_providers.dart';
 import '../../plan/domain/monthly_plan.dart';
 import '../../plan/presentation/plan_actions.dart';
 import '../../plan/presentation/plan_dashboard_widgets.dart';
 import '../application/home_providers.dart';
 import '../domain/spending_transaction.dart';
+import 'spending_widgets.dart';
 
 /// HOME-01 홈. 이번 달 플랜 요약, 빠른 실행, 카드별 목표 사용금액, 최근 사용 내역.
 ///
@@ -148,10 +147,9 @@ class _HomeContent extends ConsumerWidget {
         const SizedBox(height: 7),
         SectionHeader(
           title: '최근 사용 내역',
-          // TODO(#148 후속): 거래내역 화면(HOME-03)을 만들면 그 화면으로 이동한다.
           trailing: MoreLink(
             label: '전체보기',
-            onTap: () => _comingSoon(context, '거래내역'),
+            onTap: () => context.pushNamed(AppRoute.transactionHistory.name),
           ),
         ),
         const SizedBox(height: 5),
@@ -243,15 +241,17 @@ class _RecentTransactions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transactions = ref.watch(currentMonthTransactionsProvider);
-    final Widget child = switch (transactions) {
-      AsyncData(value: final list) when list.isEmpty => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
-        child: Center(
-          child: Text('이번 달 사용 내역이 없어요.', style: AppTextStyles.description),
+    final history = ref.watch(currentMonthSpendingProvider);
+    final Widget child = switch (history) {
+      AsyncData(value: SpendingHistory(transactions: final list))
+          when list.isEmpty =>
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Center(
+            child: Text('이번 달 사용 내역이 없어요.', style: AppTextStyles.description),
+          ),
         ),
-      ),
-      AsyncData(value: final list) => Column(
+      AsyncData(value: SpendingHistory(transactions: final list)) => Column(
         children: [
           for (final t in list.take(HomeScreen.recentCount))
             SpendingTransactionRow(transaction: t),
@@ -261,7 +261,7 @@ class _RecentTransactions extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Center(
           child: TextButton(
-            onPressed: () => ref.invalidate(currentMonthTransactionsProvider),
+            onPressed: () => ref.invalidate(currentMonthSpendingProvider),
             child: const Text('사용 내역을 불러오지 못했어요. 다시 불러오기'),
           ),
         ),
@@ -271,77 +271,6 @@ class _RecentTransactions extends ConsumerWidget {
         child: Center(child: CircularProgressIndicator()),
       ),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(AppDimens.radius12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: child,
-    );
-  }
-}
-
-/// 카드 사용 한 건: 업종 아이콘, 가맹점, "카드 · 업종", 금액, 혜택 (높이 58).
-class SpendingTransactionRow extends StatelessWidget {
-  const SpendingTransactionRow({super.key, required this.transaction});
-
-  final SpendingTransaction transaction;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = transaction;
-    final strong = AppTextStyles.bodyStrong.copyWith(
-      fontSize: 14,
-      height: 1.45,
-    );
-    final sub = AppTextStyles.caption.copyWith(fontSize: 11, height: 1.45);
-    return SizedBox(
-      height: 58,
-      child: Row(
-        children: [
-          CategoryIcon(category: t.category, size: 40, iconSize: 18),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  t.merchantName,
-                  style: strong,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${t.card.name} · ${t.category.label}',
-                  style: sub,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(formatWon(t.amount), style: strong),
-              if (t.benefit > 0) ...[
-                const SizedBox(height: 2),
-                Text(
-                  '혜택 ${formatWon(t.benefit)}',
-                  style: sub.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
+    return SpendingListBox(child: child);
   }
 }

@@ -5,11 +5,11 @@ import '../domain/spending_transaction.dart';
 
 /// 카드 사용 내역 조회. API 연동 시 실제 구현을 만들어 바꿔 끼운다.
 abstract interface class SpendingRepository {
-  /// [month]의 카드 사용 내역. 최근 결제가 앞에 온다.
-  Future<List<SpendingTransaction>> fetchTransactions(DateTime month);
+  /// [month]의 카드 사용 내역과 요약.
+  Future<SpendingHistory> fetchHistory(DateTime month);
 }
 
-/// API가 나오기 전까지 쓰는 가짜 구현. Figma HOME-03의 거래를 [month]의 24일·23일로 돌려준다.
+/// API가 나오기 전까지 쓰는 가짜 구현. Figma HOME-03의 요약과 거래를 [month]의 24일·23일로 돌려준다.
 class FakeSpendingRepository implements SpendingRepository {
   const FakeSpendingRepository({
     this.delay = const Duration(milliseconds: 400),
@@ -18,7 +18,7 @@ class FakeSpendingRepository implements SpendingRepository {
   final Duration delay;
 
   @override
-  Future<List<SpendingTransaction>> fetchTransactions(DateTime month) async {
+  Future<SpendingHistory> fetchHistory(DateTime month) async {
     await Future<void>.delayed(delay);
     final cards = {
       for (final card in FakeCardRepository.sampleCards(const [
@@ -31,7 +31,7 @@ class FakeSpendingRepository implements SpendingRepository {
     DateTime at(int day, int hour, int minute) =>
         DateTime(month.year, month.month, day, hour, minute);
 
-    return [
+    final transactions = [
       SpendingTransaction(
         card: cards[CardCompany.kb]!,
         merchantName: 'GS25',
@@ -73,5 +73,13 @@ class FakeSpendingRepository implements SpendingRepository {
         approvedAt: at(23, 17, 12),
       ),
     ];
+    return SpendingHistory(
+      month: DateTime(month.year, month.month),
+      totalAmount: 486000,
+      count: 34,
+      totalBenefit: 18600,
+      synced: true,
+      transactions: transactions,
+    );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/features/home/data/spending_repository.dart';
 import 'package:frontend/features/home/domain/spending_transaction.dart';
+import 'package:frontend/features/home/presentation/transaction_history_screen.dart';
 import 'package:frontend/features/plan/data/monthly_plan_repository.dart';
 import 'package:frontend/features/plan/domain/monthly_plan.dart';
 import 'package:frontend/features/plan/presentation/card_plan_detail_screen.dart';
@@ -28,8 +29,14 @@ class _NoPlanRepository extends FakeMonthlyPlanRepository {
 /// 사용 내역이 없는 저장소.
 class _NoSpendingRepository implements SpendingRepository {
   @override
-  Future<List<SpendingTransaction>> fetchTransactions(DateTime month) async =>
-      const [];
+  Future<SpendingHistory> fetchHistory(DateTime month) async => SpendingHistory(
+    month: month,
+    totalAmount: 0,
+    count: 0,
+    totalBenefit: 0,
+    synced: true,
+    transactions: const [],
+  );
 }
 
 FakeMonthlyPlanRepository _plans() => FakeMonthlyPlanRepository(
@@ -107,6 +114,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(CardPlanDetailScreen), findsOneWidget);
+  });
+
+  testWidgets('최근 사용 내역의 전체보기로 거래내역 화면을 연다', (tester) async {
+    await pumpAppAt(tester, AppRoute.home);
+    await _scrollTo(tester, find.bySemanticsLabel('전체보기'));
+
+    await tester.tap(find.bySemanticsLabel('전체보기'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TransactionHistoryScreen), findsOneWidget);
   });
 
   testWidgets('이번 달 플랜이 없으면 안내하고 빠른 실행은 그대로 보여준다', (tester) async {
