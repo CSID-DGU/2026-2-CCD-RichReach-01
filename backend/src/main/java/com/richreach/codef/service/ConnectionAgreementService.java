@@ -5,6 +5,7 @@ import com.richreach.codef.dto.ConnectionAgreementRequest;
 import com.richreach.codef.dto.ConnectionAgreementResponse;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
+import com.richreach.global.util.Times;
 import com.richreach.user.entity.TermType;
 import com.richreach.user.entity.UserTermAgreement;
 import com.richreach.user.repository.UserRepository;
@@ -12,7 +13,6 @@ import com.richreach.user.repository.UserTermAgreementRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
@@ -68,7 +68,7 @@ public class ConnectionAgreementService {
 
         if (!missing.isEmpty()) {
             // DB의 DATETIME은 초 단위라서, 응답과 저장된 값이 달라지지 않도록 초 단위로 맞춘다.
-            LocalDateTime now = LocalDateTime.now(clock).truncatedTo(ChronoUnit.SECONDS);
+            LocalDateTime now = Times.nowSeconds(clock);
             try {
                 agreements.saveAll(missing.stream()
                     .map(type -> new UserTermAgreement(userId, type, version, now))

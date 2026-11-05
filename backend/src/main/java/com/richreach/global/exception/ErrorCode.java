@@ -45,6 +45,8 @@ public enum ErrorCode {
     CODEF_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "CONN-005", "카드사 연동 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     SYNC_JOB_NOT_FOUND(HttpStatus.NOT_FOUND, "CONN-006", "동기화 작업을 찾을 수 없습니다."),
     SYNC_ALREADY_RUNNING(HttpStatus.CONFLICT, "CONN-007", "이미 동기화가 진행 중입니다."),
+    CONNECTION_RETRY_BLOCKED(HttpStatus.CONFLICT, "CONN-008",
+        "계정이 잠길 위험이 있어 지금은 다시 연결할 수 없습니다. 카드사 홈페이지에서 계정 상태를 확인한 뒤 다시 시도해 주세요."),
 
     // 카드
     CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "CARD-001", "카드를 찾을 수 없습니다."),

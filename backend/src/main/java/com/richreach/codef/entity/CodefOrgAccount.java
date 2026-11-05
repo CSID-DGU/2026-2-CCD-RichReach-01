@@ -23,6 +23,7 @@ public class CodefOrgAccount {
 
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_NEEDS_CARD_AUTH = "NEEDS_CARD_AUTH";
+    public static final String STATUS_LOCKED = "LOCKED";
     public static final String STATUS_DELETED = "DELETED";
 
     @Id
@@ -66,6 +67,14 @@ public class CodefOrgAccount {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * 카드 연동 화면에서 연결한 카드사 계정. 업종은 카드(CD), 고객 구분은 개인(P), 로그인 방식은 아이디(1)로 고정이라
+     * 호출하는 쪽이 이 값들을 알 필요가 없다.
+     */
+    public static CodefOrgAccount connected(CodefConnection connection, String organization, LocalDateTime now) {
+        return new CodefOrgAccount(connection, null, organization, "CD", "P", "1", STATUS_ACTIVE, now);
+    }
+
     /** 카드사 인증에 성공한 상태로 되돌린다. (처음 연결하거나, 실패했던 카드사를 다시 연결할 때) */
     public void markConnected() {
         this.status = STATUS_ACTIVE;
@@ -81,6 +90,11 @@ public class CodefOrgAccount {
     /** 동기화에 실패한 오류 코드를 남긴다. 연결 상태(status)는 바꾸지 않는다. */
     public void recordSyncError(String errorCode) {
         this.lastErrorCode = errorCode;
+    }
+
+    /** 카드사가 계정을 잠근 상태인지. 이때 다시 로그인을 시도하면 잠김이 길어질 수 있다. */
+    public boolean isLocked() {
+        return STATUS_LOCKED.equals(status);
     }
 
     /** 사용자에게 연결된 것으로 보여줄 상태인지. 해제(DELETED)나 실패한 계정은 연결로 보지 않는다. */

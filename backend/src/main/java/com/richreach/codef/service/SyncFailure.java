@@ -16,8 +16,6 @@ record SyncFailure(String code, String reason) {
     static final String RESULT_UNAVAILABLE = "CODEF-UNAVAILABLE";
     static final String RESULT_ERROR = "SYNC-ERROR";
 
-    private static final String CODEF_SERVER_ERROR = "CF-09999";
-
     static SyncFailure of(CodefSyncJob job, boolean timedOut) {
         if (timedOut) {
             return of(RESULT_TIMEOUT);
@@ -29,7 +27,7 @@ record SyncFailure(String code, String reason) {
         if (RESULT_TIMEOUT.equals(resultCode)) {
             return new SyncFailure("SYNC_TIMEOUT", "카드 정보를 불러오는 데 시간이 너무 오래 걸렸어요. 다시 시도해 주세요.");
         }
-        if (RESULT_UNAVAILABLE.equals(resultCode) || CODEF_SERVER_ERROR.equals(resultCode)) {
+        if (RESULT_UNAVAILABLE.equals(resultCode) || CodefFailures.SERVER_ERROR.equals(resultCode)) {
             return new SyncFailure("CODEF_UNAVAILABLE", "카드사 연동 서버에 문제가 있어요. 잠시 후 다시 시도해 주세요.");
         }
         return new SyncFailure("SYNC_FAILED", "카드 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");

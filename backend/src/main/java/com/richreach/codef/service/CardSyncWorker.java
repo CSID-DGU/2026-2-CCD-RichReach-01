@@ -7,9 +7,9 @@ import com.richreach.codef.entity.CodefOrgAccount;
 import com.richreach.codef.entity.CodefSyncJob;
 import com.richreach.codef.repository.CodefSyncJobRepository;
 import com.richreach.global.exception.BusinessException;
+import com.richreach.global.util.Times;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,7 +73,8 @@ public class CardSyncWorker {
     }
 
     private void record(long jobId, Consumer<CodefSyncJob> update, boolean synced) {
-        transaction.executeWithoutResult(status -> jobs.findById(jobId).ifPresent(job -> {
+        // 카드사 계정을 한 번에 읽는 조회를 써서, 결과를 기록할 때 계정을 따로 읽는 쿼리가 더 나가지 않게 한다.
+        transaction.executeWithoutResult(status -> jobs.findWithAccountById(jobId).ifPresent(job -> {
             if (!job.isInProgress() || job.isTimedOut(properties.timeout(), now())) {
                 log.warn("이미 끝났거나 제한 시간이 지난 작업이라 결과를 반영하지 않습니다: jobId={}", jobId);
                 return;
@@ -89,7 +90,7 @@ public class CardSyncWorker {
     }
 
     private LocalDateTime now() {
-        return LocalDateTime.now(clock).truncatedTo(ChronoUnit.SECONDS);
+        return Times.nowSeconds(clock);
     }
 
 }
