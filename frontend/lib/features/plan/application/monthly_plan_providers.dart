@@ -35,28 +35,29 @@ class SelectedPlanMonth extends Notifier<DateTime> {
   }
 }
 
-/// 보고 있는 달의 플랜. 그 달에 만든 플랜이 없으면 null.
+/// 달별 플랜. 그 달에 만든 플랜이 없으면 null.
+/// 홈과 월간 플랜 탭이 같은 달을 보면 같은 상태를 함께 쓴다 (한쪽에서 바꾸면 다른 쪽에도 반영).
 final monthlyPlanProvider =
-    AsyncNotifierProvider<MonthlyPlanNotifier, MonthlyPlan?>(
+    AsyncNotifierProvider.family<MonthlyPlanNotifier, MonthlyPlan?, DateTime>(
       MonthlyPlanNotifier.new,
     );
 
 class MonthlyPlanNotifier extends AsyncNotifier<MonthlyPlan?> {
+  MonthlyPlanNotifier(this.month);
+
+  final DateTime month;
+
   MonthlyPlanRepository get _repository =>
       ref.read(monthlyPlanRepositoryProvider);
 
   @override
-  Future<MonthlyPlan?> build() => ref
-      .watch(monthlyPlanRepositoryProvider)
-      .fetchPlan(ref.watch(selectedPlanMonthProvider));
+  Future<MonthlyPlan?> build() =>
+      ref.watch(monthlyPlanRepositoryProvider).fetchPlan(month);
 
   /// 소비예산을 [budget]으로 바꿔 플랜을 다시 계산하고, 바뀐 플랜을 돌려준다.
   /// 계산하는 동안에도 지금 플랜을 그대로 보여준다.
   Future<MonthlyPlan> recalculate(int budget) async {
-    final plan = await _repository.recalculate(
-      ref.read(selectedPlanMonthProvider),
-      budget: budget,
-    );
+    final plan = await _repository.recalculate(month, budget: budget);
     state = AsyncData(plan);
     return plan;
   }
@@ -74,17 +75,19 @@ class MonthlyPlanNotifier extends AsyncNotifier<MonthlyPlan?> {
 /// 월간 플랜이 바뀌면(재계산·확인) 다시 불러온다.
 final cardPlanDetailProvider = FutureProvider.autoDispose
     .family<CardPlanDetail?, String>((ref, cardId) async {
-      await ref.watch(monthlyPlanProvider.future);
+      final month = ref.watch(selectedPlanMonthProvider);
+      await ref.watch(monthlyPlanProvider(month).future);
       return ref
           .watch(monthlyPlanRepositoryProvider)
-          .fetchCardPlan(ref.watch(selectedPlanMonthProvider), cardId);
+          .fetchCardPlan(month, cardId);
     });
 
 /// 보고 있는 달의 업종별 플랜 상세 (PLAN-03). 플랜이 없으면 null.
 final categoryPlanDetailProvider = FutureProvider.autoDispose
     .family<CategoryPlanDetail?, SpendingCategory>((ref, category) async {
-      await ref.watch(monthlyPlanProvider.future);
+      final month = ref.watch(selectedPlanMonthProvider);
+      await ref.watch(monthlyPlanProvider(month).future);
       return ref
           .watch(monthlyPlanRepositoryProvider)
-          .fetchCategoryPlan(ref.watch(selectedPlanMonthProvider), category);
+          .fetchCategoryPlan(month, category);
     });

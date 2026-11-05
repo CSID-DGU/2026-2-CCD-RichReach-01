@@ -132,20 +132,24 @@ String categoryIconAsset(SpendingCategory category) => switch (category) {
   SpendingCategory.etc => AppAssets.iconEtc,
 };
 
-/// 연보라 원 안의 업종 아이콘 (원 32, 아이콘 20).
+/// 연보라 원 안의 업종 아이콘 (기본 원 32, 아이콘 20).
 class CategoryIcon extends StatelessWidget {
-  const CategoryIcon({super.key, required this.category});
+  const CategoryIcon({
+    super.key,
+    required this.category,
+    this.size = 32,
+    this.iconSize = 20,
+  });
 
   final SpendingCategory category;
-
-  static const _size = 32.0;
-  static const _iconSize = 20.0;
+  final double size;
+  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: _size,
-      height: _size,
+      width: size,
+      height: size,
       alignment: Alignment.center,
       decoration: const BoxDecoration(
         color: AppColors.primarySubtle,
@@ -153,8 +157,8 @@ class CategoryIcon extends StatelessWidget {
       ),
       child: SvgPicture.asset(
         categoryIconAsset(category),
-        width: _iconSize,
-        height: _iconSize,
+        width: iconSize,
+        height: iconSize,
         semanticsLabel: category.label,
       ),
     );

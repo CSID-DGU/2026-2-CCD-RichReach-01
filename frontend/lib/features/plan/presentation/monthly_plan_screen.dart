@@ -8,11 +8,10 @@ import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/more_link.dart';
 import '../../../core/widgets/tab_page_title.dart';
-import '../../onboarding/presentation/budget_dialogs.dart';
 import '../../onboarding/presentation/load_failure_view.dart';
 import '../application/monthly_plan_providers.dart';
 import '../domain/monthly_plan.dart';
-import 'plan_change_sheet.dart';
+import 'plan_actions.dart';
 import 'plan_dashboard_widgets.dart';
 
 /// PLAN-01 월간 플랜 대시보드.
@@ -23,7 +22,7 @@ class MonthlyPlanScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final month = ref.watch(selectedPlanMonthProvider);
     final monthNotifier = ref.read(selectedPlanMonthProvider.notifier);
-    final plan = ref.watch(monthlyPlanProvider);
+    final plan = ref.watch(monthlyPlanProvider(month));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -46,7 +45,7 @@ class MonthlyPlanScreen extends ConsumerWidget {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (_, _) => LoadFailureView(
                   message: '월간 플랜을 불러오지 못했어요.',
-                  onRetry: () => ref.invalidate(monthlyPlanProvider),
+                  onRetry: () => ref.invalidate(monthlyPlanProvider(month)),
                 ),
               ),
             ),
@@ -80,48 +79,6 @@ class _PlanContent extends ConsumerWidget {
       ..showSnackBar(SnackBar(content: Text('$feature 화면은 준비 중이에요.')));
   }
 
-  /// PLAN-01A: 변경 내용을 보여주고, 확인하면 안내 띠를 없앤다.
-  Future<void> _showChange(
-    BuildContext context,
-    WidgetRef ref,
-    PlanChange change,
-  ) async {
-    final confirmed = await showPlanChangeSheet(context, change);
-    if (confirmed == true) {
-      await ref.read(monthlyPlanProvider.notifier).confirmChange();
-    }
-  }
-
-  /// 소비예산 수정 → PLAN-01B 재계산 팝업 → PLAN-01A 변경 내용.
-  Future<void> _editBudget(BuildContext context, WidgetRef ref) async {
-    final budget = await showEditBudgetDialog(context, total: plan.budget);
-    if (budget == null || budget == plan.budget || !context.mounted) return;
-
-    final navigator = Navigator.of(context, rootNavigator: true);
-    final messenger = ScaffoldMessenger.of(context);
-    showRecalculatingDialog(context);
-    MonthlyPlan? updated;
-    try {
-      updated = await ref
-          .read(monthlyPlanProvider.notifier)
-          .recalculate(budget);
-    } catch (_) {
-      updated = null;
-    } finally {
-      navigator.pop();
-    }
-
-    final change = updated?.change;
-    if (!context.mounted) return;
-    if (change == null) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('플랜을 다시 계산하지 못했어요. 잠시 후 다시 시도해 주세요.')),
-      );
-      return;
-    }
-    await _showChange(context, ref, change);
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final change = plan.change;
@@ -135,13 +92,14 @@ class _PlanContent extends ConsumerWidget {
       children: [
         PlanSummaryCard(
           plan: plan,
-          onEditBudget: () => _editBudget(context, ref),
+          onEditBudget: () => editPlanBudget(context, ref, plan),
         ),
         if (change != null) ...[
           const SizedBox(height: 8),
           PlanChangeBanner(
             message: change.summary,
-            onShowChanges: () => _showChange(context, ref, change),
+            onShowChanges: () =>
+                showPlanChange(context, ref, plan.month, change),
           ),
         ],
         const SizedBox(height: 8),
