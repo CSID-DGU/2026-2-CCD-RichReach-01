@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
-import 'package:frontend/core/widgets/coming_soon_screen.dart';
+import 'package:frontend/features/home/presentation/home_screen.dart';
 import 'package:frontend/features/onboarding/domain/transaction.dart';
 import 'package:frontend/features/plan/data/monthly_plan_repository.dart';
 import 'package:frontend/features/plan/domain/monthly_plan.dart';
@@ -301,7 +301,7 @@ void main() {
 
       await tester.tap(find.bySemanticsLabel('홈'));
       await tester.pumpAndSettle();
-      expect(find.byType(ComingSoonScreen), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
 
       await tester.tap(find.bySemanticsLabel('월간 플랜'));
       await tester.pumpAndSettle();

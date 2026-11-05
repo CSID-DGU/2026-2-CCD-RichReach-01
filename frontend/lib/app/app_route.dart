@@ -55,8 +55,8 @@ enum AppRoute {
     showBack: false,
   ),
 
-  // 하단 네비게이션 탭 (홈·리포트·설정은 아직 디자인이 없어 화면 ID 대신 이름을 쓴다)
-  home('/home', 'HOME', '홈', showBack: false),
+  // 하단 네비게이션 탭 (리포트·설정은 아직 디자인이 없어 화면 ID 대신 이름을 쓴다)
+  home('/home', 'HOME-01', '홈', showBack: false),
   monthlyPlan('/plan', 'PLAN-01', '월간 플랜', showBack: false),
   cardRecommendation(
     '/recommendation',
