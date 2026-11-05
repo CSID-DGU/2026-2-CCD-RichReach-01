@@ -12,6 +12,9 @@ public interface CodefSyncJobRepository extends JpaRepository<CodefSyncJob, Long
 
     List<CodefSyncJob> findByOrgAccountIdOrderByStartedAtDesc(Long orgAccountId);
 
+    /** 카드사 계정의 가장 최근 작업. */
+    Optional<CodefSyncJob> findFirstByOrgAccountIdAndApiTypeOrderByIdDesc(Long orgAccountId, String apiType);
+
     /** 사용자의 동기화 묶음. 다른 사용자의 묶음이면 비어 있다. */
     @Query("""
         select j from CodefSyncJob j join fetch j.orgAccount a

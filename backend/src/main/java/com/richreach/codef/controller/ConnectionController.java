@@ -4,12 +4,14 @@ import com.richreach.codef.dto.ConnectionAgreementRequest;
 import com.richreach.codef.dto.ConnectionAgreementResponse;
 import com.richreach.codef.dto.ConnectionCreateRequest;
 import com.richreach.codef.dto.ConnectionResponse;
+import com.richreach.codef.dto.ConnectionRetryRequest;
 import com.richreach.codef.dto.ConnectionSummaryResponse;
 import com.richreach.codef.dto.ConnectionSyncRequest;
 import com.richreach.codef.dto.ConnectionSyncStartResponse;
 import com.richreach.codef.dto.ConnectionSyncStatusResponse;
 import com.richreach.codef.service.ConnectionAgreementService;
 import com.richreach.codef.service.ConnectionCreateService;
+import com.richreach.codef.service.ConnectionRetryService;
 import com.richreach.codef.service.ConnectionSyncService;
 import com.richreach.global.response.ApiResponse;
 import com.richreach.global.security.AuthenticatedUser;
@@ -33,6 +35,7 @@ public class ConnectionController {
     private final ConnectionAgreementService agreementService;
     private final ConnectionCreateService createService;
     private final ConnectionSyncService syncService;
+    private final ConnectionRetryService retryService;
 
     /**
      * 카드 연동 동의(카드정보 조회, 거래내역 조회, 개인정보 수집 및 이용)를 저장한다. 3개 모두 필요하고
@@ -76,6 +79,21 @@ public class ConnectionController {
     public ApiResponse<ConnectionSyncStatusResponse> syncStatus(@AuthenticationPrincipal AuthenticatedUser user,
                                                                 @PathVariable String jobId) {
         return ApiResponse.ok(syncService.status(user.userId(), jobId));
+    }
+
+    /**
+     * 연결에 실패한 카드사를 다시 연결한다. {@code accountId}는 연결 목록({@code GET /api/connections})의
+     * {@code connectionId}다. 카드사 아이디와 비밀번호를 다시 받아 CODEF 로그인 정보를 갱신하고, 성공하면 연결된 상태로
+     * 되돌린다. 데이터를 다시 불러오려면 성공한 뒤 {@code POST /api/connections/sync}를 호출한다.
+     * 실패한 카드사가 아니거나 없는(또는 다른 사용자의) 카드사면 404({@code CONN-001}), 동기화가 진행 중이면
+     * 409({@code CONN-007}), 계정이 잠겼거나 잠길 위험이 있으면 409({@code CONN-008})이다.
+     * 카드사 아이디와 비밀번호는 저장하지 않는다.
+     */
+    @PostMapping("/{accountId}/retry")
+    public ApiResponse<ConnectionResponse> retry(@AuthenticationPrincipal AuthenticatedUser user,
+                                                 @PathVariable Long accountId,
+                                                 @Valid @RequestBody ConnectionRetryRequest request) {
+        return ApiResponse.ok(retryService.retry(user.userId(), accountId, request));
     }
 
     /** 연결한 카드사 목록과 카드사별 최근 동기화 상태. 연결한 카드사가 없으면 빈 목록이다. */

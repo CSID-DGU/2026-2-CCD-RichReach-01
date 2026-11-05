@@ -23,6 +23,7 @@ public class CodefOrgAccount {
 
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_NEEDS_CARD_AUTH = "NEEDS_CARD_AUTH";
+    public static final String STATUS_LOCKED = "LOCKED";
     public static final String STATUS_DELETED = "DELETED";
 
     @Id
@@ -81,6 +82,11 @@ public class CodefOrgAccount {
     /** 동기화에 실패한 오류 코드를 남긴다. 연결 상태(status)는 바꾸지 않는다. */
     public void recordSyncError(String errorCode) {
         this.lastErrorCode = errorCode;
+    }
+
+    /** 카드사가 계정을 잠근 상태인지. 이때 다시 로그인을 시도하면 잠김이 길어질 수 있다. */
+    public boolean isLocked() {
+        return STATUS_LOCKED.equals(status);
     }
 
     /** 사용자에게 연결된 것으로 보여줄 상태인지. 해제(DELETED)나 실패한 계정은 연결로 보지 않는다. */
