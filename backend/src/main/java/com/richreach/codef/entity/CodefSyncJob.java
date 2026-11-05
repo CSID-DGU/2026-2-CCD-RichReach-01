@@ -126,6 +126,11 @@ public class CodefSyncJob {
         return STATUS_FAIL.equals(status);
     }
 
+    /** 실패로 끝났거나, 진행 중인 채로 제한 시간이 지나 멈춘 것으로 보는 작업인지. */
+    public boolean hasFailed(Duration timeout, LocalDateTime now) {
+        return isFailed() || isTimedOut(timeout, now);
+    }
+
     /**
      * 진행 중인 채로 제한 시간이 지났는지. 시작한 지 {@code timeout}이 정확히 지난 순간도 지난 것으로 본다.
      * 새 동기화를 시작할 때의 판정(진행 중인 작업이 있는지)과 상태 조회, 결과 기록이 모두 같은 기준을 쓰도록 한 곳에 둔다.

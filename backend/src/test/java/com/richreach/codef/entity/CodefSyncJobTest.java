@@ -35,6 +35,24 @@ class CodefSyncJobTest {
     }
 
     @Test
+    @DisplayName("실패했거나 시간 초과인 작업만 실패로 본다 (hasFailed)")
+    void hasFailedCoversFailureAndTimeout() {
+        LocalDateTime justStarted = STARTED.plusSeconds(1);
+
+        CodefSyncJob running = inProgress();
+        assertThat(running.hasFailed(TIMEOUT, justStarted)).isFalse();
+        assertThat(running.hasFailed(TIMEOUT, STARTED.plus(TIMEOUT))).isTrue();
+
+        CodefSyncJob failed = inProgress();
+        failed.markFailed("CF-12345", true, STARTED.plusSeconds(5));
+        assertThat(failed.hasFailed(TIMEOUT, justStarted)).isTrue();
+
+        CodefSyncJob succeeded = inProgress();
+        succeeded.markFetched(1, "CF-00000", STARTED.plusSeconds(5));
+        assertThat(succeeded.hasFailed(TIMEOUT, STARTED.plus(TIMEOUT).plusHours(1))).isFalse();
+    }
+
+    @Test
     @DisplayName("이미 끝난 작업은 시간이 지나도 시간 초과가 아니다")
     void finishedJobIsNeverTimedOut() {
         CodefSyncJob job = inProgress();

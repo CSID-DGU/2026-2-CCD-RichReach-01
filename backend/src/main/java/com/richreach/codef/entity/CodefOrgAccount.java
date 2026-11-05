@@ -67,6 +67,14 @@ public class CodefOrgAccount {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * 카드 연동 화면에서 연결한 카드사 계정. 업종은 카드(CD), 고객 구분은 개인(P), 로그인 방식은 아이디(1)로 고정이라
+     * 호출하는 쪽이 이 값들을 알 필요가 없다.
+     */
+    public static CodefOrgAccount connected(CodefConnection connection, String organization, LocalDateTime now) {
+        return new CodefOrgAccount(connection, null, organization, "CD", "P", "1", STATUS_ACTIVE, now);
+    }
+
     /** 카드사 인증에 성공한 상태로 되돌린다. (처음 연결하거나, 실패했던 카드사를 다시 연결할 때) */
     public void markConnected() {
         this.status = STATUS_ACTIVE;

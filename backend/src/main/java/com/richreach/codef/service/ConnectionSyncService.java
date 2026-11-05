@@ -13,16 +13,16 @@ import com.richreach.codef.repository.CodefOrgAccountRepository;
 import com.richreach.codef.repository.CodefSyncJobRepository;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
-import com.richreach.user.repository.UserRepository;
+import com.richreach.global.util.Times;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -53,7 +53,7 @@ public class ConnectionSyncService {
     static final String PARTIAL_SUCCESS = "PARTIAL_SUCCESS";
     static final String NOT_SYNCED = "NOT_SYNCED";
 
-    private final UserRepository users;
+    private final ConnectionUserLock userLock;
     private final CodefOrgAccountRepository orgAccounts;
     private final CodefSyncJobRepository jobs;
     private final CardSyncWorker worker;
@@ -73,7 +73,7 @@ public class ConnectionSyncService {
     }
 
     private Started register(long userId, ConnectionSyncRequest request) {
-        users.findByIdForUpdate(userId).orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
+        userLock.lock(userId);
 
         List<Long> requested = request == null || request.connectionIds() == null
             ? List.of() : request.connectionIds().stream().distinct().toList();
@@ -147,31 +147,40 @@ public class ConnectionSyncService {
         LocalDateTime now = now();
 
         return orgAccounts.findActiveByUserId(userId).stream()
-            .filter(account -> CardCompany.fromOrganizationCode(account.getOrganization()) != null)
-            .map(account -> {
+            .flatMap(account -> {
                 CardCompany company = CardCompany.fromOrganizationCode(account.getOrganization());
-                CodefSyncJob job = latest.get(account.getId());
-                OffsetDateTime syncedAt = account.getLastSyncedAt() == null ? null
-                    : account.getLastSyncedAt().atZone(clock.getZone()).toOffsetDateTime();
-                if (job == null) {
-                    return new ConnectionSummaryResponse(account.getId(), company, NOT_SYNCED, 0, null, null, syncedAt);
-                }
-                Result result = toResult(job, now);
-                return new ConnectionSummaryResponse(account.getId(), company, result.status(), result.cardCount(),
-                    result.failureCode(), result.failureReason(), syncedAt);
+                // 모르는 기관 코드의 계정은 화면에 보여줄 수 없어서 목록에서 뺀다.
+                return company == null
+                    ? Stream.<ConnectionSummaryResponse>empty()
+                    : Stream.of(toSummary(account, company, latest.get(account.getId()), now));
             })
             .toList();
     }
 
+    private ConnectionSummaryResponse toSummary(CodefOrgAccount account, CardCompany company, CodefSyncJob latestJob,
+                                                LocalDateTime now) {
+        OffsetDateTime syncedAt = account.getLastSyncedAt() == null ? null
+            : account.getLastSyncedAt().atZone(clock.getZone()).toOffsetDateTime();
+        if (latestJob == null) {
+            return new ConnectionSummaryResponse(account.getId(), company, NOT_SYNCED, 0, null, null, syncedAt);
+        }
+        Result result = toResult(latestJob, company, now);
+        return new ConnectionSummaryResponse(account.getId(), company, result.status(), result.cardCount(),
+            result.failureCode(), result.failureReason(), syncedAt);
+    }
+
     private Result toResult(CodefSyncJob job, LocalDateTime now) {
-        CardCompany company = CardCompany.fromOrganizationCode(job.getOrgAccount().getOrganization());
+        return toResult(job, CardCompany.fromOrganizationCode(job.getOrgAccount().getOrganization()), now);
+    }
+
+    private Result toResult(CodefSyncJob job, CardCompany company, LocalDateTime now) {
         Long connectionId = job.getOrgAccount().getId();
         boolean timedOut = job.isTimedOut(properties.timeout(), now);
 
         if (job.isInProgress() && !timedOut) {
             return new Result(connectionId, company, IN_PROGRESS, 0, null, null);
         }
-        if (timedOut || CodefSyncJob.STATUS_FAIL.equals(job.getStatus())) {
+        if (job.hasFailed(properties.timeout(), now)) {
             SyncFailure failure = SyncFailure.of(job, timedOut);
             return new Result(connectionId, company, FAILED, 0, failure.code(), failure.reason());
         }
@@ -180,7 +189,7 @@ public class ConnectionSyncService {
     }
 
     private LocalDateTime now() {
-        return LocalDateTime.now(clock).truncatedTo(ChronoUnit.SECONDS);
+        return Times.nowSeconds(clock);
     }
 
     private record Started(String batchId, List<Long> jobIds) {
