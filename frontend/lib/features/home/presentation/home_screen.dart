@@ -102,29 +102,33 @@ class _HomeContent extends ConsumerWidget {
         const SizedBox(height: 14),
         const SectionHeader(title: '빠른 실행'),
         const SizedBox(height: 5),
-        Row(
-          children: [
-            Expanded(
-              child: _QuickAction(
-                title: '결제 전 카드 추천',
-                description:
-                    '지금 어떤 카드로 결제할지 고민되나요? 업종·브랜드를 입력하면 '
-                    '금액대별로 유리한 카드를 추천해 드려요.',
-                onTap: () => context.go(AppRoute.cardRecommendation.path),
+        // 설명이 길면 칸이 늘어나고, 두 칸은 같은 높이를 유지한다.
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _QuickAction(
+                  title: '결제 전 카드 추천',
+                  description:
+                      '지금 어떤 카드로 결제할지 고민되나요? 업종·브랜드를 입력하면 '
+                      '금액대별로 유리한 카드를 추천해 드려요.',
+                  onTap: () => context.go(AppRoute.cardRecommendation.path),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _QuickAction(
-                title: '예정지출 추가',
-                description:
-                    '평소와 다른 지출이 예정되어 있나요? '
-                    '미리 입력하면 더 정확한 소비 플랜을 추천해 드려요.',
-                // TODO: 예정지출 입력 화면 디자인이 나오면 연결한다.
-                onTap: () => _comingSoon(context, '예정지출 추가'),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _QuickAction(
+                  title: '예정지출 추가',
+                  description:
+                      '평소와 다른 지출이 예정되어 있나요? '
+                      '미리 입력하면 더 정확한 소비 플랜을 추천해 드려요.',
+                  // TODO: 예정지출 입력 화면 디자인이 나오면 연결한다.
+                  onTap: () => _comingSoon(context, '예정지출 추가'),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         if (plan != null && plan.cardPlans.isNotEmpty) ...[
           const SizedBox(height: 14),
@@ -174,7 +178,7 @@ class _NoPlanNotice extends StatelessWidget {
   }
 }
 
-/// 빠른 실행 칸 하나 (제목 + 설명, 높이 96).
+/// 빠른 실행 칸 하나 (제목 + 설명, 최소 높이 96).
 class _QuickAction extends StatelessWidget {
   const _QuickAction({
     required this.title,
@@ -200,8 +204,8 @@ class _QuickAction extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: radius,
-          child: SizedBox(
-            height: 96,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 96),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -216,13 +220,11 @@ class _QuickAction extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Expanded(
-                    child: WordWrapText(
-                      description,
-                      style: AppTextStyles.caption.copyWith(
-                        fontSize: 10,
-                        height: 1.45,
-                      ),
+                  WordWrapText(
+                    description,
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 10,
+                      height: 1.45,
                     ),
                   ),
                 ],
