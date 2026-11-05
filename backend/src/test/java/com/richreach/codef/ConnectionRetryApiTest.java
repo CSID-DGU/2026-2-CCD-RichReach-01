@@ -303,6 +303,31 @@ class ConnectionRetryApiTest {
         verify(codef, never()).update(any(), any(), any(), any());
     }
 
+    @Test
+    @DisplayName("같은 사용자의 다른 카드사 동기화가 진행 중이어도 409 CONN-007이고 CODEF를 부르지 않는다")
+    void rejectsWhileAnotherAccountSyncing() throws Exception {
+        CodefOrgAccount failed = connect(user, KB, "ERROR");
+        CodefOrgAccount other = connect(user, "0306", "ACTIVE");
+        syncJobs.save(CodefSyncJob.startCardList(other, "running", LocalDateTime.now()));
+
+        retry(failed.getId()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONN-007"));
+
+        verify(codef, never()).update(any(), any(), any(), any());
+        assertThat(statusOf(failed)).isEqualTo("ERROR");
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 동기화가 진행 중인 것은 재시도를 막지 않는다")
+    void otherUsersSyncDoesNotBlock() throws Exception {
+        CodefOrgAccount mine = connect(user, KB, "ERROR");
+        User other = newUser();
+        CodefOrgAccount theirs = connect(other, "0306", "ACTIVE");
+        syncJobs.save(CodefSyncJob.startCardList(theirs, "running", LocalDateTime.now()));
+        stubUpdateSuccess();
+
+        retry(mine.getId()).andExpect(status().isOk());
+    }
+
     // ---- 잠금 위험 ----
 
     @Test

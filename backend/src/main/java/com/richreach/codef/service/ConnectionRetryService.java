@@ -52,7 +52,7 @@ public class ConnectionRetryService {
         if (company == null || !company.supported()) {
             throw new BusinessException(ErrorCode.CARD_COMPANY_NOT_SUPPORTED);
         }
-        requireRetryable(account);
+        requireRetryable(userId, account);
 
         authenticator.update(account.getConnection().getConnectedId(), company, request.loginId(), request.password());
 
@@ -61,15 +61,17 @@ public class ConnectionRetryService {
         return new ConnectionResponse(account.getId(), company, ConnectionResponse.CONNECTED);
     }
 
-    private void requireRetryable(CodefOrgAccount account) {
-        CodefSyncJob latest = jobs.findFirstByOrgAccountIdAndApiTypeOrderByIdDesc(account.getId(),
-            CodefSyncJob.API_CARD_LIST).orElse(null);
+    private void requireRetryable(long userId, CodefOrgAccount account) {
         Duration timeout = syncProperties.timeout();
         LocalDateTime now = Times.nowSeconds(clock);
 
-        if (latest != null && latest.isInProgress() && !latest.isTimedOut(timeout, now)) {
+        // 이 카드사만이 아니라 같은 사용자의 어떤 카드사든 동기화가 진행 중이면 막는다. (같은 connectedId를 함께 쓰므로,
+        // 동기화를 시작할 때와 같은 기준이다.)
+        if (jobs.existsRunningSince(userId, now.minus(timeout))) {
             throw new BusinessException(ErrorCode.SYNC_ALREADY_RUNNING);
         }
+        CodefSyncJob latest = jobs.findFirstByOrgAccountIdAndApiTypeOrderByIdDesc(account.getId(),
+            CodefSyncJob.API_CARD_LIST).orElse(null);
         boolean syncFailed = latest != null && latest.hasFailed(timeout, now);
 
         if (account.isLocked() || (syncFailed && !latest.isRetryable())) {
