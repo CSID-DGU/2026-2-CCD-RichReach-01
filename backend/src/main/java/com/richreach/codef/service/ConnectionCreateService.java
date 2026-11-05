@@ -49,9 +49,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ConnectionCreateService {
 
-    /** CODEF 서버 쪽 일시 오류. 사용자의 입력과 상관없으므로 인증 실패가 아니라 연동 서버 오류로 알린다. */
-    private static final String CODEF_SERVER_ERROR = "CF-09999";
-
     private final UserRepository users;
     private final UserTermAgreementRepository agreements;
     private final CodefConnectionRepository connections;
@@ -81,7 +78,7 @@ public class ConnectionCreateService {
         if (!result.success()) {
             // 로그에는 카드사와 CODEF 오류 코드만 남긴다.
             log.warn("카드사 연결 실패: company={}, codefCode={}", company, result.errorCode());
-            throw failureOf(result.errorCode());
+            throw CodefFailures.authFailure(result.errorCode());
         }
 
         LocalDateTime now = LocalDateTime.now(clock).truncatedTo(ChronoUnit.SECONDS);
@@ -107,10 +104,7 @@ public class ConnectionCreateService {
                 ? codef.update(connectedId, company, request.loginId(), request.password())
                 : codef.add(connectedId, company, request.loginId(), request.password());
         } catch (BusinessException e) {
-            if (e.getErrorCode() == ErrorCode.EXTERNAL_API_ERROR) {
-                throw new BusinessException(ErrorCode.CODEF_UNAVAILABLE);
-            }
-            throw e;
+            throw CodefFailures.translate(e);
         }
     }
 
@@ -140,17 +134,6 @@ public class ConnectionCreateService {
             throw new BusinessException(ErrorCode.TERMS_NOT_AGREED);
         }
         return agreedAt;
-    }
-
-    /**
-     * CODEF 실패 코드를 사용자에게 보여줄 오류로 바꾼다. CODEF 서버 오류만 연동 서버 오류로 보고, 나머지는 인증 실패로 본다.
-     * 추가 인증(CF-03002)과 계정 잠김처럼 따로 안내해야 하는 코드는 샌드박스 응답을 확인한 뒤 나눈다.
-     */
-    private BusinessException failureOf(String codefCode) {
-        if (CODEF_SERVER_ERROR.equals(codefCode)) {
-            return new BusinessException(ErrorCode.CODEF_UNAVAILABLE);
-        }
-        return new BusinessException(ErrorCode.CARD_COMPANY_AUTH_FAILED);
     }
 
 }
