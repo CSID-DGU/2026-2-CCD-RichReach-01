@@ -117,7 +117,7 @@ class OwnedCardServiceTest {
     // ---- 저장 ----
 
     @Test
-    @DisplayName("처음 보는 카드는 활성 상태로 저장하고, 분석 대상으로는 선택하지 않으며 카드 번호를 가린다")
+    @DisplayName("처음 보는 카드는 활성 상태로 저장하고, 카드 상품에 매칭되지 않으면 선택하지 않으며 카드 번호를 가린다")
     void savesNewCards() {
         SaveResult result = save(kbAccount,
             new CollectedCard("테스트 카드A", "1234-5678-9012-3456", "check"),
@@ -352,6 +352,46 @@ class OwnedCardServiceTest {
 
         assertThat(result.matched()).isEqualTo(1);
         assertThat(find(kbAccount, "노리 체크카드").getCardProduct().getId()).isEqualTo(productId);
+    }
+
+    // ---- 기본 선택 ----
+
+    @Test
+    @DisplayName("처음 발견한 카드가 카드 상품에 매칭되면 분석 대상으로 선택되고, 매칭되지 않으면 선택되지 않는다")
+    void matchedNewCardIsSelectedByDefault() {
+        insertProduct("kb", "노리 체크카드");
+
+        save(kbAccount,
+            new CollectedCard("KB국민카드 노리 체크카드", "1111", "check"),
+            new CollectedCard("전혀 다른 카드", "2222", "check"));
+
+        assertThat(find(kbAccount, "KB국민카드 노리 체크카드").isSelected()).isTrue();
+        assertThat(find(kbAccount, "전혀 다른 카드").isSelected()).isFalse();
+    }
+
+    @Test
+    @DisplayName("나중에 매칭된 카드는 다시 동기화해도 자동으로 선택되지 않는다 (선택은 처음 발견할 때만 정한다)")
+    void laterMatchedCardStaysUnselected() {
+        save(kbAccount, new CollectedCard("노리 체크카드", "1111", "check"));
+        insertProduct("kb", "노리 체크카드");
+
+        save(kbAccount, new CollectedCard("노리 체크카드", "1111", "check"));
+
+        OwnedCard card = find(kbAccount, "노리 체크카드");
+        assertThat(card.getCardProduct()).isNotNull();
+        assertThat(card.isSelected()).isFalse();
+    }
+
+    @Test
+    @DisplayName("사용자가 선택을 해제한 카드는 다시 동기화해도 선택되지 않는다")
+    void deselectedCardStaysDeselected() {
+        insertProduct("kb", "노리 체크카드");
+        save(kbAccount, new CollectedCard("노리 체크카드", "1111", "check"));
+        jdbc.update("update user_cards set selected = false");
+
+        save(kbAccount, new CollectedCard("노리 체크카드", "1111", "check"));
+
+        assertThat(find(kbAccount, "노리 체크카드").isSelected()).isFalse();
     }
 
     // ---- 삭제 연쇄 ----

@@ -74,7 +74,10 @@ public class OwnedCard extends BaseEntity {
     @Column(name = "last_synced_at", nullable = false)
     private LocalDateTime lastSyncedAt;
 
-    /** 동기화에서 처음 발견한 카드. 분석 대상은 기본으로 선택하지 않는다. */
+    /**
+     * 동기화에서 처음 발견한 카드. 카드 상품에 매칭되어 분석할 수 있는 카드는 처음에 분석 대상으로 선택된 상태로 저장하고,
+     * 매칭되지 않은 카드는 선택할 수 없으므로 선택하지 않는다. 이후 동기화는 선택을 바꾸지 않는다.
+     */
     public static OwnedCard discovered(long userId, long orgAccountId, String organization, String cardName,
                                        String maskedNumber, String cardType, CardProduct cardProduct,
                                        LocalDateTime now) {
@@ -87,9 +90,19 @@ public class OwnedCard extends BaseEntity {
         card.cardType = cardType;
         card.cardProduct = cardProduct;
         card.active = true;
-        card.selected = false;
+        card.selected = cardProduct != null;
         card.lastSyncedAt = now;
         return card;
+    }
+
+    /** 카드 상품에 매칭되어 혜택으로 분석할 수 있는 카드인지. 매칭되지 않은 카드는 분석할 수 없다. */
+    public boolean isAnalyzable() {
+        return cardProduct != null;
+    }
+
+    /** 사용자가 고른 분석 대상 여부를 바꾼다. 분석할 수 없는 카드를 선택하는지는 호출하는 쪽에서 막는다. */
+    public void changeSelection(boolean selected) {
+        this.selected = selected;
     }
 
     /** 다시 확인된 카드를 갱신한다. 사라졌다가 돌아온 카드는 되살리고, 사용자가 고른 선택은 건드리지 않는다. */
@@ -122,7 +135,8 @@ public class OwnedCard extends BaseEntity {
         return lastFourDigits(maskedNumber) + "|" + foldForComparison(cardName);
     }
 
-    private static String lastFourDigits(String maskedNumber) {
+    /** 카드 번호의 마지막 4자리 숫자. 숫자가 4자리보다 적으면 있는 만큼, 없으면 빈 문자열이다. */
+    public static String lastFourDigits(String maskedNumber) {
         String digits = maskedNumber == null ? "" : maskedNumber.replaceAll("\\D", "");
         return digits.length() <= 4 ? digits : digits.substring(digits.length() - 4);
     }
