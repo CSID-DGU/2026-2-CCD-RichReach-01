@@ -76,27 +76,61 @@ public class CardMatcher {
         for (Map.Entry<String, List<CardProduct>> entry : byNormalizedName.entrySet()) {
             String candidate = entry.getKey();
             if (candidate.length() >= MIN_CONTAINS_LENGTH && name.length() >= MIN_CONTAINS_LENGTH
-                && (name.contains(candidate) || candidate.contains(name))) {
+                && (containsAtBoundary(name, candidate) || containsAtBoundary(candidate, name))) {
                 containing.addAll(entry.getValue());
             }
         }
         return containing.size() == 1 ? Optional.of(containing.get(0)) : Optional.empty();
     }
 
-    /** 대소문자, 공백, 특수문자를 무시하고, 카드명 앞의 카드사 이름을 뗀다. */
+    /**
+     * 대소문자, 공백, 특수문자를 무시하고, 카드명 앞의 카드사 이름을 뗀다.
+     * 단 {@code +}는 상품을 구분하는 기호라서 남긴다. ({@code 챌린지+카드}와 {@code 챌린지카드}는 다른 상품이다.)
+     */
     static String normalize(String name, CardCompany company) {
         if (name == null) {
             return "";
         }
-        String normalized = onlyLettersAndDigits(name);
-        String issuerName = onlyLettersAndDigits(company.displayName());
+        String normalized = keepLettersDigitsAndPlus(name);
+        String issuerName = keepLettersDigitsAndPlus(company.displayName());
         return normalized.startsWith(issuerName) ? normalized.substring(issuerName.length()) : normalized;
     }
 
-    private static String onlyLettersAndDigits(String text) {
+    private static String keepLettersDigitsAndPlus(String text) {
         return Normalizer.normalize(text, Normalizer.Form.NFKC)
             .toLowerCase(Locale.ROOT)
-            .replaceAll("[^\\p{L}\\p{N}]", "");
+            .replaceAll("[^\\p{L}\\p{N}+]", "");
+    }
+
+    /**
+     * {@code longer}가 {@code shorter}를 포함하는지. 단 포함된 자리의 경계가 상품 구분을 쪼개면 포함으로 보지 않는다.
+     * <ul>
+     *   <li>숫자 사이를 가르는 경우: {@code zeroedition3}은 {@code zeroedition30}에 들어 있지만 다른 상품(에디션 3과 30)이다.</li>
+     *   <li>{@code +} 바로 앞뒤에서 끊기는 경우: {@code kbpay챌린지}는 {@code kbpay챌린지+카드}의 일부가 아니다.</li>
+     * </ul>
+     * 글자 사이에서 끊기는 것({@code 노리체크}와 {@code 노리체크카드})은 허용한다. 카드명 뒤에 "카드"나 종류가 붙는 일이 흔해서다.
+     */
+    static boolean containsAtBoundary(String longer, String shorter) {
+        int from = 0;
+        while (true) {
+            int start = longer.indexOf(shorter, from);
+            if (start < 0) {
+                return false;
+            }
+            int end = start + shorter.length();
+            boolean splitsLeft = start > 0
+                && (isDigitPair(longer.charAt(start - 1), longer.charAt(start)) || longer.charAt(start - 1) == '+');
+            boolean splitsRight = end < longer.length()
+                && (isDigitPair(longer.charAt(end - 1), longer.charAt(end)) || longer.charAt(end) == '+');
+            if (!splitsLeft && !splitsRight) {
+                return true;
+            }
+            from = start + 1;
+        }
+    }
+
+    private static boolean isDigitPair(char left, char right) {
+        return Character.isDigit(left) && Character.isDigit(right);
     }
 
 }

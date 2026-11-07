@@ -115,6 +115,79 @@ class CardMatcherTest {
             .doesNotContainKey("ZERO Edition3 Plus Special");
     }
 
+    // ---- 상품을 구분하는 숫자와 기호 ----
+
+    @Test
+    @DisplayName("에디션 번호가 다르면 포함 관계여도 매칭하지 않는다 (Edition3과 Edition30은 다른 상품)")
+    void doesNotMatchWhenDigitRunIsSplit() {
+        productsOf("hyundai", product("ZERO Edition3"));
+
+        assertThat(matcher.match(CardCompany.HYUNDAI, List.of("ZERO Edition30"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("반대로 카탈로그 상품이 더 긴 번호여도 매칭하지 않는다")
+    void doesNotMatchWhenCatalogHasLongerNumber() {
+        productsOf("hyundai", product("ZERO Edition30"));
+
+        assertThat(matcher.match(CardCompany.HYUNDAI, List.of("ZERO Edition3"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("숫자 뒤에 글자가 이어지는 경우는 포함 매칭을 허용한다 (Edition3 (할인형))")
+    void allowsSuffixAfterDigits() {
+        CardProduct zero = product("ZERO Edition3");
+        productsOf("hyundai", zero);
+
+        assertThat(matcher.match(CardCompany.HYUNDAI, List.of("ZERO Edition3 할인형"))).containsValue(zero);
+    }
+
+    @Test
+    @DisplayName("+ 기호가 다르면 다른 상품이다 (챌린지+카드와 챌린지카드)")
+    void plusSignDistinguishesProducts() {
+        CardProduct plain = product("KB Pay 챌린지카드");
+        productsOf("kb", plain);
+
+        assertThat(matcher.match(CardCompany.KB, List.of("KB Pay 챌린지+카드"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("+ 기호가 같으면 매칭한다")
+    void samePlusSignMatches() {
+        CardProduct plus = product("KB Pay 챌린지+카드");
+        productsOf("kb", plus);
+
+        assertThat(matcher.match(CardCompany.KB, List.of("KB Pay 챌린지+카드"))).containsValue(plus);
+    }
+
+    @Test
+    @DisplayName("+ 바로 앞에서 끊기는 포함 관계는 매칭하지 않는다")
+    void doesNotMatchWhenPlusFollowsTheMatch() {
+        productsOf("kb", product("KB Pay 챌린지"));
+
+        assertThat(matcher.match(CardCompany.KB, List.of("KB Pay 챌린지+카드"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("정규화는 + 기호를 남긴다")
+    void normalizeKeepsPlus() {
+        assertThat(CardMatcher.normalize("KB Pay 챌린지+카드", CardCompany.KB)).isEqualTo("kbpay챌린지+카드");
+        assertThat(CardMatcher.normalize("KB국민카드 노리+체크", CardCompany.KB)).isEqualTo("노리+체크");
+    }
+
+    @Test
+    @DisplayName("경계 판단: 숫자가 쪼개지거나 + 옆에서 끊기면 포함이 아니고, 글자 사이는 포함이다")
+    void boundaryRules() {
+        assertThat(CardMatcher.containsAtBoundary("zeroedition30", "zeroedition3")).isFalse();
+        assertThat(CardMatcher.containsAtBoundary("a1zeroedition3", "zeroedition3")).isTrue();
+        assertThat(CardMatcher.containsAtBoundary("12zeroedition3", "2zeroedition3")).isFalse();
+        assertThat(CardMatcher.containsAtBoundary("노리체크카드", "노리체크")).isTrue();
+        assertThat(CardMatcher.containsAtBoundary("챌린지+카드", "챌린지")).isFalse();
+        assertThat(CardMatcher.containsAtBoundary("+챌린지카드", "챌린지카드")).isFalse();
+        // 첫 번째 위치는 숫자를 쪼개지만 두 번째 위치는 온전한 경우
+        assertThat(CardMatcher.containsAtBoundary("zeroedition30zeroedition3", "zeroedition3")).isTrue();
+    }
+
     @Test
     @DisplayName("너무 짧은 이름은 포함 관계로 매칭하지 않는다")
     void shortNamesAreNotMatchedByContainment() {
