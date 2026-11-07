@@ -193,6 +193,68 @@ class OwnedCardServiceTest {
     }
 
     @Test
+    @DisplayName("악센트만 다른 카드명(Cafe와 Café)도 같은 카드로 보고 갱신한다 (DB 유일 키가 악센트를 구분하지 않기 때문)")
+    void accentOnlyDifferenceIsTheSameCard() {
+        save(kbAccount, new CollectedCard("Cafe Card", "1111", "check"));
+
+        SaveResult result = save(kbAccount, new CollectedCard("Café Card", "1111", "check"));
+
+        assertThat(result).isEqualTo(new SaveResult(0, 1, 0, 0, 1));
+        assertThat(ownedCards.findByOrgAccountId(kbAccount.getId())).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("카드 번호의 구분자나 가려진 모양이 바뀌어도 같은 카드로 보고, 사용자가 고른 선택을 유지한다")
+    void numberFormatChangeKeepsTheSameCardAndSelection() {
+        save(kbAccount, new CollectedCard("테스트 카드A", "1234-5678-9012-3456", "check"));
+        OwnedCard first = find(kbAccount, "테스트 카드A");
+        jdbc.update("update user_cards set selected = true where id = ?", first.getId());
+
+        SaveResult result = save(kbAccount, new CollectedCard("테스트 카드A", "1234567890123456", "check"));
+
+        assertThat(result).isEqualTo(new SaveResult(0, 1, 0, 0, 1));
+        assertThat(ownedCards.findByOrgAccountId(kbAccount.getId())).hasSize(1);
+        OwnedCard second = find(kbAccount, "테스트 카드A");
+        assertThat(second.getId()).isEqualTo(first.getId());
+        assertThat(second.isActive()).isTrue();
+        assertThat(second.isSelected()).isTrue();
+    }
+
+    @Test
+    @DisplayName("부분 마스킹 번호의 앞자리 숫자는 DB에 저장되지 않는다")
+    void leadingDigitsOfPartialMaskAreNotStored() {
+        save(kbAccount, new CollectedCard("테스트 카드A", "4111-****-****-1234", "check"));
+
+        List<String> stored = jdbc.queryForList("select masked_number from user_cards", String.class);
+
+        assertThat(stored).containsExactly("****-****-****-1234");
+    }
+
+    @Test
+    @DisplayName("컬럼 길이를 넘는 카드명과 종류는 잘라서 저장하고, 동기화는 실패하지 않으며 다시 동기화해도 같은 카드다")
+    void overlongFieldsAreTruncatedNotRejected() {
+        String longName = "긴".repeat(300);
+        String longType = "종류".repeat(30);
+
+        SaveResult first = save(kbAccount, new CollectedCard(longName, "1111", longType));
+        SaveResult second = save(kbAccount, new CollectedCard(longName, "1111", longType));
+
+        assertThat(first.created()).isEqualTo(1);
+        assertThat(second).isEqualTo(new SaveResult(0, 1, 0, 0, 1));
+        OwnedCard saved = ownedCards.findByOrgAccountId(kbAccount.getId()).get(0);
+        assertThat(saved.getCardName()).hasSize(OwnedCard.CARD_NAME_MAX_LENGTH);
+        assertThat(saved.getCardType()).hasSize(OwnedCard.CARD_TYPE_MAX_LENGTH);
+    }
+
+    @Test
+    @DisplayName("글자 수는 코드 포인트로 센다 (이모지 같은 두 칸짜리 글자가 반으로 잘리지 않는다)")
+    void truncationCountsCodePoints() {
+        assertThat(OwnedCard.fit("😀".repeat(5), 3)).isEqualTo("😀".repeat(3));
+        assertThat(OwnedCard.fit("abc", 5)).isEqualTo("abc");
+        assertThat(OwnedCard.fit(null, 5)).isNull();
+    }
+
+    @Test
     @DisplayName("이번 동기화에서 보이지 않는 카드는 지우지 않고 비활성으로 표시하며, 다시 보이면 되살린다")
     void missingCardIsDeactivatedAndRestored() {
         save(kbAccount, new CollectedCard("테스트 카드A", "1111", "check"), new CollectedCard("테스트 카드B", "2222", "check"));

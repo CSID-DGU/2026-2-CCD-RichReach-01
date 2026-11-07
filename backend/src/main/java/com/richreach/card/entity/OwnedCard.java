@@ -29,6 +29,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OwnedCard extends BaseEntity {
 
+    /** user_cards.card_name, card_type 컬럼 길이(V17)와 같아야 한다. */
+    public static final int CARD_NAME_MAX_LENGTH = 200;
+    public static final int CARD_TYPE_MAX_LENGTH = 30;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -49,14 +53,14 @@ public class OwnedCard extends BaseEntity {
     @JoinColumn(name = "card_product_id")
     private CardProduct cardProduct;
 
-    @Column(name = "card_name", nullable = false, length = 200)
+    @Column(name = "card_name", nullable = false, length = CARD_NAME_MAX_LENGTH)
     private String cardName;
 
     /** 마스킹된 카드 번호. 없으면 빈 문자열 */
     @Column(name = "masked_number", nullable = false, length = 30)
     private String maskedNumber;
 
-    @Column(name = "card_type", length = 30)
+    @Column(name = "card_type", length = CARD_TYPE_MAX_LENGTH)
     private String cardType;
 
     /** 가장 최근 동기화에서 확인된 카드인지. 사라진 카드는 false로 남긴다. */
@@ -107,11 +111,35 @@ public class OwnedCard extends BaseEntity {
     }
 
     /**
-     * DB의 유일 키(utf8mb4_0900_ai_ci)는 대소문자를 구분하지 않고 같은 글자의 다른 유니코드 표현도 같게 본다.
-     * 같은 기준으로 키를 만들어야, 표기만 바뀐 같은 카드를 새 카드로 착각해 저장하다가 유일 키 위반으로 동기화가 실패하지 않는다.
+     * 같은 카드를 구분하는 키. DB의 유일 키(utf8mb4_0900_ai_ci)와 같은 기준으로 만들어야 한다. 그렇지 않으면 표기만 바뀐
+     * 같은 카드를 새 카드로 착각해 저장하다가 유일 키 위반으로 동기화가 실패하고, 기존 카드는 비활성이 되어 선택이 사라진다.
+     * <ul>
+     *   <li>카드명: 대소문자, 악센트(Café와 Cafe), 전각·반각 차이를 무시한다. (DB가 같게 보는 것들)</li>
+     *   <li>카드 번호: 구분자(하이픈, 공백)와 가려진 모양이 바뀌어도 같은 카드로 보도록 마지막 4자리 숫자만 쓴다.</li>
+     * </ul>
      */
     public static String identityKey(String maskedNumber, String cardName) {
-        return maskedNumber + "|" + Normalizer.normalize(cardName, Normalizer.Form.NFC).toLowerCase(Locale.ROOT);
+        return lastFourDigits(maskedNumber) + "|" + foldForComparison(cardName);
+    }
+
+    private static String lastFourDigits(String maskedNumber) {
+        String digits = maskedNumber == null ? "" : maskedNumber.replaceAll("\\D", "");
+        return digits.length() <= 4 ? digits : digits.substring(digits.length() - 4);
+    }
+
+    private static String foldForComparison(String text) {
+        return Normalizer.normalize(text, Normalizer.Form.NFKD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * 컬럼 길이(글자 수)를 넘는 값을 잘라서 저장이 실패하지 않게 한다. 같은 입력은 항상 같게 잘리므로 식별 키가 흔들리지 않는다.
+     * 글자 수는 MySQL처럼 유니코드 코드 포인트로 센다. null은 그대로 돌려준다.
+     */
+    public static String fit(String text, int maxLength) {
+        if (text == null || text.codePointCount(0, text.length()) <= maxLength) {
+            return text;
+        }
+        return text.substring(0, text.offsetByCodePoints(0, maxLength));
     }
 
 }

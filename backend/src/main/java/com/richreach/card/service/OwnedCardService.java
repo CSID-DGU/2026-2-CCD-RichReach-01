@@ -54,7 +54,7 @@ public class OwnedCardService {
             incoming.values().stream().map(CollectedCard::cardName).toList());
 
         Map<String, OwnedCard> existing = ownedCards.findByOrgAccountId(orgAccountId).stream()
-            .collect(Collectors.toMap(OwnedCard::identityKey, Function.identity()));
+            .collect(Collectors.toMap(OwnedCard::identityKey, Function.identity(), (first, second) -> first));
 
         List<OwnedCard> toCreate = new ArrayList<>();
         int updated = 0;
@@ -94,8 +94,11 @@ public class OwnedCardService {
             if (card == null || card.cardName() == null || card.cardName().isBlank()) {
                 continue;
             }
-            CollectedCard normalized = new CollectedCard(card.cardName().strip(),
-                CardNumberMasker.mask(card.maskedNumber()), card.cardType());
+            // 컬럼 길이를 넘는 값은 잘라서 저장이 실패하지 않게 한다. (이상한 카드 하나가 동기화 전체를 막지 않도록)
+            CollectedCard normalized = new CollectedCard(
+                OwnedCard.fit(card.cardName().strip(), OwnedCard.CARD_NAME_MAX_LENGTH),
+                CardNumberMasker.mask(card.maskedNumber()),
+                OwnedCard.fit(card.cardType(), OwnedCard.CARD_TYPE_MAX_LENGTH));
             result.put(OwnedCard.identityKey(normalized.maskedNumber(), normalized.cardName()), normalized);
         }
         return result;

@@ -21,10 +21,18 @@ class CardNumberMaskerTest {
     }
 
     @Test
-    @DisplayName("이미 가려진 값은 그대로 둔다")
-    void keepsAlreadyMasked() {
-        assertThat(CardNumberMasker.mask("1234-****-****-5678")).isEqualTo("1234-****-****-5678");
+    @DisplayName("이미 가려진 값은 그대로 두고, 앞자리가 보이는 부분 마스킹은 앞 숫자까지 가린다")
+    void masksVisibleLeadingDigitsOfPartiallyMaskedNumbers() {
+        assertThat(CardNumberMasker.mask("****-****-****-5678")).isEqualTo("****-****-****-5678");
         assertThat(CardNumberMasker.mask("****-5678")).isEqualTo("****-5678");
+        assertThat(CardNumberMasker.mask("1234-****-****-5678")).isEqualTo("****-****-****-5678");
+        assertThat(CardNumberMasker.mask("1234-56**-****-5678")).isEqualTo("****-****-****-5678");
+    }
+
+    @Test
+    @DisplayName("부분 마스킹 번호의 앞자리 숫자는 결과에 남지 않는다")
+    void leadingDigitsOfPartialMaskAreNotKept() {
+        assertThat(CardNumberMasker.mask("4111-****-****-1234")).doesNotContain("4111").endsWith("1234");
     }
 
     @Test
