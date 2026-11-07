@@ -2,6 +2,7 @@ package com.richreach.codef.client;
 
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
+import com.richreach.codef.config.CodefDebugProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -31,6 +32,7 @@ public class CodefApiClient {
     private final RestClient restClient;
     private final CodefTokenProvider tokenProvider;
     private final CodefJsonCodec codec;
+    private final CodefDebugProperties debug;
 
     /**
      * @param path 상품 경로 (예: /v1/kr/card/p/account/card-list)
@@ -54,6 +56,10 @@ public class CodefApiClient {
 
         log.info("CODEF API 호출: path={}, resultCode={}", path,
             response.json().path("result").path("code").asString(""));
+        if (debug.logShape()) {
+            // 응답 구조를 확인할 때만 켠다. 값은 남기지 않고, 필드 경로와 타입(결과 코드만 값)을 남긴다.
+            log.info("CODEF 응답 구조: path={}\n{}", path, CodefResponseShape.describe(response.json()));
+        }
         return response.json();
     }
 
