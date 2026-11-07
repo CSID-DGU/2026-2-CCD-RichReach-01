@@ -23,9 +23,9 @@ public interface CodefSyncJobRepository extends JpaRepository<CodefSyncJob, Long
         """)
     List<CodefSyncJob> findByBatchIdAndUserId(@Param("batchId") String batchId, @Param("userId") Long userId);
 
-    /** 작업을 실행할 때 필요한 카드사 계정과 연동(connectedId)을 한 번에 읽는다. */
+    /** 작업을 실행할 때 필요한 카드사 계정, 연동(connectedId), 사용자를 한 번에 읽는다. */
     @Query("""
-        select j from CodefSyncJob j join fetch j.orgAccount a join fetch a.connection
+        select j from CodefSyncJob j join fetch j.orgAccount a join fetch a.connection c join fetch c.user
         where j.id = :id
         """)
     Optional<CodefSyncJob> findWithAccountById(@Param("id") Long id);
