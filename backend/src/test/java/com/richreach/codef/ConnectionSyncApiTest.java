@@ -17,8 +17,11 @@ import com.jayway.jsonpath.JsonPath;
 import com.richreach.TestcontainersConfiguration;
 import com.richreach.auth.repository.RefreshTokenRepository;
 import com.richreach.auth.service.AuthTokenService;
+import com.richreach.card.entity.OwnedCard;
+import com.richreach.card.repository.OwnedCardRepository;
 import com.richreach.codef.client.CodefCardClient;
 import com.richreach.codef.client.CodefCardClient.CardListResult;
+import com.richreach.codef.client.CodefCardClient.CodefCard;
 import com.richreach.codef.entity.CodefConnection;
 import com.richreach.codef.entity.CodefOrgAccount;
 import com.richreach.codef.entity.CodefSyncJob;
@@ -33,9 +36,11 @@ import com.richreach.user.repository.UserRepository;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -98,6 +103,8 @@ class ConnectionSyncApiTest {
     private AuthTokenService authTokenService;
     @Autowired
     private CardSyncWorker worker;
+    @Autowired
+    private OwnedCardRepository ownedCards;
 
     private User user;
     private String accessToken;
@@ -190,8 +197,16 @@ class ConnectionSyncApiTest {
     private void stubBlocking(String organization, int count) {
         when(cards.fetchCardList(anyString(), eq(organization))).thenAnswer(invocation -> {
             release.await(10, TimeUnit.SECONDS);
-            return new CardListResult(true, count, "CF-00000");
+            return cardsOf(count);
         });
+    }
+
+    /** count장을 정상으로 읽어낸 성공 응답. 카드 번호는 전체 번호 모양이라, 저장할 때 가려지는지도 함께 확인할 수 있다. */
+    private static CardListResult cardsOf(int count) {
+        List<CodefCard> cards = IntStream.rangeClosed(1, count)
+            .mapToObj(i -> new CodefCard("테스트 동기화 카드" + i, "1111222233334%03d".formatted(i), "check"))
+            .toList();
+        return new CardListResult(true, count, "CF-00000", cards);
     }
 
     private void stubResult(String organization, CardListResult result) {
@@ -274,8 +289,8 @@ class ConnectionSyncApiTest {
     void partialSuccess() throws Exception {
         connect(KB);
         CodefOrgAccount shinhan = connect(SHINHAN);
-        stubResult(KB, new CardListResult(true, 3, "CF-00000"));
-        stubResult(SHINHAN, new CardListResult(false, 0, "CF-12345"));
+        stubResult(KB, cardsOf(3));
+        stubResult(SHINHAN, CardListResult.failure("CF-12345"));
 
         String jobId = startAndGetJobId();
         awaitStatus(jobId, "PARTIAL_SUCCESS");
@@ -294,7 +309,7 @@ class ConnectionSyncApiTest {
     @DisplayName("실패하면 FAILED와 화면용 코드·문구를 주고, CODEF 응답 코드는 내보내지 않는다")
     void failureHidesCodefCode() throws Exception {
         connect(KB);
-        stubResult(KB, new CardListResult(false, 0, "CF-12345"));
+        stubResult(KB, CardListResult.failure("CF-12345"));
 
         String jobId = startAndGetJobId();
         awaitStatus(jobId, "FAILED");
@@ -332,7 +347,7 @@ class ConnectionSyncApiTest {
     @DisplayName("가져온 카드가 없으면 성공이고 카드 수는 0이다")
     void noCardsIsSuccess() throws Exception {
         CodefOrgAccount kb = connect(KB);
-        stubResult(KB, new CardListResult(true, 0, "CF-00000"));
+        stubResult(KB, cardsOf(0));
 
         String jobId = startAndGetJobId();
         awaitStatus(jobId, "SUCCESS");
@@ -349,7 +364,7 @@ class ConnectionSyncApiTest {
     void syncsOnlySelectedAccounts() throws Exception {
         CodefOrgAccount kb = connect(KB);
         connect(SHINHAN);
-        stubResult(KB, new CardListResult(true, 1, "CF-00000"));
+        stubResult(KB, cardsOf(1));
 
         String body = startSync(accessToken, "{\"connectionIds\":[" + kb.getId() + "]}")
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
@@ -383,7 +398,7 @@ class ConnectionSyncApiTest {
     @DisplayName("없는 jobId나 다른 사용자의 jobId는 404 CONN-006이다")
     void unknownOrForeignJobIsNotFound() throws Exception {
         connect(KB);
-        stubResult(KB, new CardListResult(true, 1, "CF-00000"));
+        stubResult(KB, cardsOf(1));
         String jobId = startAndGetJobId();
         awaitStatus(jobId, "SUCCESS");
         User other = newUser();
@@ -401,7 +416,7 @@ class ConnectionSyncApiTest {
     void staleJobIsReportedAsTimedOutAndDoesNotBlock() throws Exception {
         CodefOrgAccount kb = connect(KB);
         syncJobs.save(CodefSyncJob.startCardList(kb, "stale-batch", LocalDateTime.now().minusMinutes(30)));
-        stubResult(KB, new CardListResult(true, 1, "CF-00000"));
+        stubResult(KB, cardsOf(1));
 
         syncStatus(accessToken, "stale-batch")
             .andExpect(jsonPath("$.data.status").value("FAILED"))
@@ -416,7 +431,7 @@ class ConnectionSyncApiTest {
         CodefOrgAccount kb = connect(KB);
         CodefSyncJob stale = syncJobs.save(
             CodefSyncJob.startCardList(kb, "late-batch", LocalDateTime.now().minusMinutes(30)));
-        stubResult(KB, new CardListResult(true, 7, "CF-00000"));
+        stubResult(KB, cardsOf(7));
 
         worker.run(stale.getId());
 
@@ -427,6 +442,99 @@ class ConnectionSyncApiTest {
         syncStatus(accessToken, "late-batch")
             .andExpect(jsonPath("$.data.status").value("FAILED"))
             .andExpect(jsonPath("$.data.results[0].failureCode").value("SYNC_TIMEOUT"));
+    }
+
+    // ---- 보유카드 저장 ----
+
+    @Test
+    @DisplayName("동기화에 성공하면 가져온 카드를 보유카드로 저장하고, 카드 번호는 마지막 4자리만 남긴다")
+    void savesFetchedCardsAsOwnedCards() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, cardsOf(2));
+
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        List<OwnedCard> saved = ownedCards.findByOrgAccountId(kb.getId());
+        assertThat(saved).extracting(OwnedCard::getCardName)
+            .containsExactlyInAnyOrder("테스트 동기화 카드1", "테스트 동기화 카드2");
+        assertThat(saved).extracting(OwnedCard::getMaskedNumber)
+            .containsExactlyInAnyOrder("************4001", "************4002");
+        assertThat(saved).allSatisfy(card -> {
+            assertThat(card.getUserId()).isEqualTo(user.getId());
+            assertThat(card.getOrganization()).isEqualTo(KB);
+            assertThat(card.isActive()).isTrue();
+            assertThat(card.isSelected()).isFalse();
+        });
+    }
+
+    @Test
+    @DisplayName("다시 동기화할 때 보이지 않는 카드는 지우지 않고 비활성으로 표시한다")
+    void resyncDeactivatesMissingCards() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, cardsOf(2));
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        stubResult(KB, cardsOf(1));
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        List<OwnedCard> saved = ownedCards.findByOrgAccountId(kb.getId());
+        assertThat(saved).hasSize(2);
+        assertThat(saved.stream().filter(OwnedCard::isActive)).extracting(OwnedCard::getCardName)
+            .containsExactly("테스트 동기화 카드1");
+    }
+
+    @Test
+    @DisplayName("응답의 카드 수와 읽어낸 카드 수가 다르면 저장하지 않고 동기화를 실패로 기록하며 기존 카드는 그대로다")
+    void formatMismatchFailsWithoutTouchingCards() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, cardsOf(2));
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        // 응답에는 3장이 있다고 나오는데 읽어낸 카드는 1장뿐이다. (카드 필드 이름이 예상과 다른 경우)
+        stubResult(KB, new CardListResult(true, 3, "CF-00000",
+            List.of(new CodefCard("테스트 동기화 카드1", "1111222233334001", "check"))));
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "FAILED");
+
+        syncStatus(accessToken, jobId).andExpect(jsonPath("$.data.results[0].failureCode").value("SYNC_FAILED"));
+        assertThat(ownedCards.findByOrgAccountId(kb.getId())).hasSize(2).allMatch(OwnedCard::isActive);
+    }
+
+    @Test
+    @DisplayName("카드가 0장으로 오면 기존 보유카드를 건드리지 않는다 (정말 0장인지 형식이 어긋난 것인지 구분할 수 없어서)")
+    void zeroCardsKeepsExistingCards() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, cardsOf(2));
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        stubResult(KB, cardsOf(0));
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        assertThat(ownedCards.findByOrgAccountId(kb.getId())).hasSize(2).allMatch(OwnedCard::isActive);
+    }
+
+    @Test
+    @DisplayName("동기화가 실패하면 보유카드를 건드리지 않는다")
+    void failedSyncKeepsExistingCards() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, cardsOf(2));
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        stubResult(KB, CardListResult.failure("CF-12345"));
+        awaitStatus(startAndGetJobId(), "FAILED");
+
+        assertThat(ownedCards.findByOrgAccountId(kb.getId())).hasSize(2).allMatch(OwnedCard::isActive);
+    }
+
+    @Test
+    @DisplayName("카드 목록은 로그에 남지 않는다 (카드명과 번호)")
+    void cardContentIsNotLogged(CapturedOutput output) throws Exception {
+        connect(KB);
+        stubResult(KB, cardsOf(2));
+
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        assertThat(output.getAll()).doesNotContain("테스트 동기화 카드").doesNotContain("1111222233334001");
     }
 
     // ---- 연결 목록 ----
@@ -443,8 +551,8 @@ class ConnectionSyncApiTest {
     void connectionListShowsStatus() throws Exception {
         CodefOrgAccount kb = connect(KB);
         connect(SHINHAN);
-        stubResult(KB, new CardListResult(true, 4, "CF-00000"));
-        stubResult(SHINHAN, new CardListResult(false, 0, "CF-09999"));
+        stubResult(KB, cardsOf(4));
+        stubResult(SHINHAN, CardListResult.failure("CF-09999"));
 
         listConnections()
             .andExpect(jsonPath("$.data", hasSize(2)))
@@ -484,7 +592,7 @@ class ConnectionSyncApiTest {
     @DisplayName("connectedId는 응답과 로그에 나오지 않는다")
     void connectedIdIsNeverExposed(CapturedOutput output) throws Exception {
         connect(KB);
-        stubResult(KB, new CardListResult(false, 0, "CF-12345"));
+        stubResult(KB, CardListResult.failure("CF-12345"));
 
         String jobId = startAndGetJobId();
         awaitStatus(jobId, "FAILED");

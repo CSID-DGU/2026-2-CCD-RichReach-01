@@ -70,7 +70,8 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | ONB-06 | 소비패턴·월간 예산 | `/onboarding/budget` | `budget` |
 | ONB-07A | 최초 플랜 생성 중 | `/onboarding/plan-generating` | `planGenerating` |
 | ONB-07B | 최초 플랜 생성 완료 | `/onboarding/plan-ready` | `planReady` |
-| HOME | 홈 (하단 탭, 준비 중) | `/home` | `home` |
+| HOME-01 | 홈 (하단 탭) | `/home` | `home` |
+| HOME-03 | 거래내역 (전체·카드별·카테고리, HOME-03~05) | `/home/transactions` | `transactionHistory` |
 | PLAN-01 | 월간 플랜 대시보드 (하단 탭) | `/plan` | `monthlyPlan` |
 | PLAN-02 | 카드별 플랜 상세 | `/plan/cards/:cardId` (예: `/plan/cards/SHINHAN-2471`) | `cardPlanDetail` |
 | PLAN-03 | 업종별 플랜 상세 | `/plan/categories/:category` (예: `/plan/categories/DINING`) | `categoryPlanDetail` |
@@ -80,7 +81,7 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | REPORT | 리포트 (하단 탭, 준비 중) | `/report` | `report` |
 | SETTINGS | 설정 (하단 탭, 준비 중) | `/settings` | `settings` |
 
-- 하단 탭 화면(홈·월간 플랜·카드 추천·리포트·설정)은 하단 네비게이션과 함께 열립니다. 홈·리포트·설정은 아직 디자인이 없어 "준비 중" 화면입니다.
+- 하단 탭 화면(홈·월간 플랜·카드 추천·리포트·설정)은 하단 네비게이션과 함께 열립니다. 리포트·설정은 아직 디자인이 없어 "준비 중" 화면입니다.
 - ONB-02B 카드사 계정 인증은 화면이 아니라 ONB-02A에서 띄우는 팝업이라 경로가 없습니다. 카드사를 선택하고 연결하기를 누르면 나타납니다.
 
 ## 백엔드 연동 (실제 API)

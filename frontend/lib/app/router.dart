@@ -10,6 +10,8 @@ import '../features/auth/presentation/reset_password_screen.dart';
 import '../features/auth/presentation/session_expired_screen.dart';
 import '../features/auth/presentation/signup_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
+import '../features/home/presentation/home_screen.dart';
+import '../features/home/presentation/transaction_history_screen.dart';
 import '../features/onboarding/presentation/budget_screen.dart';
 import '../features/onboarding/presentation/card_company_select_screen.dart';
 import '../features/onboarding/presentation/card_select_screen.dart';
@@ -116,7 +118,8 @@ Widget _screenFor(AppRoute route, GoRouterState state) {
     ),
     AppRoute.cardRecommendation => const CardRecommendationScreen(),
     AppRoute.recommendationHistory => const ChatHistoryScreen(),
-    AppRoute.home ||
+    AppRoute.home => const HomeScreen(),
+    AppRoute.transactionHistory => const TransactionHistoryScreen(),
     AppRoute.report ||
     AppRoute.settings => ComingSoonScreen(title: route.title),
   };
