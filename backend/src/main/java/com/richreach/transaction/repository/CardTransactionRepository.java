@@ -4,6 +4,7 @@ import com.richreach.transaction.entity.CardTransaction;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,6 +17,9 @@ public interface CardTransactionRepository extends JpaRepository<CardTransaction
     List<CardTransaction> findByUserCardId(Long userCardId);
 
     List<CardTransaction> findByUserId(Long userId);
+
+    /** id가 afterId보다 큰 거래를 id 순서로 한 묶음씩. 모든 거래를 나누어 훑을 때(재분류) 쓴다. */
+    List<CardTransaction> findByIdGreaterThanOrderById(Long afterId, Pageable pageable);
 
     /**
      * 사용자의 거래를 업종별로 모은 합계. 승인일시가 {@code from} 이상 {@code to} 미만인 거래만 모은다.

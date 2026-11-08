@@ -151,6 +151,18 @@ public class CardTransaction extends BaseEntity {
         return true;
     }
 
+    /**
+     * 자동 분류 값을 바꾼다. 분류 규칙이 바뀐 뒤 기존 거래를 다시 분류할 때 쓴다. 바뀌면 {@code true}를 돌려준다.
+     * 사용자가 고친 값과 수집 시각은 건드리지 않는다.
+     */
+    public boolean changeCategory(String category) {
+        if (Objects.equals(this.category, category)) {
+            return false;
+        }
+        this.category = category;
+        return true;
+    }
+
     /** 사용자가 업종 카테고리를 고친다. null이면 고친 값을 지우고 자동 분류 값을 쓴다. */
     public void overrideCategory(String category) {
         this.categoryOverride = category;
