@@ -37,6 +37,10 @@ public class BenefitCategoryMapper {
 
     private final BenefitCategoryMappingRepository mappings;
 
+    /** 대응표를 읽는 일과 무효로 만드는 일을 한 번에 하나씩만 하게 하는 잠금. */
+    private final Object lock = new Object();
+
+    /** 읽어 둔 대응표. 읽는 쪽은 잠그지 않고 쓰도록 volatile이고, 바꾸는 쪽은 {@link #lock} 안에서만 바꾼다. */
     private volatile Map<String, BenefitCategoryMapping> table;
 
     /**
@@ -76,19 +80,28 @@ public class BenefitCategoryMapper {
         return new MappedCategories(Collections.unmodifiableSet(categories), allMerchants);
     }
 
-    /** 대응표를 다시 읽는다. 마이그레이션으로 표를 바꾼 뒤나 테스트에서 쓴다. */
+    /**
+     * 대응표를 다시 읽는다. 마이그레이션으로 표를 바꾼 뒤나 테스트에서 쓴다.
+     * 읽는 중이면 끝날 때까지 기다린 뒤 비우므로, 이전 데이터를 읽던 작업이 늦게 끝나 낡은 표를 다시 저장하는 일이 없다.
+     */
     public void refresh() {
-        table = null;
+        synchronized (lock) {
+            table = null;
+        }
     }
 
     private Map<String, BenefitCategoryMapping> table() {
         Map<String, BenefitCategoryMapping> loaded = table;
-        if (loaded == null) {
-            loaded = mappings.findAll().stream()
-                .collect(Collectors.toUnmodifiableMap(BenefitCategoryMapping::getCategoryCode, Function.identity()));
-            table = loaded;
+        if (loaded != null) {
+            return loaded;
         }
-        return loaded;
+        synchronized (lock) {
+            if (table == null) {
+                table = mappings.findAll().stream().collect(Collectors.toUnmodifiableMap(
+                    BenefitCategoryMapping::getCategoryCode, Function.identity()));
+            }
+            return table;
+        }
     }
 
 }
