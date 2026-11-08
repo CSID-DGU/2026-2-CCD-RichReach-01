@@ -49,6 +49,11 @@ richreach:
   staging:
     load-on-startup: ${STAGING_LOAD_ON_STARTUP:false}
     csv-dir: ${STAGING_CSV_DIR:}
+  # 시연용 보유카드·거래 만들기. 평소에는 꺼 두고, 로컬 DB에서 만들 때만 켠다. (DemoSeedRunner 참고)
+  demo-seed:
+    enabled: ${DEMO_SEED_ON_STARTUP:false}
+    user-email: ${DEMO_SEED_USER_EMAIL:}
+    reset: ${DEMO_SEED_RESET:false}
 
 # DB 접속 정보(spring.datasource.*)는 프로파일별 설정(application-local.yml 등)에서 환경변수로 주입한다.
 
