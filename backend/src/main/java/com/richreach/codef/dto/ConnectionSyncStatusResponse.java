@@ -25,7 +25,7 @@ public record ConnectionSyncStatusResponse(
      * @param connectionId  카드사 연결 ID
      * @param status        IN_PROGRESS, SUCCESS, FAILED
      * @param cardCount     가져온 카드 수. 끝나지 않았거나 실패했으면 0이다.
-     * @param failureCode   실패했을 때 화면 처리용 코드(SYNC_TIMEOUT, CODEF_UNAVAILABLE, SYNC_FAILED). 아니면 null
+     * @param failureCode   실패했을 때 화면 처리용 코드(SYNC_TIMEOUT, CODEF_UNAVAILABLE, ACCOUNT_RESTRICTED, SYNC_FAILED). 아니면 null
      * @param failureReason 실패했을 때 사용자에게 그대로 보여줄 문구. 아니면 null
      */
     public record Result(

@@ -47,6 +47,8 @@ public enum ErrorCode {
     SYNC_ALREADY_RUNNING(HttpStatus.CONFLICT, "CONN-007", "이미 동기화가 진행 중입니다."),
     CONNECTION_RETRY_BLOCKED(HttpStatus.CONFLICT, "CONN-008",
         "계정이 잠길 위험이 있어 지금은 다시 연결할 수 없습니다. 카드사 홈페이지에서 계정 상태를 확인한 뒤 다시 시도해 주세요."),
+    CARD_COMPANY_ADDITIONAL_AUTH_UNSUPPORTED(HttpStatus.BAD_REQUEST, "CONN-009",
+        "추가 인증이 필요한 카드사 계정은 아직 연결할 수 없습니다."),
 
     // 카드
     CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "CARD-001", "카드를 찾을 수 없습니다."),

@@ -322,6 +322,23 @@ class ConnectionSyncApiTest {
     }
 
     @Test
+    @DisplayName("계정이 일시 제한되면(CF-12207) FAILED이고 failureCode는 ACCOUNT_RESTRICTED이며, 다시 시도하면 안 되는 실패로 남는다")
+    void restrictedAccountIsNotRetryable() throws Exception {
+        connect(KB);
+        stubResult(KB, CardListResult.failure("CF-12207"));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "FAILED");
+
+        String body = syncStatus(accessToken, jobId)
+            .andExpect(jsonPath("$.data.results[0].failureCode").value("ACCOUNT_RESTRICTED"))
+            .andExpect(jsonPath("$.data.results[0].failureReason").isNotEmpty())
+            .andReturn().getResponse().getContentAsString();
+        assertThat(body).doesNotContain("CF-12207");
+        assertThat(syncJobs.findAll()).allMatch(job -> !job.isRetryable());
+    }
+
+    @Test
     @DisplayName("CODEF에 연결하지 못하면 FAILED이고 failureCode는 CODEF_UNAVAILABLE이다")
     void codefUnavailable() throws Exception {
         connect(KB);
