@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_config.dart';
+import '../../../core/network/api_providers.dart';
+
 import '../data/card_repository.dart';
 import '../data/transaction_repository.dart';
 import '../domain/card_company.dart';
@@ -8,9 +11,11 @@ import '../domain/owned_card.dart';
 import '../domain/transaction.dart';
 import 'card_connection_providers.dart';
 
-/// 보유카드 저장소. API 연동 전까지는 가짜 구현을 쓴다.
+/// 보유카드 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
 final cardRepositoryProvider = Provider<CardRepository>(
-  (ref) => const FakeCardRepository(),
+  (ref) => ApiConfig.useFakeApi
+      ? const FakeCardRepository()
+      : ApiCardRepository(ref.watch(apiClientProvider)),
 );
 
 const _fakeNoTransactions = bool.fromEnvironment('FAKE_NO_TRANSACTIONS');
