@@ -178,6 +178,35 @@ class MonthlyPlanRepositoryTest {
     }
 
     @Test
+    @DisplayName("다른 사용자의 플랜과 프로필은 같은 월·전략이고 version·ID가 더 커도 섞이지 않는다")
+    void isolatesUsers() {
+        MonthlyPlan mine = newPlan(PlanStrategy.GREEDY, 1);
+
+        LocalDateTime now = LocalDateTime.now().withNano(0);
+        User other = users.save(new User("plan-test-other@example.com", "hash", "박리치", "01070000002", "REAL", now));
+        SpendingProfile otherProfile = profiles.save(SpendingProfile.create(other.getId(), MONTH,
+            LocalDate.of(2026, 10, 1), LocalDate.of(2026, 11, 30)));
+        MonthlyPlan othersGreedy = plans.save(MonthlyPlan.create(other.getId(), otherProfile.getId(), MONTH,
+            PlanStrategy.GREEDY, 5, 2_000_000, 50_000));
+        plans.save(MonthlyPlan.create(other.getId(), otherProfile.getId(), MONTH, PlanStrategy.HABIT, 9, 2_000_000, 0));
+
+        assertThat(plans.findFirstByUserIdAndPlanMonthAndStrategyOrderByVersionDesc(user.getId(), "2026-12",
+            PlanStrategy.GREEDY).orElseThrow().getId()).isEqualTo(mine.getId());
+        assertThat(plans.findFirstByUserIdAndPlanMonthAndStrategyOrderByVersionDesc(other.getId(), "2026-12",
+            PlanStrategy.GREEDY).orElseThrow().getId()).isEqualTo(othersGreedy.getId());
+        assertThat(plans.findFirstByUserIdAndPlanMonthAndStrategyOrderByVersionDesc(user.getId(), "2026-12",
+            PlanStrategy.HABIT)).isEmpty();
+        assertThat(plans.findByUserIdAndPlanMonth(user.getId(), "2026-12")).extracting(MonthlyPlan::getId)
+            .containsExactly(mine.getId());
+        assertThat(plans.findByUserIdAndPlanMonth(other.getId(), "2026-12")).hasSize(2)
+            .allSatisfy(plan -> assertThat(plan.getUserId()).isEqualTo(other.getId()));
+        assertThat(profiles.findFirstByUserIdAndTargetMonthOrderByIdDesc(user.getId(), "2026-12").orElseThrow()
+            .getId()).isEqualTo(profile.getId());
+        assertThat(profiles.findFirstByUserIdAndTargetMonthOrderByIdDesc(other.getId(), "2026-12").orElseThrow()
+            .getId()).isEqualTo(otherProfile.getId());
+    }
+
+    @Test
     @DisplayName("길이를 넘는 실패 원인은 잘라서 저장한다")
     void truncatesLongFailureReason() {
         MonthlyPlan plan = newPlan(PlanStrategy.CP_SAT, 1);
