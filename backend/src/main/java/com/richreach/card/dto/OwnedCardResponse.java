@@ -14,7 +14,8 @@ import java.util.Locale;
  * @param maskedNumber   카드 번호의 마지막 4자리. 번호를 알 수 없으면 빈 문자열이다.
  * @param cardType       신용/체크. 카드 상품이 있으면 상품의 종류를, 없으면 카드사가 알려준 종류를 쓴다.
  * @param analysisStatus 혜택으로 분석할 수 있는지. 카드 상품에 매칭된 카드만 분석할 수 있다.
- * @param selected       분석 대상으로 선택되어 있는지. 분석할 수 없는 카드는 선택할 수 없다.
+ * @param selected       분석 대상인지. 선택되어 있고 분석할 수 있어야 {@code true}다. 분석할 수 없는 카드는 선택할 수 없고,
+ *                       재동기화로 매칭이 풀린 카드는 저장된 선택이 남아 있어도 {@code false}로 내려간다.
  * @param imageUrl       카드 이미지. 아직 제공하지 않아 항상 {@code null}이다.
  */
 public record OwnedCardResponse(
@@ -49,7 +50,7 @@ public record OwnedCardResponse(
             OwnedCard.lastFourDigits(card.getMaskedNumber()),
             kindOf(card),
             card.isAnalyzable() ? AnalysisStatus.AVAILABLE : AnalysisStatus.UNAVAILABLE,
-            card.isSelected(),
+            card.isAnalysisTarget(),
             null);
     }
 

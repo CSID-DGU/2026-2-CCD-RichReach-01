@@ -100,6 +100,14 @@ public class OwnedCard extends BaseEntity {
         return cardProduct != null;
     }
 
+    /**
+     * 실제로 분석 대상인지. 선택되어 있고 분석할 수 있어야 한다. 재동기화로 카드 상품 매칭이 풀린 카드는 저장된 선택을
+     * 지우지 않고 남겨 두지만(다시 매칭되면 이어서 쓴다), 그동안은 분석 대상으로 보지 않는다.
+     */
+    public boolean isAnalysisTarget() {
+        return selected && isAnalyzable();
+    }
+
     /** 사용자가 고른 분석 대상 여부를 바꾼다. 분석할 수 없는 카드를 선택하는지는 호출하는 쪽에서 막는다. */
     public void changeSelection(boolean selected) {
         this.selected = selected;

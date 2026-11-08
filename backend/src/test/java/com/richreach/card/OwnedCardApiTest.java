@@ -14,6 +14,7 @@ import com.richreach.auth.service.AuthTokenService;
 import com.richreach.card.dto.CollectedCard;
 import com.richreach.card.entity.OwnedCard;
 import com.richreach.card.repository.OwnedCardRepository;
+import com.richreach.card.service.OwnedCardSelectionService;
 import com.richreach.card.service.OwnedCardService;
 import com.richreach.codef.entity.CardCompany;
 import com.richreach.codef.entity.CodefConnection;
@@ -26,6 +27,11 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,6 +74,8 @@ class OwnedCardApiTest {
     private MockMvc mockMvc;
     @Autowired
     private OwnedCardService ownedCardService;
+    @Autowired
+    private OwnedCardSelectionService selectionService;
     @Autowired
     private OwnedCardRepository ownedCards;
     @Autowired
@@ -368,6 +376,62 @@ class OwnedCardApiTest {
 
         list(accessToken).andExpect(jsonPath("$.data[0].selected").value(true))
             .andExpect(jsonPath("$.data[1].selected").value(false));
+    }
+
+    @Test
+    @DisplayName("매칭이 풀린 카드는 저장된 선택이 남아 있어도 선택되지 않은 것으로 내려가고, 그 ID를 보내면 CARD-002다")
+    void unmatchedCardIsNotReportedAsSelected() throws Exception {
+        insertProduct("에이 카드", "credit");
+        sync(user, kbAccount, new CollectedCard("에이 카드", "1111", "신용"));
+        Long id = cardNamed("에이 카드").getId();
+        assertThat(selectedInDb("에이 카드")).isTrue();
+
+        // 카드 상품이 사라져 매칭이 풀린 상황 (FK가 card_product_id를 NULL로 바꾼다)
+        jdbc.update("delete from card_products where card_id like ?", PRODUCT_PREFIX + "%");
+
+        list(accessToken)
+            .andExpect(jsonPath("$.data[0].analysisStatus").value("UNAVAILABLE"))
+            .andExpect(jsonPath("$.data[0].selected").value(false));
+        assertThat(selectedInDb("에이 카드")).isTrue(); // 저장된 선택은 지우지 않는다
+
+        select(accessToken, body(id)).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("CARD-002"));
+    }
+
+    @Test
+    @DisplayName("같은 사용자의 선택 변경이 동시에 와도 한 번에 하나씩 처리되어, 마지막 요청대로 정확히 한 장만 선택된다")
+    void concurrentSelectionsAreSerialized() throws Exception {
+        insertProduct("에이 카드", "credit");
+        insertProduct("비이 카드", "credit");
+        sync(user, kbAccount, new CollectedCard("에이 카드", "1111", "신용"), new CollectedCard("비이 카드", "2222", "신용"));
+        Long a = cardNamed("에이 카드").getId();
+        Long b = cardNamed("비이 카드").getId();
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 15; round++) {
+                // 둘 다 선택된 상태에서 시작한다. 잠그지 않으면 A만, B만 요청이 서로 다른 카드를 해제해 둘 다 꺼질 수 있다.
+                jdbc.update("update user_cards set selected = true where user_id = ?", user.getId());
+                CountDownLatch start = new CountDownLatch(1);
+                Future<?> onlyA = pool.submit(() -> {
+                    start.await();
+                    return selectionService.select(user.getId(), List.of(a));
+                });
+                Future<?> onlyB = pool.submit(() -> {
+                    start.await();
+                    return selectionService.select(user.getId(), List.of(b));
+                });
+                start.countDown();
+                onlyA.get(30, TimeUnit.SECONDS);
+                onlyB.get(30, TimeUnit.SECONDS);
+
+                Integer selected = jdbc.queryForObject(
+                    "select count(*) from user_cards where user_id = ? and selected = true", Integer.class, user.getId());
+                assertThat(selected).as("round %d", round).isEqualTo(1);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     @Test
