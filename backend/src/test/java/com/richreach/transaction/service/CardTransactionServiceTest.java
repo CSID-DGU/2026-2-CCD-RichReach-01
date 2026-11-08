@@ -265,23 +265,60 @@ class CardTransactionServiceTest {
     // ---- 업종 카테고리 ----
 
     @Test
-    @DisplayName("재동기화는 자동 분류는 갱신하지만 사용자가 고친 카테고리는 건드리지 않고, 분류가 비어 있는 입력은 기존 분류를 지우지 않는다")
+    @DisplayName("재동기화는 자동 분류를 갱신하지만 사용자가 고친 카테고리는 건드리지 않는다 (입력에 업종이 없으면 가맹점명으로 다시 분류)")
     void userCategoryOverrideSurvivesResync() {
         save(cardA, new CollectedTransaction("AP-1", AT, "테스트 상점", 10_000, 0, 0, false, "TEST_FOOD"));
         CardTransaction saved = only(cardA);
         saved.overrideCategory("TEST_TRAVEL");
         transactions.save(saved);
 
-        SaveResult reclassified = save(cardA,
+        SaveResult explicit = save(cardA,
             new CollectedTransaction("AP-1", AT, "테스트 상점", 10_000, 0, 0, false, "TEST_SHOPPING"));
-        SaveResult unclassified = save(cardA, tx("AP-1", AT, "테스트 상점", 10_000));
+        SaveResult withoutCategory = save(cardA, tx("AP-1", AT, "테스트 상점", 10_000));
 
-        assertThat(reclassified).isEqualTo(new SaveResult(0, 1, 0, 0));
-        assertThat(unclassified).isEqualTo(new SaveResult(0, 0, 1, 0));
+        assertThat(explicit).isEqualTo(new SaveResult(0, 1, 0, 0));
+        assertThat(withoutCategory).isEqualTo(new SaveResult(0, 1, 0, 0)); // 가맹점명으로 분류하면 ETC
         CardTransaction after = only(cardA);
-        assertThat(after.getCategory()).isEqualTo("TEST_SHOPPING");
+        assertThat(after.getCategory()).isEqualTo("ETC");
         assertThat(after.getCategoryOverride()).isEqualTo("TEST_TRAVEL");
         assertThat(after.effectiveCategory()).isEqualTo("TEST_TRAVEL");
+    }
+
+    @Test
+    @DisplayName("입력에 업종이 없으면 가맹점명으로 자동 분류하고, 어디에도 안 맞으면 NULL이 아니라 ETC로 저장한다")
+    void classifiesByMerchantNameWhenCategoryIsMissing() {
+        save(cardA,
+            tx("AP-1", AT, "스타벅스 강남점", 4_500),
+            tx("AP-2", AT.plusMinutes(1), "GS25 역삼점", 2_000),
+            tx("AP-3", AT.plusMinutes(2), "알 수 없는 상점", 9_000),
+            tx("AP-4", AT.plusMinutes(3), null, 1_000));
+
+        assertThat(transactions.findByUserCardId(cardA)).extracting(CardTransaction::getCategory)
+            .containsExactlyInAnyOrder("CAFE", "CONVENIENCE_STORE", "ETC", "ETC");
+    }
+
+    @Test
+    @DisplayName("입력에 업종이 있으면 가맹점명으로 분류하지 않고 그 값을 쓴다")
+    void explicitCategoryWinsOverClassification() {
+        save(cardA, new CollectedTransaction("AP-1", AT, "스타벅스 강남점", 4_500, 0, 0, false, "TEST_EXPLICIT"));
+
+        assertThat(only(cardA).getCategory()).isEqualTo("TEST_EXPLICIT");
+    }
+
+    @Test
+    @DisplayName("재동기화에서 같은 거래를 다시 분류해도 바뀐 것이 없으면 갱신하지 않고, 사용자가 고친 카테고리는 그대로다")
+    void resyncKeepsClassificationStableAndOverride() {
+        save(cardA, tx("AP-1", AT, "스타벅스 강남점", 4_500));
+        CardTransaction saved = only(cardA);
+        saved.overrideCategory("DINING");
+        transactions.save(saved);
+
+        SaveResult again = save(cardA, tx("AP-1", AT, "스타벅스 강남점", 4_500));
+
+        assertThat(again).isEqualTo(new SaveResult(0, 0, 1, 0));
+        CardTransaction after = only(cardA);
+        assertThat(after.getCategory()).isEqualTo("CAFE");
+        assertThat(after.effectiveCategory()).isEqualTo("DINING");
     }
 
     // ---- 격리 ----

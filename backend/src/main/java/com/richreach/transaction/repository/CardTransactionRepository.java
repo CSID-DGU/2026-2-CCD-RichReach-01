@@ -3,6 +3,7 @@ package com.richreach.transaction.repository;
 import com.richreach.transaction.entity.CardTransaction;
 import java.util.Collection;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CardTransactionRepository extends JpaRepository<CardTransaction, Long> {
@@ -13,5 +14,8 @@ public interface CardTransactionRepository extends JpaRepository<CardTransaction
     List<CardTransaction> findByUserCardId(Long userCardId);
 
     List<CardTransaction> findByUserId(Long userId);
+
+    /** id가 afterId보다 큰 거래를 id 순서로 한 묶음씩. 모든 거래를 나누어 훑을 때(재분류) 쓴다. */
+    List<CardTransaction> findByIdGreaterThanOrderById(Long afterId, Pageable pageable);
 
 }
