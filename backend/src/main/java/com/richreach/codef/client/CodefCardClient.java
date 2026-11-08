@@ -13,9 +13,14 @@ import tools.jackson.databind.JsonNode;
  * CODEF 카드 조회 API 호출. 연결한 카드사의 보유 카드 목록을 가져와 {@link CodefCard}로 바꿔 돌려준다.
  * 카드 내용(카드명, 번호)은 이 클래스가 로그에 남기지 않는다.
  *
- * <p>카드 응답의 필드 이름은 CODEF 문서를 기준으로 한 <b>가정</b>이고, 아래 {@code FIELD_*} 상수 한 곳에만 있다.
- * 실제 응답과 다르면 {@link CardListResult#cardCount()}(응답에 있는 카드 수)와 {@code cards().size()}(읽어낸 카드 수)가
- * 어긋나서 호출하는 쪽이 저장하지 않고 실패로 처리한다. 실제 응답을 확인한 뒤 상수를 고친다.
+ * <p>카드 응답의 경로와 필드 이름은 CODEF 데모 환경의 실제 응답으로 확인했다(2026-11, 신한카드). {@code data}는 카드마다
+ * 객체 하나인 배열이고, 카드 한 장에는 {@code resCardName}, {@code resCardNo}(16자리), {@code resCardType}이 들어 있다.
+ * 그 밖의 {@code resUserNm}, {@code resSleepYN}, {@code resTrafficYN}, {@code resValidPeriod}, {@code resIssueDate},
+ * {@code resState}, {@code resImageLink}는 읽지 않는다. (대부분 빈 값이다.)
+ *
+ * <p>필드 이름은 아래 {@code FIELD_*} 상수 한 곳에만 있다. 카드사마다 응답이 다르면 {@link CardListResult#cardCount()}
+ * (응답에 있는 카드 수)와 {@code cards().size()}(읽어낸 카드 수)가 어긋나서 호출하는 쪽이 저장하지 않고 실패로 처리한다.
+ * 다른 카드사는 아직 확인하지 않았다.
  */
 @Component
 @RequiredArgsConstructor
@@ -23,7 +28,7 @@ public class CodefCardClient {
 
     static final String CARD_LIST_PATH = "/v1/kr/card/p/account/card-list";
 
-    /** 카드 한 장의 필드 이름. 실제 응답으로 확인해서 확정한다. */
+    /** 카드 한 장의 필드 이름. 데모 환경의 신한카드 응답으로 확인했다. */
     static final String FIELD_CARD_NAME = "resCardName";
     static final String FIELD_CARD_NUMBER = "resCardNo";
     static final String FIELD_CARD_TYPE = "resCardType";
@@ -97,7 +102,8 @@ public class CodefCardClient {
      * CODEF가 알려준 카드 한 장. 카드명과 번호는 개인 정보라서 {@code toString}에서 가린다.
      *
      * @param number 카드사가 준 번호. 마스킹되어 있을 수도, 아닐 수도 있다. 저장하기 전에 한 번 더 가린다.
-     * @param type   카드 종류(신용/체크 등). 없으면 빈 문자열
+     * @param type   카드사가 준 구분값. 신한카드는 {@code 본인 로컬}, {@code 본인 비자}처럼 소유자와 브랜드를 주며,
+     *               신용/체크 구분이 아니다. 없으면 빈 문자열
      */
     public record CodefCard(String name, String number, String type) {
 

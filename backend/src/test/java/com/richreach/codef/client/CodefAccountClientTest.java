@@ -94,6 +94,39 @@ class CodefAccountClientTest {
     }
 
     @Test
+    @DisplayName("데모 환경의 실제 성공 응답 모양(successList, 빈 errorList, data.connectedId)을 성공으로 읽는다")
+    void parsesRealDemoSuccessShape() throws Exception {
+        AccountResult result = CodefAccountClient.parse(json("""
+            {"result":{"code":"CF-00000","extraMessage":"","message":"성공","transactionId":"test-transaction-id-001"},
+             "data":{"successList":[{"clientType":"P","code":"CF-00000","loginType":"1","countryCode":"KR",
+                                     "organization":"0306","extraMessage":"","businessType":"CD","message":"성공",
+                                     "transactionId":"test-transaction-id-002"}],
+                     "errorList":[],
+                     "connectedId":"test-connected-id"}}
+            """));
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.connectedId()).isEqualTo("test-connected-id");
+        assertThat(result.errorCode()).isNull();
+    }
+
+    @Test
+    @DisplayName("데모 환경의 실제 실패 응답 모양은 결과 코드(CF-04000)가 아니라 실패 목록의 코드(CF-04020)로 실패 처리한다")
+    void parsesRealDemoFailureShape() throws Exception {
+        AccountResult result = CodefAccountClient.parse(json("""
+            {"result":{"code":"CF-04000","extraMessage":"","message":"테스트 실패 메시지","transactionId":"test-transaction-id-001"},
+             "data":{"successList":[],
+                     "errorList":[{"clientType":"P","code":"CF-04020","loginType":"1","countryCode":"KR",
+                                   "organization":"0306","extraMessage":"","businessType":"CD",
+                                   "message":"테스트 오류 메시지","transactionId":"test-transaction-id-002"}]}}
+            """));
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.errorCode()).isEqualTo("CF-04020");
+        assertThat(result.connectedId()).isNull();
+    }
+
+    @Test
     @DisplayName("결과 코드가 성공이어도 실패 목록에 항목이 있으면 첫 오류 코드로 실패 처리한다")
     void parsesErrorListAsFailure() throws Exception {
         AccountResult result = CodefAccountClient.parse(json(
