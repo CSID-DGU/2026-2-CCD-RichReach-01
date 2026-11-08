@@ -68,6 +68,46 @@ class _SyncErrorRepository extends FakeCardConnectionRepository {
   );
 }
 
+/// 동기화 시작이 계정 일시 제한(CONN-008)으로 막히는 저장소.
+class _RetryBlockedRepository extends FakeCardConnectionRepository {
+  const _RetryBlockedRepository() : super(stepDelay: Duration.zero);
+
+  static const message =
+      '계정이 잠길 위험이 있어 지금은 다시 연결할 수 없습니다. 카드사 홈페이지에서 계정 상태를 확인한 뒤 다시 시도해 주세요.';
+
+  @override
+  Stream<ConnectionProgress> connect(
+    List<CardCompany> companies, {
+    Map<CardCompany, int> connectionIds = const {},
+  }) => Stream.error(
+    const ApiException(ApiErrorKind.server, code: 'CONN-008', message: message),
+  );
+}
+
+/// 불러온 카드사를 기록하고, 처음 불러올 때만 [failing]은 실패, [restricted]는 계정 제한으로 끝내는 저장소.
+class _RecordingRepository extends FakeCardConnectionRepository {
+  _RecordingRepository({required this.failing, required this.restricted})
+    : super(stepDelay: Duration.zero);
+
+  final Set<CardCompany> failing;
+  final Set<CardCompany> restricted;
+  final requested = <List<CardCompany>>[];
+
+  @override
+  Stream<ConnectionProgress> connect(
+    List<CardCompany> companies, {
+    Map<CardCompany, int> connectionIds = const {},
+  }) {
+    requested.add(companies);
+    final first = requested.length == 1;
+    return FakeCardConnectionRepository(
+      stepDelay: Duration.zero,
+      failingCompanies: first ? failing : const {},
+      restrictedCompanies: first ? restricted : const {},
+    ).connect(companies);
+  }
+}
+
 CardConnectionResult _success(CardCompany company) => CardConnectionResult(
   company: company,
   status: ConnectionStatus.success,
@@ -237,6 +277,80 @@ void main() {
     final results = container.read(cardConnectionResultsProvider);
     expect(results, hasLength(3));
     expect(results.map((r) => r.failureReason).toSet(), {'이미 동기화가 진행 중입니다.'});
+  });
+
+  group('카드사 계정 일시 제한', () {
+    test('가짜 인증은 정해 둔 비밀번호로 CONN-008, CONN-009 오류를 낸다', () async {
+      const repository = FakeCardConnectionRepository(stepDelay: Duration.zero);
+
+      for (final (password, code) in [
+        (FakeCardConnectionRepository.restrictedPassword, 'CONN-008'),
+        (FakeCardConnectionRepository.additionalAuthPassword, 'CONN-009'),
+      ]) {
+        await expectLater(
+          repository.authenticate(
+            CardCompany.kb,
+            loginId: 'user',
+            password: password,
+          ),
+          throwsA(isA<ApiException>().having((e) => e.code, 'code', code)),
+        );
+      }
+    });
+
+    testWidgets('일부 실패에서 제한된 카드사는 다시 연결 대상에서 뺀다', (tester) async {
+      final repository = _RecordingRepository(
+        failing: {CardCompany.woori},
+        restricted: {CardCompany.shinhan},
+      );
+      await pumpAppAt(tester, AppRoute.connecting, connection: repository);
+
+      expect(find.byType(ConnectPartialFailureScreen), findsOneWidget);
+      expect(findText(CardConnectionResult.restrictedReason), findsOneWidget);
+
+      await tester.tap(findText('실패한 카드 다시 연결하기'));
+      await tester.pumpAndSettle();
+
+      expect(repository.requested.last, [CardCompany.woori]);
+    });
+
+    testWidgets('실패한 카드사가 모두 제한됐으면 다시 연결하기를 막는다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.connecting,
+        connection: const FakeCardConnectionRepository(
+          stepDelay: Duration.zero,
+          restrictedCompanies: {CardCompany.woori, CardCompany.shinhan},
+        ),
+      );
+
+      expect(find.byType(ConnectPartialFailureScreen), findsOneWidget);
+      final retry = tester.widget<AppButton>(
+        find.widgetWithText(AppButton, '실패한 카드 다시 연결하기'),
+      );
+      expect(retry.onPressed, isNull);
+    });
+
+    testWidgets('동기화 시작이 CONN-008로 막히면 전체 실패에서 사유를 보여주고 다시 연결하기를 막는다', (
+      tester,
+    ) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.connecting,
+        connection: const _RetryBlockedRepository(),
+      );
+
+      expect(find.byType(ConnectFailureScreen), findsOneWidget);
+      expect(findText(_RetryBlockedRepository.message), findsOneWidget);
+      final retry = tester.widget<AppButton>(
+        find.widgetWithText(AppButton, '다시 연결하기'),
+      );
+      expect(retry.onPressed, isNull);
+      final reselect = tester.widget<AppButton>(
+        find.widgetWithText(AppButton, '연결할 카드사 다시 선택'),
+      );
+      expect(reselect.onPressed, isNotNull);
+    });
   });
 
   testWidgets('모두 실패하면 전체 실패 화면에서 확인할 항목을 보여준다', (tester) async {

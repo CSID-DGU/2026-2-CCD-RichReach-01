@@ -15,6 +15,7 @@ import 'connection_widgets.dart';
 /// ONB-03C 일부 연결 실패 화면.
 ///
 /// "실패한 카드 다시 연결하기"는 실패한 카드사의 카드 정보만 다시 불러온다 (인증은 다시 하지 않는다).
+/// 카드사 계정이 일시 제한된 카드사는 다시 불러오지 않는다.
 class ConnectPartialFailureScreen extends ConsumerWidget {
   const ConnectPartialFailureScreen({super.key});
 
@@ -23,7 +24,10 @@ class ConnectPartialFailureScreen extends ConsumerWidget {
     WidgetRef ref,
     List<CardConnectionResult> failed,
   ) {
-    final companies = [for (final r in failed) r.company];
+    final companies = [
+      for (final r in failed)
+        if (r.canRetry) r.company,
+    ];
     ref.read(connectingCompaniesProvider.notifier).set(companies);
     context.pushReplacement(AppRoute.connecting.path);
   }
@@ -35,6 +39,7 @@ class ConnectPartialFailureScreen extends ConsumerWidget {
 
     final succeeded = results.where((r) => r.isSuccess).toList();
     final failed = results.where((r) => !r.isSuccess).toList();
+    final canRetry = failed.any((r) => r.canRetry);
 
     return OnboardingScaffold(
       header: const StepHeader(step: 2, showBack: false),
@@ -75,9 +80,7 @@ class ConnectPartialFailureScreen extends ConsumerWidget {
           AppButton(
             label: '실패한 카드 다시 연결하기',
             variant: AppButtonVariant.primary,
-            onPressed: failed.isEmpty
-                ? null
-                : () => _retry(context, ref, failed),
+            onPressed: canRetry ? () => _retry(context, ref, failed) : null,
           ),
           const SizedBox(height: 4),
           AppButton(

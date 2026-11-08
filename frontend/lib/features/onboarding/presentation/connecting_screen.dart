@@ -13,6 +13,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/step_header.dart';
 import '../application/card_connection_providers.dart';
+import '../data/card_connection_repository.dart';
 import '../domain/card_company.dart';
 import '../domain/card_connection.dart';
 import 'connection_widgets.dart';
@@ -59,6 +60,7 @@ class _ConnectingScreenState extends ConsumerState<ConnectingScreen> {
   late final List<CardCompany> _companies;
 
   /// 동기화를 시작하거나 상태를 조회하지 못하면 이번 카드사를 모두 실패로 보고 결과 화면으로 간다.
+  /// 고른 카드사가 모두 계정 일시 제한 중이라 시작하지 못했으면 다시 연결할 수 없게 한다.
   void _onError(Object error) {
     final reason = error is ApiException
         ? error.userMessage
@@ -67,16 +69,20 @@ class _ConnectingScreenState extends ConsumerState<ConnectingScreen> {
     if (error is ApiException && error.kind == ApiErrorKind.unauthorized) {
       return;
     }
+    final restricted =
+        error is ApiException && error.code == connectionRetryBlockedCode;
     _onProgress(
       ConnectionProgress(
         completedSteps: ConnectionStep.values.length,
         results: [
           for (final company in _companies)
-            CardConnectionResult(
-              company: company,
-              status: ConnectionStatus.failed,
-              failureReason: reason,
-            ),
+            restricted
+                ? CardConnectionResult.restricted(company, reason: reason)
+                : CardConnectionResult(
+                    company: company,
+                    status: ConnectionStatus.failed,
+                    failureReason: reason,
+                  ),
         ],
       ),
     );

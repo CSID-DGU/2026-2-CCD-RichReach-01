@@ -8,6 +8,9 @@ import '../domain/card_company.dart';
 import '../domain/card_connection.dart';
 
 const _fakeFailCompanies = String.fromEnvironment('FAKE_FAIL_COMPANIES');
+const _fakeRestrictedCompanies = String.fromEnvironment(
+  'FAKE_RESTRICTED_COMPANIES',
+);
 
 /// 카드 연결 저장소. `USE_FAKE_API=false`면 카드사 인증은 백엔드 API를 쓴다.
 final cardConnectionRepositoryProvider = Provider<CardConnectionRepository>((
@@ -19,6 +22,9 @@ final cardConnectionRepositoryProvider = Provider<CardConnectionRepository>((
   return FakeCardConnectionRepository(
     failingCompanies: FakeCardConnectionRepository.parseFailingCompanies(
       _fakeFailCompanies,
+    ),
+    restrictedCompanies: FakeCardConnectionRepository.parseFailingCompanies(
+      _fakeRestrictedCompanies,
     ),
   );
 });
