@@ -50,6 +50,7 @@ public enum ErrorCode {
 
     // 카드
     CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "CARD-001", "카드를 찾을 수 없습니다."),
+    CARD_NOT_ANALYZABLE(HttpStatus.BAD_REQUEST, "CARD-002", "분석할 수 없는 카드는 선택할 수 없습니다."),
 
     // 거래
     TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "TRANS-001", "거래를 찾을 수 없습니다."),
