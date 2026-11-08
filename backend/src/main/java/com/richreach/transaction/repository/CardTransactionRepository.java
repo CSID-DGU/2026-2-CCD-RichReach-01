@@ -4,12 +4,18 @@ import com.richreach.transaction.entity.CardTransaction;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface CardTransactionRepository extends JpaRepository<CardTransaction, Long> {
+public interface CardTransactionRepository extends JpaRepository<CardTransaction, Long>,
+    JpaSpecificationExecutor<CardTransaction> {
+
+    /** 사용자의 거래 한 건. 다른 사용자의 거래이거나 없으면 비어 있다. */
+    Optional<CardTransaction> findByIdAndUserId(Long id, Long userId);
 
     /** 보유카드 한 장의 거래 중 주어진 키에 해당하는 것. 재동기화 때 이미 저장된 거래를 찾는 데 쓴다. */
     List<CardTransaction> findByUserCardIdAndDedupeKeyIn(Long userCardId, Collection<String> dedupeKeys);
