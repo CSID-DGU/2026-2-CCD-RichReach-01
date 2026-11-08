@@ -61,6 +61,44 @@ class CardCompanyAuthenticatorTest {
     }
 
     @Test
+    @DisplayName("아이디 또는 비밀번호 오류(CF-12803)는 사용자가 고칠 수 있는 입력 오류라서 CONN-003이다")
+    void wrongLoginIsAuthFailure() {
+        when(codef.update(CONNECTED, CardCompany.KB, ID, PW)).thenReturn(new AccountResult(false, null, "CF-12803"));
+
+        assertError(() -> authenticator.update(CONNECTED, CardCompany.KB, ID, PW), ErrorCode.CARD_COMPANY_AUTH_FAILED);
+    }
+
+    @Test
+    @DisplayName("비밀번호 복호화 실패(CF-04020)는 사용자의 입력이 아니라 우리 설정 문제라서 CONN-005다")
+    void passwordDecryptErrorIsServiceError() {
+        when(codef.create(CardCompany.KB, ID, PW)).thenReturn(new AccountResult(false, null, "CF-04020"));
+
+        assertError(() -> authenticator.create(CardCompany.KB, ID, PW), ErrorCode.CODEF_UNAVAILABLE);
+    }
+
+    @Test
+    @DisplayName("반복 로그인으로 계정이 일시 제한되면(CF-12207) 다시 시도하지 않도록 CONN-008로 막는다 (세 가지 호출 모두)")
+    void restrictedAccountIsBlocked() {
+        AccountResult restricted = new AccountResult(false, null, "CF-12207");
+        when(codef.create(CardCompany.KB, ID, PW)).thenReturn(restricted);
+        when(codef.add(CONNECTED, CardCompany.KB, ID, PW)).thenReturn(restricted);
+        when(codef.update(CONNECTED, CardCompany.KB, ID, PW)).thenReturn(restricted);
+
+        assertError(() -> authenticator.create(CardCompany.KB, ID, PW), ErrorCode.CONNECTION_RETRY_BLOCKED);
+        assertError(() -> authenticator.add(CONNECTED, CardCompany.KB, ID, PW), ErrorCode.CONNECTION_RETRY_BLOCKED);
+        assertError(() -> authenticator.update(CONNECTED, CardCompany.KB, ID, PW), ErrorCode.CONNECTION_RETRY_BLOCKED);
+    }
+
+    @Test
+    @DisplayName("추가 인증이 필요한 계정(CF-04034)은 아직 지원하지 않아서 CONN-009다")
+    void additionalAuthIsUnsupported() {
+        when(codef.create(CardCompany.KB, ID, PW)).thenReturn(new AccountResult(false, null, "CF-04034"));
+
+        assertError(() -> authenticator.create(CardCompany.KB, ID, PW),
+            ErrorCode.CARD_COMPANY_ADDITIONAL_AUTH_UNSUPPORTED);
+    }
+
+    @Test
     @DisplayName("CODEF 서버 오류 코드(CF-09999)는 CONN-005다")
     void serverErrorCode() {
         when(codef.update(CONNECTED, CardCompany.KB, ID, PW)).thenReturn(new AccountResult(false, null, "CF-09999"));

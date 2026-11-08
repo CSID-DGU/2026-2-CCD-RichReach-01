@@ -43,6 +43,8 @@ services:
       CODEF_CLIENT_ID: ${CODEF_CLIENT_ID:-}
       CODEF_CLIENT_SECRET: ${CODEF_CLIENT_SECRET:-}
       CODEF_PUBLIC_KEY: ${CODEF_PUBLIC_KEY:-}
+      # 응답 구조 진단 로그. 응답 구조를 확인할 때만 .env에서 true로 켠다. (값은 남기지 않고 결과 코드만 남긴다.)
+      CODEF_DEBUG_LOGSHAPE: ${CODEF_DEBUG_LOGSHAPE:-false}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:

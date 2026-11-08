@@ -15,7 +15,11 @@ import tools.jackson.databind.JsonNode;
  * <p>카드사 비밀번호는 CODEF 공개키로 암호화해서 보내고, 아이디와 비밀번호는 어디에도 저장하거나 로그에 남기지 않는다.
  * ({@link CodefApiClient}도 요청 본문은 로그에 남기지 않는다.)
  *
- * <p>요청·응답 필드는 CODEF 문서를 기준으로 한 것이다. 실제 응답(특히 실패 코드)은 샌드박스로 확인해서 보완한다.
+ * <p>계정 등록(create)은 CODEF 데모 환경의 실제 응답으로 확인했다(2026-11, 신한카드). 성공이면 {@code result.code}가
+ * {@code CF-00000}이고 {@code data.connectedId}에 연동 ID가, {@code data.successList}에 카드사별 결과가 들어 있다.
+ * 실패하면 {@code result.code}는 {@code CF-04000}(계정 등록 실패)으로 오고, 구체적인 이유는
+ * {@code data.errorList[].code}에 있다. (예: {@code CF-04020}은 비밀번호 복호화 실패, 공개키 설정 문제)
+ * 그 밖의 실패 코드(잘못된 비밀번호, 계정 잠김, 추가 인증)는 아직 확인하지 못했다.
  */
 @Component
 @RequiredArgsConstructor

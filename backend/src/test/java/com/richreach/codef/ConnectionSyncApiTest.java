@@ -322,6 +322,75 @@ class ConnectionSyncApiTest {
     }
 
     @Test
+    @DisplayName("계정이 일시 제한되면(CF-12207) FAILED이고 failureCode는 ACCOUNT_RESTRICTED이며, 다시 시도하면 안 되는 실패로 남는다")
+    void restrictedAccountIsNotRetryable() throws Exception {
+        connect(KB);
+        stubResult(KB, CardListResult.failure("CF-12207"));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "FAILED");
+
+        String body = syncStatus(accessToken, jobId)
+            .andExpect(jsonPath("$.data.results[0].failureCode").value("ACCOUNT_RESTRICTED"))
+            .andExpect(jsonPath("$.data.results[0].failureReason").isNotEmpty())
+            .andReturn().getResponse().getContentAsString();
+        assertThat(body).doesNotContain("CF-12207");
+        assertThat(syncJobs.findAll()).allMatch(job -> !job.isRetryable());
+    }
+
+    /** 가장 최근 카드 목록 수집이 finishedAt에 계정 일시 제한(CF-12207)으로 실패한 상태로 만든다. */
+    private void restrictedAt(CodefOrgAccount account, LocalDateTime finishedAt) {
+        CodefSyncJob job = CodefSyncJob.startCardList(account, "old-batch", finishedAt.minusMinutes(1));
+        job.markFailed("CF-12207", false, finishedAt);
+        syncJobs.save(job);
+    }
+
+    @Test
+    @DisplayName("계정이 일시 제한된 카드사만 있으면 제한 시간 동안 동기화를 시작하지 않고 409 CONN-008이다")
+    void blocksSyncWhileAllAccountsAreRestricted() throws Exception {
+        restrictedAt(connect(KB), LocalDateTime.now().minusMinutes(5));
+
+        startSync(accessToken, null).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONN-008"));
+
+        verify(cards, never()).fetchCardList(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("제한 시간(1시간)이 지나면 같은 카드사도 다시 동기화할 수 있다")
+    void allowsSyncAfterRestrictionWindow() throws Exception {
+        restrictedAt(connect(KB), LocalDateTime.now().minusHours(2));
+        stubResult(KB, cardsOf(1));
+
+        String jobId = startAndGetJobId();
+
+        awaitStatus(jobId, "SUCCESS");
+    }
+
+    @Test
+    @DisplayName("일부 카드사만 제한 중이면 그 카드사는 건너뛰고 나머지만 동기화한다")
+    void skipsRestrictedAccountAndSyncsTheRest() throws Exception {
+        connect(KB);
+        restrictedAt(connect(SHINHAN), LocalDateTime.now().minusMinutes(5));
+        stubResult(KB, cardsOf(1));
+
+        String jobId = startAndGetJobId();
+
+        awaitStatus(jobId, "SUCCESS");
+        syncStatus(accessToken, jobId).andExpect(jsonPath("$.data.results.length()").value(1));
+        verify(cards, never()).fetchCardList(anyString(), eq(SHINHAN));
+    }
+
+    @Test
+    @DisplayName("제한 중인 카드사를 직접 지정해도 시작하지 않고 409 CONN-008이다")
+    void blocksExplicitlyRequestedRestrictedAccount() throws Exception {
+        CodefOrgAccount restricted = connect(KB);
+        restrictedAt(restricted, LocalDateTime.now().minusMinutes(5));
+
+        startSync(accessToken, "{\"connectionIds\":[" + restricted.getId() + "]}")
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONN-008"));
+    }
+
+    @Test
     @DisplayName("CODEF에 연결하지 못하면 FAILED이고 failureCode는 CODEF_UNAVAILABLE이다")
     void codefUnavailable() throws Exception {
         connect(KB);

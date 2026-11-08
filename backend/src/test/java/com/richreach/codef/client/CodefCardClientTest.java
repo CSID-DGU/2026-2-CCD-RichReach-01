@@ -57,6 +57,28 @@ class CodefCardClientTest {
     }
 
     @Test
+    @DisplayName("데모 환경의 실제 응답 모양(안 읽는 빈 필드 포함, 종류는 '본인 로컬' 같은 구분값)을 그대로 읽는다")
+    void readsRealDemoResponseShape() throws Exception {
+        CardListResult result = parse("""
+            {"result":{"code":"CF-00000","extraMessage":"","message":"성공","transactionId":"test-transaction-id-001"},
+             "data":[
+              {"resCardName":"테스트 카드A","resCardNo":"1234567890123456","resCardType":"본인 로컬",
+               "resUserNm":"","resSleepYN":"N","resTrafficYN":"N","resValidPeriod":"","resIssueDate":"",
+               "resState":"","resImageLink":""},
+              {"resCardName":"테스트 카드B","resCardNo":"6543210987654321","resCardType":"본인 비자",
+               "resUserNm":"","resSleepYN":"N","resTrafficYN":"Y","resValidPeriod":"","resIssueDate":"",
+               "resState":"","resImageLink":""}],
+             "connectedId":"test-connected-id"}
+            """);
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.cardCount()).isEqualTo(2);
+        assertThat(result.cards()).containsExactly(
+            new CodefCard("테스트 카드A", "1234567890123456", "본인 로컬"),
+            new CodefCard("테스트 카드B", "6543210987654321", "본인 비자"));
+    }
+
+    @Test
     @DisplayName("data가 비어 있지 않은 객체면 카드 한 장으로 읽는다")
     void readsSingleObjectAsOneCard() throws Exception {
         CardListResult result = parse(

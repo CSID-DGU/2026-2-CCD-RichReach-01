@@ -118,6 +118,15 @@ public class CodefSyncJob {
         this.finishedAt = finishedAt;
     }
 
+    /**
+     * 이 작업의 실패 때문에 지금은 다시 시도하면 안 되는지. 다시 시도하면 안 되는 실패({@code retryable=false})는 끝난 뒤
+     * {@code window} 동안만 막는다. 계정 제한처럼 시간이 지나면 풀리는 실패라서, 영구히 막으면 복구할 수 없다.
+     * 재연결과 새 동기화를 시작할 때가 같은 기준을 쓰도록 한 곳에 둔다.
+     */
+    public boolean blocksRetry(Duration window, LocalDateTime now) {
+        return isFailed() && !retryable && finishedAt != null && finishedAt.plus(window).isAfter(now);
+    }
+
     public boolean isInProgress() {
         return STATUS_IN_PROGRESS.equals(status);
     }

@@ -65,7 +65,7 @@ public class CardSyncWorker {
             CardListResult result = cards.fetchCardList(connectedId, account.getOrganization());
             if (!result.success()) {
                 log.warn("카드 동기화 실패: jobId={}, codefCode={}", jobId, result.code());
-                update = j -> j.markFailed(result.code(), true, now());
+                update = j -> j.markFailed(result.code(), CodefFailures.isRetryable(result.code()), now());
             } else if (result.cards().size() != result.cardCount()) {
                 // 카드 이름이나 개수를 보면 안 되므로 숫자만 남긴다.
                 log.warn("카드 응답 형식이 예상과 다릅니다: jobId={}, 응답={}장, 읽은 카드={}장", jobId, result.cardCount(),

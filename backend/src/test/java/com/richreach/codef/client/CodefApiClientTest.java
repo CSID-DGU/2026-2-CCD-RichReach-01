@@ -13,6 +13,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import com.richreach.codef.config.CodefDebugProperties;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
 import java.net.URLEncoder;
@@ -46,7 +47,8 @@ class CodefApiClientTest {
         server = MockRestServiceServer.bindTo(builder).build();
         tokenProvider = mock(CodefTokenProvider.class);
         when(tokenProvider.getAccessToken()).thenReturn("test-token-1", "test-token-2");
-        client = new CodefApiClient(builder.build(), tokenProvider, new CodefJsonCodec(JsonMapper.builder().build()));
+        client = new CodefApiClient(builder.build(), tokenProvider, new CodefJsonCodec(JsonMapper.builder().build()),
+            new CodefDebugProperties(false));
     }
 
     @Test
