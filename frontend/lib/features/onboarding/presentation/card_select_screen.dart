@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -17,7 +18,10 @@ import '../domain/owned_card.dart';
 import 'load_failure_view.dart';
 import 'onboarding_images.dart';
 
-/// ONB-04 분석할 카드 확인 화면. 처음에는 모든 카드가 선택돼 있다.
+/// ONB-04 분석할 카드 확인 화면.
+///
+/// 처음 선택 상태는 서버가 정한 값(분석할 수 있는 카드)을 따른다. 분석할 수 없는 카드는 고를 수 없다.
+/// "분석하기"를 누르면 선택을 저장한 뒤 거래내역 화면으로 이동한다.
 class CardSelectScreen extends ConsumerStatefulWidget {
   const CardSelectScreen({super.key});
 
@@ -26,10 +30,12 @@ class CardSelectScreen extends ConsumerStatefulWidget {
 }
 
 class _CardSelectScreenState extends ConsumerState<CardSelectScreen> {
-  /// 선택한 카드 id. 카드 목록을 처음 받았을 때 전체 선택으로 채운다.
+  /// 선택한 카드 id. 카드 목록을 처음 받았을 때 서버가 정한 선택으로 채운다.
   Set<String>? _selectedIds;
+  bool _saving = false;
 
   void _toggle(OwnedCard card, bool value) {
+    if (!card.analyzable) return;
     setState(
       () => value ? _selectedIds!.add(card.id) : _selectedIds!.remove(card.id),
     );
@@ -38,23 +44,55 @@ class _CardSelectScreenState extends ConsumerState<CardSelectScreen> {
   void _toggleAll(List<OwnedCard> cards, bool value) {
     setState(() {
       _selectedIds!.clear();
-      if (value) _selectedIds!.addAll(cards.map((c) => c.id));
+      if (value) {
+        _selectedIds!.addAll([
+          for (final c in cards)
+            if (c.analyzable) c.id,
+        ]);
+      }
     });
   }
 
-  void _analyze(List<OwnedCard> cards) {
-    ref.read(analysisCardsProvider.notifier).set([
-      for (final card in cards)
-        if (_selectedIds!.contains(card.id)) card,
-    ]);
-    context.push(AppRoute.transactions.path);
+  Future<void> _analyze(List<OwnedCard> cards) async {
+    setState(() => _saving = true);
+    try {
+      final saved = await ref.read(cardRepositoryProvider).saveSelection([
+        for (final card in cards)
+          if (_selectedIds!.contains(card.id)) card.id,
+      ]);
+      if (!mounted) return;
+      ref.read(analysisCardsProvider.notifier).set([
+        for (final card in saved)
+          if (card.selected) card,
+      ]);
+      context.push(AppRoute.transactions.path);
+    } on ApiException catch (e) {
+      // 로그인이 만료됐으면 앱이 세션 만료 화면으로 보낸다.
+      if (e.kind != ApiErrorKind.unauthorized) _showMessage(e.userMessage);
+    } catch (_) {
+      _showMessage('선택한 카드를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     final cardsAsync = ref.watch(ownedCardsProvider);
     final cards = cardsAsync.value;
-    if (cards != null) _selectedIds ??= {for (final c in cards) c.id};
+    if (cards != null) {
+      _selectedIds ??= {
+        for (final c in cards)
+          if (c.analyzable && c.selected) c.id,
+      };
+    }
     final count = _selectedIds?.length ?? 0;
 
     return OnboardingScaffold(
@@ -101,7 +139,10 @@ class _CardSelectScreenState extends ConsumerState<CardSelectScreen> {
       ),
       bottom: PrimaryButton(
         label: count == 0 ? '분석할 카드를 선택해 주세요' : '선택한 카드 $count장으로 분석하기',
-        onPressed: cards == null || count == 0 ? null : () => _analyze(cards),
+        loading: _saving,
+        onPressed: cards == null || count == 0 || _saving
+            ? null
+            : () => _analyze(cards),
       ),
     );
   }
@@ -122,13 +163,26 @@ class _CardList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allSelected = cards.isNotEmpty && selectedIds.length == cards.length;
+    if (cards.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: Center(
+          child: Text(
+            '불러온 카드가 없어요.\n다른 카드사를 연결해 주세요.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.description,
+          ),
+        ),
+      );
+    }
+    final analyzable = cards.where((c) => c.analyzable).length;
+    final allSelected = analyzable > 0 && selectedIds.length == analyzable;
     return Column(
       children: [
         _OutlinedTile(
           height: 58,
           radius: 15,
-          onTap: () => onToggleAll(!allSelected),
+          onTap: analyzable == 0 ? null : () => onToggleAll(!allSelected),
           child: Row(
             children: [
               AppCheckbox(checked: allSelected),
@@ -169,7 +223,9 @@ class _OutlinedTile extends StatelessWidget {
 
   final double height;
   final double radius;
-  final VoidCallback onTap;
+
+  /// null이면 누를 수 없다.
+  final VoidCallback? onTap;
   final Widget child;
 
   @override
@@ -197,6 +253,7 @@ class _OutlinedTile extends StatelessWidget {
 }
 
 /// 보유카드 한 장: 체크, 카드 이미지, 카드 이름, "신용 · 번호".
+/// 분석할 수 없는 카드는 흐리게 보이고 "분석 불가"를 붙이며, 누를 수 없다.
 class _OwnedCardTile extends StatelessWidget {
   const _OwnedCardTile({
     required this.card,
@@ -210,10 +267,15 @@ class _OwnedCardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _OutlinedTile(
+    final analyzable = card.analyzable;
+    final detail = [
+      '${card.type.label} · ${card.maskedNumber}',
+      if (!analyzable) AnalysisStatus.unavailable.label,
+    ].join(' · ');
+    final tile = _OutlinedTile(
       height: 79,
       radius: 17,
-      onTap: () => onChanged(!selected),
+      onTap: analyzable ? () => onChanged(!selected) : null,
       child: Row(
         children: [
           AppCheckbox(checked: selected),
@@ -244,16 +306,14 @@ class _OwnedCardTile extends StatelessWidget {
                   style: AppTextStyles.bodyStrong.copyWith(fontSize: 15),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  '${card.type.label} · ${card.maskedNumber}',
-                  style: AppTextStyles.caption,
-                ),
+                Text(detail, style: AppTextStyles.caption),
               ],
             ),
           ),
         ],
       ),
     );
+    return analyzable ? tile : Opacity(opacity: 0.5, child: tile);
   }
 }
 

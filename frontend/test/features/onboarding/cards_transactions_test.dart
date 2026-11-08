@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
+import 'package:frontend/core/network/api_exception.dart';
 import 'package:frontend/core/widgets/app_checkbox.dart';
+import 'package:frontend/features/onboarding/data/card_repository.dart';
+import 'package:frontend/features/onboarding/domain/owned_card.dart';
 import 'package:frontend/features/onboarding/application/onboarding_data_providers.dart';
 import 'package:frontend/features/onboarding/data/transaction_repository.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
@@ -27,6 +30,62 @@ int _checkedCount(WidgetTester tester) => tester
     .widgetList<AppCheckbox>(find.byType(AppCheckbox))
     .where((c) => c.checked)
     .length;
+
+/// 서버처럼 카드 목록을 돌려주고, 저장한 선택을 기록하는 저장소.
+class _ServerLikeCards implements CardRepository {
+  _ServerLikeCards(this.cards, {this.saveError});
+
+  final List<OwnedCard> cards;
+  final Object? saveError;
+  final saved = <List<String>>[];
+
+  @override
+  Future<List<OwnedCard>> fetchCards(List<CardCompany> companies) async =>
+      cards;
+
+  @override
+  Future<List<OwnedCard>> saveSelection(List<String> cardIds) async {
+    saved.add(cardIds);
+    if (saveError case final error?) throw error;
+    return [
+      for (final card in cards)
+        card.copyWith(selected: cardIds.contains(card.id)),
+    ];
+  }
+}
+
+/// 서버 응답 같은 카드 3장: 선택된 카드, 선택되지 않은 카드, 분석 불가 카드.
+final _serverCards = [
+  const OwnedCard(
+    id: '11',
+    name: 'KB My WE:SH',
+    company: CardCompany.kb,
+    maskedNumber: '0912',
+    type: CardType.credit,
+    analysisStatus: AnalysisStatus.available,
+    productId: 101,
+    selected: true,
+  ),
+  const OwnedCard(
+    id: '12',
+    name: '신한 Deep Dream',
+    company: CardCompany.shinhan,
+    maskedNumber: '2471',
+    type: CardType.unknown,
+    analysisStatus: AnalysisStatus.available,
+    productId: 102,
+    selected: false,
+  ),
+  const OwnedCard(
+    id: '13',
+    name: '우리 새 카드',
+    company: CardCompany.woori,
+    maskedNumber: '5555',
+    type: CardType.check,
+    analysisStatus: AnalysisStatus.unavailable,
+    selected: false,
+  ),
+];
 
 void main() {
   group('가짜 거래내역 저장소', () {
@@ -124,6 +183,80 @@ void main() {
         'KB My WE:SH',
         '우리 카드의정석',
       ]);
+    });
+
+    testWidgets('처음 선택은 서버를 따르고, 분석 불가 카드는 고를 수 없다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.cardSelect,
+        cards: _ServerLikeCards(_serverCards),
+      );
+
+      expect(findText('1장 선택'), findsOneWidget);
+      expect(findText('카드 · 2471'), findsOneWidget);
+      expect(findText('체크 · 5555 · 분석 불가'), findsOneWidget);
+
+      await tester.tap(findText('우리 새 카드'));
+      await tester.pump();
+      expect(findText('1장 선택'), findsOneWidget);
+
+      // 전체 선택은 분석할 수 있는 카드만 고른다.
+      await tester.tap(findText('전체 선택'));
+      await tester.pump();
+      expect(findText('2장 선택'), findsOneWidget);
+      expect(_checkedCount(tester), 3); // 전체 선택 + 카드 2장
+    });
+
+    testWidgets('분석하기는 선택을 서버에 저장하고, 저장된 선택으로 분석 카드를 정한다', (tester) async {
+      final cards = _ServerLikeCards(_serverCards);
+      await pumpAppAt(tester, AppRoute.cardSelect, cards: cards);
+
+      await tester.tap(findText('신한 Deep Dream'));
+      await tester.pump();
+      await tester.tap(findText('선택한 카드 2장으로 분석하기'));
+      await tester.pumpAndSettle();
+
+      expect(cards.saved.single, ['11', '12']);
+      expect(find.byType(TransactionsScreen), findsOneWidget);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(TransactionsScreen)),
+      );
+      expect(container.read(analysisCardsProvider).map((c) => c.id), [
+        '11',
+        '12',
+      ]);
+    });
+
+    testWidgets('선택을 저장하지 못하면 서버 문구를 보여주고 머문다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.cardSelect,
+        cards: _ServerLikeCards(
+          _serverCards,
+          saveError: const ApiException(
+            ApiErrorKind.server,
+            code: 'CARD-002',
+            message: '분석할 수 없는 카드는 선택할 수 없습니다.',
+          ),
+        ),
+      );
+
+      await tester.tap(findText('선택한 카드 1장으로 분석하기'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('분석할 수 없는 카드는 선택할 수 없습니다.'), findsOneWidget);
+      expect(find.byType(TransactionsScreen), findsNothing);
+    });
+
+    testWidgets('불러온 카드가 없으면 안내하고 분석하기를 막는다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.cardSelect,
+        cards: _ServerLikeCards(const []),
+      );
+
+      expect(findText('불러온 카드가 없어요.\n다른 카드사를 연결해 주세요.'), findsOneWidget);
+      expect(_bottomButton(tester).onPressed, isNull);
     });
 
     testWidgets('다른 카드사 연결하기를 누르면 카드사 선택 화면으로 이동한다', (tester) async {
