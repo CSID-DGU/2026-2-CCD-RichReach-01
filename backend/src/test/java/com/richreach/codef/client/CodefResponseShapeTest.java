@@ -114,10 +114,45 @@ class CodefResponseShapeTest {
     @Test
     @DisplayName("오류 목록에 서로 다른 code가 여러 개 있으면 모두 보여준다")
     void showsEveryDistinctCode() throws Exception {
-        String shape = shapeOf("{\"data\":{\"errorList\":[{\"code\":\"CF-1\"},{\"code\":\"CF-2\"},{\"code\":\"CF-1\"}]}}");
+        String shape = shapeOf(
+            "{\"data\":{\"errorList\":[{\"code\":\"CF-10001\"},{\"code\":\"CF-10002\"},{\"code\":\"CF-10001\"}]}}");
 
         assertThat(shape).contains("data.errorList : array[3]")
-            .contains("data.errorList[].code : string = 'CF-1', 'CF-2'");
+            .contains("data.errorList[].code : string = 'CF-10001', 'CF-10002'");
+    }
+
+    @Test
+    @DisplayName("이름이 code여도 결과 코드 형식(CF-xxxxx)이 아니면 값을 보여주지 않고 길이만 보여준다")
+    void hidesCodeFieldsThatAreNotResultCodes() throws Exception {
+        String shape = shapeOf("{\"data\":{\"code\":\"secret-value\"},\"list\":[{\"code\":\"CF-10001\"},{\"code\":\"4111-secret\"}]}");
+
+        assertThat(shape).contains("data.code : string(len=12)").contains("list[].code : string(len=8,11)");
+        assertThat(shape).doesNotContain("secret").doesNotContain("4111");
+    }
+
+    @Test
+    @DisplayName("서로 다른 결과 코드가 많으면 10개까지만 보여주고 나머지 개수를 알려준다")
+    void capsDistinctCodeValues() throws Exception {
+        StringBuilder json = new StringBuilder("{\"errorList\":[");
+        for (int i = 0; i < 13; i++) {
+            json.append(i == 0 ? "" : ",").append("{\"code\":\"CF-").append(10000 + i).append("\"}");
+        }
+        String shape = shapeOf(json.append("]}").toString());
+
+        assertThat(shape).contains("'CF-10009'").doesNotContain("'CF-10010'").contains("(+3)");
+    }
+
+    @Test
+    @DisplayName("필드가 아주 많은 응답도 출력 줄 수를 제한하고 생략했다고 표시한다")
+    void capsOutputLines() throws Exception {
+        StringBuilder json = new StringBuilder("{");
+        for (int i = 0; i < 1000; i++) {
+            json.append(i == 0 ? "" : ",").append("\"field").append(i).append("\":\"x\"");
+        }
+        String shape = shapeOf(json.append("}").toString());
+
+        assertThat(shape.lines().count()).isLessThanOrEqualTo(301);
+        assertThat(shape).contains("생략했습니다").contains("field0 : string(len=1)").doesNotContain("field999");
     }
 
     @Test
