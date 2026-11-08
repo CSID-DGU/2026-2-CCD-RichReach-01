@@ -24,7 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <ul>
  *   <li>같은 거래는 {@link TransactionKeys}의 키로 구분한다.</li>
  *   <li>취소·환불은 원거래의 취소 금액과 상태를 갱신한다. 새 거래를 만들지 않는다.</li>
- *   <li>사용자가 고친 업종 카테고리는 재동기화가 건드리지 않는다. 자동 분류가 비어 있는 입력도 이미 분류된 값을 지우지 않는다.</li>
+ *   <li>업종 카테고리는 입력에 있으면 그대로 쓰고, 없으면 가맹점명으로 자동 분류한다.
+ *       ({@link MerchantCategoryClassifier}. 어떤 규칙에도 안 걸리면 ETC) 재동기화는 자동 분류 값을 갱신하지만
+ *       사용자가 고친 카테고리는 건드리지 않는다.</li>
  *   <li>승인일시가 없거나 금액이 음수인 항목은 저장하지 않고 건수만 센다.</li>
  *   <li>컬럼 길이를 넘는 값(가맹점명 등)은 잘라서 저장한다. 거래를 버리지 않는다.</li>
  * </ul>
@@ -36,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransactionStoreService {
 
     private final CardTransactionRepository transactions;
+    private final MerchantCategoryClassifier classifier;
     private final Clock clock;
 
     /**
@@ -69,13 +72,17 @@ public class TransactionStoreService {
             }
             String approvalNo = fit(item.approvalNo(), CardTransaction.APPROVAL_NO_MAX_LENGTH);
             String merchantName = fit(item.merchantName(), CardTransaction.MERCHANT_NAME_MAX_LENGTH);
+            // 입력에 업종이 있으면 그대로 쓰고, 없으면 가맹점명으로 분류한다. (어디에도 안 맞으면 ETC)
             String category = fit(item.category(), CardTransaction.CATEGORY_MAX_LENGTH);
+            if (category.isEmpty()) {
+                category = classifier.classify(merchantName).name();
+            }
 
             String base = TransactionKeys.base(approvalNo, item.approvedAt(), item.amount(), merchantName);
             int occurrence = occurrences.merge(base, 1, Integer::sum) - 1;
             prepared.add(new Prepared(TransactionKeys.key(base, occurrence), approvalNo, item.approvedAt(),
                 merchantName, item.amount(), item.canceledAmount(), item.installmentMonths(), item.overseas(),
-                category.isEmpty() ? null : category));
+                category));
         }
         if (prepared.isEmpty()) {
             return new SaveResult(0, 0, 0, skipped);
