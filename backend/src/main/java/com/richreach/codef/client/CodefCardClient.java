@@ -21,6 +21,10 @@ import tools.jackson.databind.JsonNode;
  * <p>필드 이름은 아래 {@code FIELD_*} 상수 한 곳에만 있다. 카드사마다 응답이 다르면 {@link CardListResult#cardCount()}
  * (응답에 있는 카드 수)와 {@code cards().size()}(읽어낸 카드 수)가 어긋나서 호출하는 쪽이 저장하지 않고 실패로 처리한다.
  * 다른 카드사는 아직 확인하지 않았다.
+ *
+ * <p>이 카드 수 비교는 <b>카드명</b>이 읽히는지만 확인한다. 카드번호({@code resCardNo})나 구분값({@code resCardType})의
+ * 필드 이름이 달라 빈 문자열로 읽혀도 두 수는 같아서 감지하지 못한다. 카드사를 새로 연동할 때는 응답 구조 로그
+ * ({@code CODEF_DEBUG_LOGSHAPE})로 필드 이름을 직접 확인한다.
  */
 @Component
 @RequiredArgsConstructor

@@ -79,6 +79,57 @@ class CodefResponseShapeTest {
     }
 
     @Test
+    @DisplayName("첫 원소가 널이거나 문자열이어도 뒤에 있는 객체의 필드가 빠지지 않고, 문자열 원소도 함께 보인다")
+    void keepsObjectFieldsWhenFirstElementIsNotAnObject() throws Exception {
+        String shape = shapeOf("{\"items\":[null,\"abc\",{\"a\":\"x\"},{\"b\":1}]}");
+
+        assertThat(shape).contains("items : array[4]")
+            .contains("items[] : object")
+            .contains("items[].a : string(len=1)")
+            .contains("items[].b : number")
+            .contains("items[] : string(len=3)");
+        assertThat(shape).doesNotContain("abc");
+    }
+
+    @Test
+    @DisplayName("배열 원소마다 중첩된 객체의 필드가 달라도 모두 합쳐서 보여준다")
+    void mergesNestedObjectsAcrossElements() throws Exception {
+        String shape = shapeOf("{\"list\":[{\"inner\":{\"a\":\"x\"}},{\"inner\":{\"b\":2}}]}");
+
+        assertThat(shape).contains("list[].inner : object")
+            .contains("list[].inner.a : string(len=1)")
+            .contains("list[].inner.b : number");
+    }
+
+    @Test
+    @DisplayName("원소 안의 배열은 길이를 모두 보여주고, 모든 원소의 필드를 합쳐서 보여준다")
+    void mergesNestedArraysAcrossElements() throws Exception {
+        String shape = shapeOf("{\"a\":[{\"b\":[{\"c\":1}]},{\"b\":[{\"d\":\"x\"},{\"c\":2}]}]}");
+
+        assertThat(shape).contains("a[].b : array[1,2]")
+            .contains("a[].b[].c : number")
+            .contains("a[].b[].d : string(len=1)");
+    }
+
+    @Test
+    @DisplayName("오류 목록에 서로 다른 code가 여러 개 있으면 모두 보여준다")
+    void showsEveryDistinctCode() throws Exception {
+        String shape = shapeOf("{\"data\":{\"errorList\":[{\"code\":\"CF-1\"},{\"code\":\"CF-2\"},{\"code\":\"CF-1\"}]}}");
+
+        assertThat(shape).contains("data.errorList : array[3]")
+            .contains("data.errorList[].code : string = 'CF-1', 'CF-2'");
+    }
+
+    @Test
+    @DisplayName("원소마다 문자열 길이가 다르면 모든 길이를 보여주고 값은 보여주지 않는다")
+    void showsEveryStringLength() throws Exception {
+        String shape = shapeOf("{\"n\":[{\"s\":\"ab\"},{\"s\":\"abcd\"}]}");
+
+        assertThat(shape).contains("n[].s : string(len=2,4)");
+        assertThat(shape).doesNotContain("abcd");
+    }
+
+    @Test
     @DisplayName("문자열 배열은 값 없이 타입만 보여준다")
     void stringArraysHideValues() throws Exception {
         String shape = shapeOf("{\"tags\":[\"secret-a\",\"secret-b\"]}");
