@@ -48,6 +48,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 보유카드 목록 조회와 분석 대상 선택 API를 보안 필터와 실제 MySQL로 확인한다.
@@ -76,6 +77,8 @@ class OwnedCardApiTest {
     private OwnedCardService ownedCardService;
     @Autowired
     private OwnedCardSelectionService selectionService;
+    @Autowired
+    private TransactionTemplate transactions;
     @Autowired
     private OwnedCardRepository ownedCards;
     @Autowired
@@ -432,6 +435,23 @@ class OwnedCardApiTest {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    @Test
+    @DisplayName("동기화가 카드를 읽은 뒤 선택이 바뀌어도, 동기화 저장이 바뀐 선택을 이전 값으로 되돌리지 않는다")
+    void syncDoesNotOverwriteConcurrentSelectionChange() {
+        insertProduct("에이 카드", "credit");
+        sync(user, kbAccount, new CollectedCard("에이 카드", "1111", "신용"));
+        Long id = cardNamed("에이 카드").getId();
+        assertThat(selectedInDb("에이 카드")).isTrue();
+
+        transactions.executeWithoutResult(status -> {
+            OwnedCard card = ownedCards.findById(id).orElseThrow(); // 동기화가 읽은 시점: selected = true
+            jdbc.update("update user_cards set selected = false where id = ?", id); // 그 사이 선택 변경이 커밋된 상황
+            card.refresh("신용", card.getCardProduct(), LocalDateTime.now()); // 동기화가 저장한다
+        });
+
+        assertThat(selectedInDb("에이 카드")).isFalse();
     }
 
     @Test

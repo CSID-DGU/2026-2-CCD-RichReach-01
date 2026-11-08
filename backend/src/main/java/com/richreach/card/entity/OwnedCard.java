@@ -16,14 +16,19 @@ import java.util.Locale;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * 사용자의 보유카드. 동기화로 수집한 카드이며, 카드 상품({@link CardProduct})에 매칭되면 그 혜택으로 분석할 수 있다.
  *
  * <p>사용자와 카드사 계정은 다른 도메인이라 엔티티로 잇지 않고 ID만 가진다. 카드 번호는 마스킹된 값만 저장한다.
  * 같은 카드는 (카드사 계정, 마스킹 번호, 카드명)으로 구분해서 재동기화 때 한 행을 갱신한다.
+ *
+ * <p>{@link DynamicUpdate}로 바뀐 컬럼만 UPDATE한다. 동기화와 사용자의 선택 변경은 서로 다른 컬럼({@code selected})을
+ * 바꾸므로, 한쪽이 읽은 뒤 다른 쪽이 커밋해도 읽어 둔 이전 값으로 덮어쓰지 않는다.
  */
 @Entity
+@DynamicUpdate
 @Table(name = "user_cards")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
