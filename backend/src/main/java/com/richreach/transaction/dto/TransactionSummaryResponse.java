@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 기간별 거래 요약. 금액은 취소·환불을 뺀 실제 결제 금액(원)이다.
+ * 기간별 거래 요약. 기간은 승인일 기준이고, 금액은 취소·환불을 뺀 실제 결제 금액(원)이다.
  *
  * @param period           조회 기간 (1M, 3M, 6M)
  * @param from             기간 시작일 (포함)
@@ -14,7 +14,8 @@ import java.util.List;
  * @param partial          수집된 거래가 요청한 기간을 다 채우지 못했는지. 수집된 가장 오래된 거래가 기간 시작일보다 늦으면 true다.
  *                         (소비가 없었던 기간과 수집하지 못한 기간을 구분하지 못하므로 참고용이다.)
  * @param totalAmount      기간 합계. 취소·환불을 뺀 금액
- * @param canceledAmount   기간 안에서 취소·환불된 금액
+ * @param canceledAmount   기간 안에 승인된 거래 중 취소·환불된 금액. 취소가 일어난 날이 아니라 원거래의 승인일로 센다.
+ *                         (기간 전에 승인한 거래를 기간 안에 환불해도 여기에 들어가지 않는다.)
  * @param transactionCount 거래 수. 전액 취소된 거래는 세지 않는다.
  * @param categories       화면용 6개 업종별 소비. 거래가 없는 업종도 0으로 포함하며 항상 같은 순서다.
  */

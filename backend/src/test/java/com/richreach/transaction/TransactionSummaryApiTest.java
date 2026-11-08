@@ -24,8 +24,11 @@ import com.richreach.transaction.service.TransactionStoreService;
 import com.richreach.user.entity.User;
 import com.richreach.user.repository.UserRepository;
 import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,8 +38,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -64,6 +70,23 @@ class TransactionSummaryApiTest {
 
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
 
+    /**
+     * 테스트와 서비스가 같은 시각을 보도록 고정한 시계. 자정을 넘겨도 기간 경계와 기대 날짜가 어긋나지 않는다.
+     * 토큰 유효 시간 안에 끝나도록 테스트를 시작하는 시각으로 고정한다.
+     */
+    private static final Clock CLOCK = Clock.fixed(Instant.now(), ZoneId.systemDefault());
+
+    @TestConfiguration
+    static class FixedClockConfig {
+
+        @Bean
+        @Primary
+        Clock fixedClock() {
+            return CLOCK;
+        }
+
+    }
+
     @Autowired
     private MockMvc mockMvc;
     @Autowired
@@ -87,7 +110,7 @@ class TransactionSummaryApiTest {
     @Autowired
     private JdbcTemplate jdbc;
 
-    private final LocalDate today = LocalDate.now();
+    private final LocalDate today = LocalDate.now(CLOCK);
     private User user;
     private String accessToken;
     private long card;
@@ -217,6 +240,30 @@ class TransactionSummaryApiTest {
             .andExpect(jsonPath("$.data.categories[0].transactionCount").value(0))
             .andExpect(jsonPath("$.data.categories[2].category").value("SHOPPING"))
             .andExpect(jsonPath("$.data.categories[2].amount").value(5_000));
+    }
+
+    @Test
+    @DisplayName("승인 금액이 0원인 거래는 거래 수에 포함하고, 전액 취소된 거래만 뺀다")
+    void zeroAmountApprovalIsCounted() throws Exception {
+        LocalDateTime at = today.minusDays(3).atTime(10, 0);
+        save(user, card, at, 0, 0, "CAFE");              // 0원 승인: 센다
+        save(user, card, at, 5_000, 5_000, "CAFE");      // 전액 취소: 세지 않는다
+        save(user, card, at, 2_000, 0, "CAFE");          // 정상
+
+        summary("1M").andExpect(jsonPath("$.data.transactionCount").value(2))
+            .andExpect(jsonPath("$.data.categories[1].transactionCount").value(2))
+            .andExpect(jsonPath("$.data.totalAmount").value(2_000));
+    }
+
+    @Test
+    @DisplayName("기간 전에 승인한 거래는 기간 안에 환불해도 이 기간 합계에 들어가지 않는다 (승인일 기준)")
+    void periodIsBasedOnApprovalDate() throws Exception {
+        save(user, card, today.minusMonths(2).atTime(10, 0), 10_000, 10_000, "CAFE"); // 1M 밖에서 승인, 환불됨
+        save(today.minusDays(1).atTime(10, 0), 3_000, "CAFE");
+
+        summary("1M").andExpect(jsonPath("$.data.totalAmount").value(3_000))
+            .andExpect(jsonPath("$.data.canceledAmount").value(0))
+            .andExpect(jsonPath("$.data.transactionCount").value(1));
     }
 
     // ---- 업종 ----

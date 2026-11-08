@@ -7,7 +7,7 @@ package com.richreach.transaction.repository;
  * @param category 사용자가 고친 값 또는 자동 분류 값. 분류 전이면 null
  * @param netAmount 취소·환불을 뺀 금액
  * @param canceledAmount 취소·환불된 금액
- * @param transactionCount 취소·환불을 빼고도 금액이 남은 거래 수
+ * @param transactionCount 전액 취소된 거래를 뺀 거래 수. 승인 금액이 0원인 거래도 센다.
  */
 public record CategoryTotal(String category, Long netAmount, Long canceledAmount, Long transactionCount) {
 
