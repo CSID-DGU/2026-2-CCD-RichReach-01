@@ -39,6 +39,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * 하고, 화면은 {@code jobId}로 상태를 주기적으로 조회한다. 이번 범위는 수집을 시작하고 상태를 알려주는 것까지이며,
  * 가져온 카드를 보유카드로 저장하는 일은 하지 않는다.
  *
+ * <p>반복 로그인으로 계정이 일시 제한된 카드사는 {@code codef.sync.retry-block}(기본 1시간) 동안 건너뛰고, 요청한 카드사가
+ * 모두 제한 중이면 {@code CONN-008}이다.
+ *
  * <p>같은 사용자가 동시에 시작하면 사용자 행을 잠가 한쪽이 {@code CONN-007}을 받게 한다. 서버가 작업 도중 멈춰 진행 중으로
  * 남은 기록은 {@code codef.sync.timeout}이 지나면 멈춘 것으로 보고 실패로 알리며, 새 동기화를 막지 않는다.
  */
@@ -91,11 +94,26 @@ public class ConnectionSyncService {
             throw new BusinessException(ErrorCode.SYNC_ALREADY_RUNNING);
         }
 
+        // 계정이 일시 제한된 카드사는 제한 시간 동안 건너뛴다. 다시 요청하면 제한이 길어질 수 있어서다. 요청한 카드사가
+        // 모두 제한 중이면 시작할 것이 없으므로 막고, 일부만 제한 중이면 나머지만 동기화한다. (건너뛴 카드사의 상태는
+        // 연결 목록에서 확인한다.)
+        List<CodefOrgAccount> syncable = accounts.stream().filter(account -> !isRetryBlocked(account, now)).toList();
+        if (syncable.isEmpty()) {
+            throw new BusinessException(ErrorCode.CONNECTION_RETRY_BLOCKED);
+        }
+
         String batchId = UUID.randomUUID().toString();
-        List<Long> jobIds = jobs.saveAll(accounts.stream()
+        List<Long> jobIds = jobs.saveAll(syncable.stream()
                 .map(account -> CodefSyncJob.startCardList(account, batchId, now)).toList())
             .stream().map(CodefSyncJob::getId).toList();
         return new Started(batchId, jobIds);
+    }
+
+    /** 가장 최근 카드 목록 수집이 다시 시도하면 안 되는 이유로 실패했고, 아직 제한 시간이 지나지 않았는지. */
+    private boolean isRetryBlocked(CodefOrgAccount account, LocalDateTime now) {
+        return jobs.findFirstByOrgAccountIdAndApiTypeOrderByIdDesc(account.getId(), CodefSyncJob.API_CARD_LIST)
+            .map(job -> job.blocksRetry(properties.retryBlock(), now))
+            .orElse(false);
     }
 
     private void dispatch(long jobId) {

@@ -63,7 +63,8 @@ public class ConnectionController {
     /**
      * 연결한 카드사의 카드 데이터 동기화를 시작하고 {@code jobId}를 돌려준다. 본문 없이 호출하면 연결된 카드사
      * 전체를, {@code connectionIds}를 보내면 그 카드사만 동기화한다. 이미 진행 중이면 409({@code CONN-007}),
-     * 연결한 카드사가 없으면 404({@code CONN-001})이다.
+     * 연결한 카드사가 없으면 404({@code CONN-001})이다. 반복 로그인으로 계정이 일시 제한된 카드사는 제한 시간 동안
+     * 건너뛰고, 요청한 카드사가 모두 제한 중이면 409({@code CONN-008})이다.
      */
     @PostMapping("/sync")
     public ApiResponse<ConnectionSyncStartResponse> startSync(@AuthenticationPrincipal AuthenticatedUser user,

@@ -128,11 +128,16 @@ class ConnectionRetryApiTest {
         return orgAccounts.save(new CodefOrgAccount(connection, null, organization, "CD", "P", "1", status, now));
     }
 
-    /** 가장 최근 동기화가 실패한 연결된 카드사. */
+    /** 가장 최근 동기화가 1분 전에 실패한 연결된 카드사. */
     private CodefOrgAccount accountWithFailedSync(boolean retryable) {
+        return accountWithFailedSync(retryable, LocalDateTime.now().minusMinutes(1));
+    }
+
+    /** 가장 최근 동기화가 finishedAt에 실패한 연결된 카드사. */
+    private CodefOrgAccount accountWithFailedSync(boolean retryable, LocalDateTime finishedAt) {
         CodefOrgAccount account = connect(user, KB, "ACTIVE");
-        CodefSyncJob job = CodefSyncJob.startCardList(account, "batch", LocalDateTime.now().minusMinutes(2));
-        job.markFailed("CF-12345", retryable, LocalDateTime.now().minusMinutes(1));
+        CodefSyncJob job = CodefSyncJob.startCardList(account, "batch", finishedAt.minusMinutes(1));
+        job.markFailed("CF-12207", retryable, finishedAt);
         syncJobs.save(job);
         return account;
     }
@@ -349,6 +354,27 @@ class ConnectionRetryApiTest {
         retry(account.getId()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONN-008"));
 
         verify(codef, never()).update(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("다시 시도하면 안 되는 실패도 제한 시간(1시간) 안이면 막는다 (59분 전 실패)")
+    void blocksJustBeforeRestrictionWindowEnds() throws Exception {
+        CodefOrgAccount account = accountWithFailedSync(false, LocalDateTime.now().minusMinutes(59));
+
+        retry(account.getId()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONN-008"));
+
+        verify(codef, never()).update(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("제한 시간(1시간)이 지나면 다시 시도하면 안 되는 실패였어도 다시 연결할 수 있다 (2시간 전 실패)")
+    void allowsRetryAfterRestrictionWindow() throws Exception {
+        CodefOrgAccount account = accountWithFailedSync(false, LocalDateTime.now().minusHours(2));
+        stubUpdateSuccess();
+
+        retry(account.getId()).andExpect(status().isOk());
+
+        verify(codef).update(anyString(), eq(CardCompany.KB), eq(LOGIN_ID), eq(PASSWORD));
     }
 
     // ---- CODEF 오류 ----

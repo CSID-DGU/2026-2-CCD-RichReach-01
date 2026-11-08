@@ -26,7 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>다시 연결할 수 있는 카드사는 가장 최근 동기화가 실패했거나(시간 초과 포함) 계정 상태가 연결 실패인 경우다.
  * 이미 연결과 동기화에 성공한 카드사, 없는 카드사, 다른 사용자의 카드사는 {@code CONN-001}로 같게 응답해
  * 다른 사용자의 계정이 있는지 알려주지 않는다. 동기화가 진행 중이면 {@code CONN-007}, 계정이 잠겼거나 잠길 위험이 있는
- * 경우에는 {@code CONN-008}로 막는다. 잘못된 비밀번호로 다시 시도하면 카드사 계정이 잠길 수 있어서다.
+ * 경우에는 {@code CONN-008}로 막는다. 잘못된 비밀번호로 다시 시도하면 카드사 계정이 잠길 수 있어서다. 계정이 일시 제한되어
+ * 다시 시도하면 안 되는 실패는 {@code codef.sync.retry-block}(기본 1시간) 동안만 막고, 그 뒤에는 다시 연결할 수 있다.
  *
  * <p>CODEF 호출과 실패 처리는 {@link CardCompanyAuthenticator}가, 요청이 겹치지 않게 하는 잠금은
  * {@link ConnectionUserLock}이 맡는다. 카드사 아이디와 비밀번호는 CODEF에 전달하는 데만 쓰고 저장하거나 로그에 남기지 않는다.
@@ -74,7 +75,8 @@ public class ConnectionRetryService {
             CodefSyncJob.API_CARD_LIST).orElse(null);
         boolean syncFailed = latest != null && latest.hasFailed(timeout, now);
 
-        if (account.isLocked() || (syncFailed && !latest.isRetryable())) {
+        // 다시 시도하면 안 되는 실패는 제한 시간(codef.sync.retry-block) 동안만 막는다. 그 뒤에는 다시 연결할 수 있다.
+        if (account.isLocked() || (latest != null && latest.blocksRetry(syncProperties.retryBlock(), now))) {
             throw new BusinessException(ErrorCode.CONNECTION_RETRY_BLOCKED);
         }
         if (account.isConnected() && !syncFailed) {
