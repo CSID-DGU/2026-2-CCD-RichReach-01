@@ -20,9 +20,14 @@ final cardRepositoryProvider = Provider<CardRepository>(
 
 const _fakeNoTransactions = bool.fromEnvironment('FAKE_NO_TRANSACTIONS');
 
-/// 거래내역 저장소. API 연동 전까지는 가짜 구현을 쓴다.
+/// 거래내역 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
 final transactionRepositoryProvider = Provider<TransactionRepository>(
-  (ref) => FakeTransactionRepository(empty: _fakeNoTransactions),
+  (ref) => ApiConfig.useFakeApi
+      ? FakeTransactionRepository(empty: _fakeNoTransactions)
+      : ApiTransactionRepository(
+          ref.watch(apiClientProvider),
+          ref.watch(cardRepositoryProvider),
+        ),
 );
 
 /// 연결에 성공한 카드사. 화면을 바로 열었을 때(debug 빌드)는 예시 카드사를 쓴다.

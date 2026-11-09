@@ -51,6 +51,9 @@ abstract final class ApiPaths {
   // 보유카드 (#157)
   static const cards = '/api/cards';
   static const cardSelection = '/api/cards/selection';
+  // 거래 (#167, #168)
+  static const transactions = '/api/transactions';
+  static const transactionSummary = '/api/transactions/summary';
 
   static String connectionSyncJob(String jobId) =>
       '/api/connections/sync/${Uri.encodeComponent(jobId)}';

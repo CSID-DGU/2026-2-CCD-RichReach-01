@@ -1,13 +1,191 @@
+import '../../../core/network/api_client.dart';
+import '../../../core/network/api_config.dart';
 import '../domain/card_company.dart';
+import '../domain/owned_card.dart';
 import 'card_repository.dart';
 import '../domain/transaction.dart';
 
-/// 거래내역 조회. API 연동 시 실제 구현을 만들어 바꿔 끼운다.
+/// 거래내역 조회.
 abstract interface class TransactionRepository {
   /// [companies]의 [period] 동안 거래내역 요약을 불러온다.
   Future<TransactionSummary> fetchSummary(
     TransactionPeriod period,
     List<CardCompany> companies,
+  );
+}
+
+/// 백엔드 거래 API로 ONB-05 요약을 만든다.
+/// - 기간, 총액, 거래 수, 업종: `GET /api/transactions/summary?period=`
+/// - 카드사별 건수: 보유카드마다 `GET /api/transactions?cardId=`의 `totalElements`
+///   (요약 API에 카드별 값이 없어서다. 서버에 추가되면 바꾼다.)
+/// - 최근 거래: `GET /api/transactions?size=`[recentCount]. 카드 이름은 보유카드 목록과 `cardId`로 맞춘다.
+///
+/// 서버는 사용자의 모든 보유카드 거래를 합치므로 [fetchSummary]의 카드사는 쓰지 않는다.
+/// 거래 수는 요약과 같게 전액 취소된 거래를 뺀다.
+class ApiTransactionRepository implements TransactionRepository {
+  const ApiTransactionRepository(this._api, this._cards);
+
+  final ApiClient _api;
+  final CardRepository _cards;
+
+  /// 최근 거래로 보여줄 건수
+  static const recentCount = 3;
+
+  @override
+  Future<TransactionSummary> fetchSummary(
+    TransactionPeriod period,
+    List<CardCompany> companies,
+  ) async {
+    final (summary, cards, recent) = await (
+      _api.get(
+        ApiPaths.transactionSummary,
+        query: {'period': period.code},
+        parse: _Summary.fromJson,
+      ),
+      _cards.fetchCards(companies),
+      _api.get(
+        ApiPaths.transactions,
+        query: _listQuery(period, size: recentCount),
+        parse: _Page.fromJson,
+      ),
+    ).wait;
+
+    final counts = await [
+      for (final card in cards)
+        _api.get(
+          ApiPaths.transactions,
+          query: _listQuery(period, size: 1, cardId: card.id),
+          parse: (data) => _Page.fromJson(data).totalElements,
+        ),
+    ].wait;
+    final byCompany = <CardCompany, int>{};
+    for (final (i, card) in cards.indexed) {
+      byCompany[card.company] = (byCompany[card.company] ?? 0) + counts[i];
+    }
+
+    final cardsById = {for (final card in cards) card.id: card};
+    return TransactionSummary(
+      startDate: summary.from,
+      endDate: summary.to,
+      totalCount: summary.transactionCount,
+      totalAmount: summary.totalAmount,
+      connectedCardCount: cards.length,
+      categorizedRate: summary.categorizedRate,
+      byCompany: [
+        for (final company in CardCompany.values)
+          if (byCompany[company] case final count?)
+            CompanyTransactionCount(company: company, count: count),
+      ],
+      recentTransactions: [
+        for (final item in recent.content)
+          // 보유카드 목록에 없는 카드(앱이 모르는 카드사 등)의 거래는 카드 이름을 알 수 없어 뺀다.
+          if (cardsById[item.cardId] case final card?) item.toTransaction(card),
+      ],
+    );
+  }
+
+  static Map<String, Object?> _listQuery(
+    TransactionPeriod period, {
+    required int size,
+    String? cardId,
+  }) => {
+    'period': period.code,
+    'cardId': ?cardId,
+    'includeCanceled': 'false',
+    'size': size,
+  };
+}
+
+/// `GET /api/transactions/summary` 응답.
+class _Summary {
+  const _Summary({
+    required this.from,
+    required this.to,
+    required this.totalAmount,
+    required this.transactionCount,
+    required this.categorizedRate,
+  });
+
+  final DateTime from;
+  final DateTime to;
+  final int totalAmount;
+  final int transactionCount;
+
+  /// 기타(ETC)가 아닌 업종으로 분류된 거래 비율 (0~100)
+  final int categorizedRate;
+
+  static _Summary fromJson(Object? data) {
+    final json = data as Map;
+    final count = json['transactionCount'] as int;
+    final etc = [
+      for (final item in json['categories'] as List)
+        if ((item as Map)['category'] == SpendingCategory.etc.code)
+          item['transactionCount'] as int,
+    ].fold(0, (sum, c) => sum + c);
+    return _Summary(
+      from: DateTime.parse(json['from'] as String),
+      to: DateTime.parse(json['to'] as String),
+      totalAmount: json['totalAmount'] as int,
+      transactionCount: count,
+      categorizedRate: count == 0 ? 0 : ((count - etc) * 100 / count).round(),
+    );
+  }
+}
+
+/// `GET /api/transactions` 응답 (페이지).
+class _Page {
+  const _Page({required this.content, required this.totalElements});
+
+  final List<_TransactionItem> content;
+  final int totalElements;
+
+  static _Page fromJson(Object? data) {
+    final json = data as Map;
+    return _Page(
+      content: [
+        for (final item in json['content'] as List)
+          _TransactionItem.fromJson(item as Map),
+      ],
+      totalElements: json['totalElements'] as int,
+    );
+  }
+}
+
+/// 거래 한 건 (`GET /api/transactions`의 content 항목).
+class _TransactionItem {
+  const _TransactionItem({
+    required this.cardId,
+    required this.merchantName,
+    required this.category,
+    required this.netAmount,
+    required this.approvedAt,
+  });
+
+  final String cardId;
+  final String merchantName;
+  final SpendingCategory category;
+  final int netAmount;
+  final DateTime approvedAt;
+
+  static final _categories = {
+    for (final c in SpendingCategory.values) c.code: c,
+  };
+
+  static _TransactionItem fromJson(Map json) => _TransactionItem(
+    cardId: '${json['cardId']}',
+    merchantName: json['merchantName'] as String? ?? '',
+    category: _categories[json['category']] ?? SpendingCategory.etc,
+    netAmount: json['netAmount'] as int,
+    approvedAt: DateTime.parse(json['approvedAt'] as String),
+  );
+
+  Transaction toTransaction(OwnedCard card) => Transaction(
+    merchantName: merchantName.isEmpty ? '가맹점 정보 없음' : merchantName,
+    category: category,
+    company: card.company,
+    cardName: card.name,
+    amount: netAmount,
+    approvedAt: approvedAt,
   );
 }
 
