@@ -64,6 +64,35 @@ class _EtcOnlyBudget implements BudgetRepository {
   Future<void> saveBudget(MonthlyBudget budget) async {}
 }
 
+/// 기존 예상(기준 플랜)이 없는 플랜을 바로 만들어 주는 플랜 생성.
+class _NoBaselinePlan implements PlanRepository {
+  const _NoBaselinePlan();
+
+  @override
+  Stream<PlanProgress> generate(
+    MonthlyBudget budget,
+    List<OwnedCard> cards,
+  ) async* {
+    yield PlanProgress(
+      ratio: 1,
+      plan: Plan(
+        month: budget.month,
+        expectedBenefit: 32000,
+        baselineBenefit: null,
+        cardTargets: [
+          for (final card in cards)
+            CardTarget(
+              cardId: card.id,
+              cardName: card.name,
+              targetAmount: 100000,
+              progressRatio: 1,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 항상 [error]로 실패하는 플랜 생성. 몇 번 불렸는지 센다.
 class _FailingPlan implements PlanRepository {
   _FailingPlan(this.error);
@@ -427,6 +456,21 @@ void main() {
   });
 
   group('ONB-07B 플랜 생성 완료', () {
+    testWidgets('기존 예상이 없으면 기존 예상과 추가 혜택을 숨긴다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.planGenerating,
+        budget: _budget(),
+        plan: const _NoBaselinePlan(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PlanReadyScreen), findsOneWidget);
+      expect(findText('32,000원'), findsOneWidget);
+      expect(findText('기존 예상'), findsNothing);
+      expect(find.textContaining('＋'), findsNothing);
+    });
+
     testWidgets('예상 혜택과 카드별 목표 사용금액을 보여준다', (tester) async {
       await pumpAppAt(tester, AppRoute.planGenerating, budget: _budget());
 

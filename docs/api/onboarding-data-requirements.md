@@ -429,6 +429,7 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
   - 우선순위는 CP_SAT → GREEDY → EVEN_SPLIT → HABIT이고, 같은 전략은 가장 최신 version을 씁니다.
 - `baselineBenefit`: 지금처럼 쓸 때 예상 혜택 (화면의 "기존 예상"). HABIT 플랜의 예상 혜택입니다.
   - **HABIT 플랜이 없으면 `baselineBenefit`과 `additionalBenefit`이 모두 `null`입니다.** (0이 아닙니다. 0으로 보면 "추가 혜택 전부"처럼 보이기 때문입니다.)
+  - 프론트는 이때 "기존 예상"과 "+추가 혜택"을 숨기고, 추가 혜택이 음수면 "－"로 표시합니다.
   - `null`이면 "기존 예상"과 "추가 혜택" 표시는 숨기고 `expectedBenefit`만 보여 주세요.
   - `additionalBenefit`은 `expectedBenefit - baselineBenefit`이고, 기존 예상보다 작으면 음수가 올 수 있습니다.
 - `cardTargets`는 목표 금액이 큰 카드부터 내려옵니다. 카드 번호는 담지 않고, 카드가 삭제되어 이름을 찾을 수 없으면 `cardName`이 `null`입니다.
