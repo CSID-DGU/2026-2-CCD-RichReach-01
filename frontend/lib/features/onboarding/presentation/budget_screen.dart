@@ -105,10 +105,10 @@ class _BudgetContent extends StatelessWidget {
     // 우선순위가 높은 5개 업종만 보여준다. 막대 길이는 가장 큰 비율을 기준으로 한다.
     final ratios = analysis.patternRatios;
     final maxRatio = ratios.fold(0, (max, r) => r.ratio > max ? r.ratio : max);
+    // 업종별 예산은 예산이 없는 업종도 포함해 모든 업종을 보여준다.
     final categoryBudgets = [
       for (final category in SpendingCategory.values)
-        if ((budget.byCategory[category] ?? 0) > 0)
-          (category, budget.byCategory[category]!),
+        (category, budget.byCategory[category] ?? 0),
     ];
 
     return Column(

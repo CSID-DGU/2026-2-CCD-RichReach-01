@@ -53,7 +53,7 @@ void main() {
       expect(shinhan.remainingAmount, 112000);
       expect(shinhan.usageRatio, closeTo(0.68, 0.001));
       expect(plan.usageRatio, closeTo(0.593, 0.001));
-      expect(plan.change!.summary, '외식·편의점 플랜이 변경됐어요');
+      expect(plan.change!.summary, '음식·배달, 편의·마트 플랜이 변경됐어요');
     });
 
     test('목표보다 많이 쓰면 남은 금액은 0이다', () {
@@ -102,7 +102,7 @@ void main() {
       expect(findText('현재 사용  486,000원'), findsOneWidget);
       expect(findText('예상 혜택  32,400원'), findsOneWidget);
       expect(find.bySemanticsLabel('예산 사용률 59%'), findsOneWidget);
-      expect(findText('외식·편의점 플랜이 변경됐어요'), findsOneWidget);
+      expect(findText('음식·배달, 편의·마트 플랜이 변경됐어요'), findsOneWidget);
 
       expect(findText('신한 Deep Dream'), findsWidgets);
       expect(findText('112,000원 남음'), findsOneWidget);
@@ -112,7 +112,11 @@ void main() {
 
     testWidgets('업종 탭을 바꾸면 그 업종의 권장 카드 순위를 보여준다', (tester) async {
       await pumpAppAt(tester, AppRoute.monthlyPlan);
-      await tester.scrollUntilVisible(findText('자세히 보기'), 200);
+      await tester.scrollUntilVisible(
+        findText('자세히 보기'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
 
       expect(findText('130,000원'), findsOneWidget);
 
@@ -185,7 +189,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(findText('변경된 월간 플랜'), findsNothing);
-      expect(findText('외식·편의점 플랜이 변경됐어요'), findsOneWidget);
+      expect(findText('음식·배달, 편의·마트 플랜이 변경됐어요'), findsOneWidget);
     });
 
     testWidgets('변경된 플랜을 확인하면 안내 띠가 사라진다', (tester) async {
@@ -197,7 +201,7 @@ void main() {
       await tester.tap(findText('변경된 플랜 확인'));
       await tester.pumpAndSettle();
 
-      expect(findText('외식·편의점 플랜이 변경됐어요'), findsNothing);
+      expect(findText('음식·배달, 편의·마트 플랜이 변경됐어요'), findsNothing);
       final saved = await tester.runAsync(
         () => repository.fetchPlan(testCurrentMonth),
       );
@@ -250,7 +254,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(findText('변경된 월간 플랜'), findsNothing);
-      expect(findText('외식·편의점 플랜이 변경됐어요'), findsOneWidget);
+      expect(findText('음식·배달, 편의·마트 플랜이 변경됐어요'), findsOneWidget);
     });
 
     test('재계산은 카드별·업종별 금액을 예산 비율대로 다시 나눈다', () {

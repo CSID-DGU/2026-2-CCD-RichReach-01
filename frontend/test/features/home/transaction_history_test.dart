@@ -72,16 +72,19 @@ void main() {
     await pumpAppAt(tester, AppRoute.transactionHistory);
     await _tapChip(tester, '카테고리');
 
-    // 처음 업종은 외식
+    // 처음 업종은 음식·배달
     expect(findText('아웃백'), findsOneWidget);
     expect(findText('GS25'), findsNothing);
     expect(findText('합계 91,500원'), findsOneWidget);
 
-    await tester.tap(find.bySemanticsLabel('편의점 탭'));
+    await tester.tap(find.bySemanticsLabel('편의·마트 탭'));
     await tester.pumpAndSettle();
     expect(findText('GS25'), findsOneWidget);
     expect(findText('아웃백'), findsNothing);
 
+    // 업종 탭은 가로로 스크롤해야 끝의 "기타"가 보인다.
+    await tester.ensureVisible(find.bySemanticsLabel('기타 탭'));
+    await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel('기타 탭'));
     await tester.pumpAndSettle();
     expect(findText('거래내역이 없어요.'), findsOneWidget);

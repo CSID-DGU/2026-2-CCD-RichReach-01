@@ -64,12 +64,12 @@ void main() {
 
     test('금액이 큰 순, 같으면 건수가 많은 순, 그래도 같으면 업종 순서로 우선순위를 매긴다', () {
       final ranked = FakeBudgetRepository.rankRatios({
+        for (final category in SpendingCategory.values) category: (0, 0, 0),
         SpendingCategory.dining: (20, 100000, 5),
         SpendingCategory.cafe: (20, 100000, 9),
         SpendingCategory.shopping: (40, 200000, 1),
         SpendingCategory.transport: (10, 50000, 3),
         SpendingCategory.convenienceStore: (10, 50000, 3),
-        SpendingCategory.etc: (0, 0, 0),
       });
 
       // 배열은 업종 고정 순서를 유지한다.
@@ -80,9 +80,15 @@ void main() {
           SpendingCategory.shopping: 1,
           SpendingCategory.cafe: 2,
           SpendingCategory.dining: 3,
-          SpendingCategory.transport: 4,
-          SpendingCategory.convenienceStore: 5,
-          SpendingCategory.etc: 6,
+          // 금액·건수가 같으면 업종 순서가 앞선 편의·마트가 먼저다.
+          SpendingCategory.convenienceStore: 4,
+          SpendingCategory.transport: 5,
+          SpendingCategory.fuelVehicle: 6,
+          SpendingCategory.lifeHealth: 7,
+          SpendingCategory.telecomSubscription: 8,
+          SpendingCategory.cultureTravel: 9,
+          SpendingCategory.education: 10,
+          SpendingCategory.etc: 11,
         },
       );
     });
@@ -182,13 +188,17 @@ void main() {
 
       expect(findText('최근 3개월의 소비내역을 분석했어요.'), findsOneWidget);
       expect(findText('820,000원'), findsOneWidget); // 월평균 소비
-      expect(findText('외식 비중 1위'), findsOneWidget);
+      expect(findText('음식·배달 비중 1위'), findsOneWidget);
       expect(findText('28%'), findsOneWidget);
       // "기타"는 소비패턴에 보여주지 않는다.
       expect(findText('23%'), findsNothing);
       expect(findText('820,000'), findsOneWidget); // 이번 달 소비예산
       expect(findText('230,000원'), findsOneWidget);
       expect(findText('190,000원'), findsOneWidget);
+      // 업종별 예산은 예산이 없는 업종도 0원으로 모두 보여준다.
+      expect(findText('주유·차량'), findsOneWidget);
+      expect(findText('교육·도서'), findsOneWidget);
+      expect(findText('0원'), findsNWidgets(6));
       expect(findText('＋ 이번 달 예정지출 추가'), findsNothing);
     });
 
@@ -218,6 +228,9 @@ void main() {
         '330000',
       );
       await tester.pump();
+      // 업종이 11개라 확인 버튼은 대화상자를 스크롤해야 보인다.
+      await tester.ensureVisible(findText('수정하기'));
+      await tester.pumpAndSettle();
       await tester.tap(findText('수정하기'));
       await tester.pumpAndSettle();
 

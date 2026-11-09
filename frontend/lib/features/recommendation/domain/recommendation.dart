@@ -103,16 +103,20 @@ class FollowUpQuestion extends Recommendation {
   const FollowUpQuestion({
     required super.message,
     required this.category,
+    required this.subject,
     required this.options,
   });
 
   final SpendingCategory category;
 
+  /// 되묻는 대상 (예: "편의점". 업종 이름 "편의·마트"보다 좁다)
+  final String subject;
+
   /// 고를 수 있는 브랜드
   final List<FollowUpOption> options;
 
   @override
-  String get summary => '어느 ${category.label}인지 물어봤어요';
+  String get summary => '어느 $subject인지 물어봤어요';
 }
 
 /// 되묻는 답변의 선택지 하나. 누르면 [question]을 보낸다.

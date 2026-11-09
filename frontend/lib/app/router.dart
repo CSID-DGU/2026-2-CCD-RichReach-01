@@ -80,7 +80,7 @@ GoRoute _routeFor(
   routes: children,
 );
 
-/// 경로의 업종 코드(예: DINING)를 업종으로 바꾼다. 모르는 코드면 외식.
+/// 경로의 업종 코드(예: DINING)를 업종으로 바꾼다. 모르는 코드면 음식·배달.
 SpendingCategory _categoryOf(String? code) =>
     SpendingCategory.values.firstWhere(
       (category) => category.code == code,

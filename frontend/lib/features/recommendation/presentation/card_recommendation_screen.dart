@@ -7,7 +7,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/tab_page_title.dart';
-import '../../onboarding/domain/transaction.dart';
 import '../application/recommendation_providers.dart';
 import '../data/recommendation_repository.dart';
 import '../domain/recommendation.dart';
@@ -94,14 +93,8 @@ class _StartView extends StatelessWidget {
 
   final ValueChanged<String> onAsk;
 
-  /// 빠른 질문 업종 (디자인 순서)
-  static const _quickCategories = [
-    SpendingCategory.dining,
-    SpendingCategory.cafe,
-    SpendingCategory.shopping,
-    SpendingCategory.transport,
-    SpendingCategory.convenienceStore,
-  ];
+  /// 빠른 질문 (디자인 순서). 질문에 쓰기 자연스러운 말이라 업종 이름과 다를 수 있다.
+  static const _quickQuestions = ['외식', '카페', '쇼핑', '교통', '편의점'];
 
   static const _exampleDescriptions = [
     '금액 포함 → 최적 카드 1장',
@@ -144,10 +137,10 @@ class _StartView extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final category in _quickCategories)
+            for (final word in _quickQuestions)
               QuickQuestionChip(
-                label: category.label,
-                onPressed: () => onAsk('${category.label} 결제할 때 카드 뭐 써?'),
+                label: word,
+                onPressed: () => onAsk('$word 결제할 때 카드 뭐 써?'),
               ),
           ],
         ),
