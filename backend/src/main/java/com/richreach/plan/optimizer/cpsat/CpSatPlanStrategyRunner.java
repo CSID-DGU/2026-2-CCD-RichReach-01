@@ -58,6 +58,8 @@ import org.springframework.stereotype.Component;
  *       어떤 규칙을 쓸지는 혜택 계산 설정({@code richreach.benefit.rule-selection})을 따라가는 것을 권장한다.</li>
  *   <li>계산할 수 없어서 뺀 규칙은 {@code notes}에 이유를 남긴다. (빈 값을 0이나 무제한으로 해석하지 않는다.)</li>
  *   <li>소비 금액, 가맹점, 카드 번호를 로그에 남기지 않는다. (카드 ID, 개수, 풀이 상태, 시간은 괜찮다.)</li>
+ *   <li>{@code failure}의 이유 문장은 사용자에게 그대로 내려간다. 금액, 카드 번호, 가맹점과 서버 내부 정보를 넣지 말고
+ *       "카드 조건이 충돌해 최적의 배분을 찾지 못했습니다."처럼 사용자가 읽어도 되는 문장만 쓴다.</li>
  * </ul>
  *
  * <h2>의존성과 PR</h2>
