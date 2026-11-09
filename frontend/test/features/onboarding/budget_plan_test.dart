@@ -29,6 +29,41 @@ MonthlyBudget _sampleBudget() =>
 
 const _companies = [CardCompany.kb, CardCompany.woori, CardCompany.shinhan];
 
+/// 소비가 기타(ETC)에만 있는 분석 결과. 서버는 이때 `topCategory`를 주지 않는다.
+class _EtcOnlyBudget implements BudgetRepository {
+  @override
+  Future<SpendingAnalysis> fetchAnalysis(TransactionPeriod period) async {
+    final now = DateTime(2026, 10, 11);
+    return SpendingAnalysis(
+      analyzedMonths: 3,
+      monthlyAverage: 812345,
+      topCategory: null,
+      hasData: true,
+      categoryRatios: [
+        for (final (i, c) in SpendingCategory.values.indexed)
+          CategoryRatio(
+            category: c,
+            ratio: c == SpendingCategory.etc ? 100 : 0,
+            amount: c == SpendingCategory.etc ? 2460000 : 0,
+            transactionCount: c == SpendingCategory.etc ? 30 : 0,
+            rank: c == SpendingCategory.etc ? 1 : i + 2,
+          ),
+      ],
+      suggestedBudget: MonthlyBudget(
+        month: DateTime(now.year, now.month),
+        total: 820000,
+        byCategory: {
+          for (final c in SpendingCategory.values) c: 0,
+          SpendingCategory.etc: 820000,
+        },
+      ),
+    );
+  }
+
+  @override
+  Future<void> saveBudget(MonthlyBudget budget) async {}
+}
+
 /// 항상 [error]로 실패하는 플랜 생성. 몇 번 불렸는지 센다.
 class _FailingPlan implements PlanRepository {
   _FailingPlan(this.error);
@@ -249,6 +284,15 @@ void main() {
 
       expect(findText('300,000'), findsOneWidget);
       expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
+    });
+
+    testWidgets('소비가 기타에만 있으면 소비패턴과 비중 1위를 숨긴다', (tester) async {
+      await pumpAppAt(tester, AppRoute.budget, budget: _EtcOnlyBudget());
+
+      expect(findText('812,345원'), findsOneWidget); // 월평균 소비
+      expect(findText('업종별 소비패턴'), findsNothing);
+      expect(find.textContaining('비중 1위'), findsNothing);
+      expect(findText('분석할 소비내역이 없어요'), findsNothing);
     });
 
     testWidgets('소비예산을 수정하면 업종별 예산이 비율대로 바뀐다', (tester) async {
