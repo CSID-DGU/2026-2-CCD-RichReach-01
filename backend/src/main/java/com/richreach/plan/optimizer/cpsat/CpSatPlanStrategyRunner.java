@@ -1,79 +1,53 @@
 package com.richreach.plan.optimizer.cpsat;
 
+import com.google.ortools.Loader;
+import com.google.ortools.sat.CpModel;
+import com.google.ortools.sat.CpSolver;
+import com.google.ortools.sat.CpSolverStatus;
+import com.google.ortools.sat.IntVar;
+import com.google.ortools.sat.LinearArgument;
+import com.google.ortools.sat.LinearExpr;
+import com.richreach.benefit.config.BenefitProperties;
+import com.richreach.benefit.dto.BenefitQuery;
+import com.richreach.benefit.dto.BenefitResult;
+import com.richreach.benefit.service.BenefitCalculator;
+import com.richreach.card.dto.CalculationRule;
+import com.richreach.card.service.BenefitRuleQueryService;
+import com.richreach.global.category.SpendingCategory;
 import com.richreach.plan.entity.PlanStrategy;
+import com.richreach.plan.entity.SolverStatus;
 import com.richreach.plan.optimizer.PlanStrategyInput;
+import com.richreach.plan.optimizer.PlanStrategyInput.CardInput;
 import com.richreach.plan.optimizer.PlanStrategyResult;
+import com.richreach.plan.optimizer.PlanStrategyResult.Allocation;
 import com.richreach.plan.optimizer.PlanStrategyRunner;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * <h1>CP-SAT 플랜 전략 (구현 대기)</h1>
- *
- * <p><b>CP-SAT 담당자는 이 파일의 {@link #run}을 채우면 된다.</b> 지금은 "아직 구현되지 않았다"는 실패 결과만 돌려주는 빈 틀이다.
- * 이 클래스가 이미 스프링 빈으로 등록돼 있어서, {@code run}만 채우면 플랜 생성에 자동으로 꽂힌다.
- * (플랜 생성 서비스는 CP-SAT가 실패하면 GREEDY 결과를 쓰므로, 구현 전에도 서비스는 정상 동작한다.)
- *
- * <h2>풀어야 할 문제</h2>
- * <pre>
- * 입력: 업종별 예산 B[c] (사용자가 확정한 이번 달 업종별 소비 계획)
- *       카드 목록 K (사용자가 분석 대상으로 고른 카드, 카드마다 전월 실적 포함)
- * 결정: x[k][c] = 카드 k로 업종 c에 쓸 금액(원, 0 이상 정수)
- * 제약: 모든 업종 c에서  sum_k x[k][c] == B[c]        ← 총소비 불변. 예산을 늘리거나 줄이면 안 된다.
- *       카드 혜택의 한도, 전월실적 조건, 공유 한도 등 카드 규칙
- * 목표: 모든 카드의 예상 혜택 합을 최대로
- * </pre>
- * 추가 지출이나 신규 카드는 가정하지 않는다. 입력 카드 안에서 같은 소비를 다시 나누는 문제다.
- *
- * <h2>구현 순서</h2>
- * <ol>
- *   <li><b>혜택 규칙 읽기</b>: 카드마다 {@code BenefitRuleQueryService#findForCalculation(cardProductId)}로 규칙
- *       ({@code CalculationRule})을 얻는다. 카드 엔티티나 리포지토리를 직접 읽지 않는다. (다른 도메인이다.)
- *       규칙에는 혜택 비율, 월 한도, 공유 한도(capGroupId), 전월실적 구간, 적용 업종({@code categories})이 이미 화면용 업종으로 변환돼 있다.</li>
- *   <li><b>모델 만들기</b>: 변수 x[k][c]를 만들고 위 제약을 건다. CP-SAT은 정수만 다루므로 금액은 원 단위 정수로,
- *       비율(%)은 정수 비율(예: 1.5% → 15/1000)로 바꿔서 곱한다.</li>
- *   <li><b>풀기</b>: {@code input.timeLimit()}를 풀이 시간 제한으로 쓰고, 시드는 고정한다. (같은 입력이면 같은 결과)</li>
- *   <li><b>결과 돌려주기</b>: 아래 "결과 돌려주기" 표를 따른다.</li>
- *   <li><b>검증(권장)</b>: 풀이가 낸 배분을 {@code BenefitCalculator}로 카드별로 다시 계산해서 예상 혜택을 확인한다.
- *       임시 계산기와 값이 크게 다르면 모델이 규칙을 잘못 옮긴 것이다.</li>
- * </ol>
- *
- * <h2>결과 돌려주기</h2>
- * <table>
- *   <caption>풀이 상태별 반환</caption>
- *   <tr><th>상황</th><th>반환</th></tr>
- *   <tr><td>최적해를 찾음</td><td>{@code PlanStrategyResult.success(allocations, SolverStatus.OPTIMAL, 걸린시간ms, ...)}</td></tr>
- *   <tr><td>시간 안에 최적은 못 찾았지만 해는 있음</td><td>{@code success(..., SolverStatus.FEASIBLE, ...)}</td></tr>
- *   <tr><td>조건이 충돌해 해가 없음</td><td>{@code failure(SolverStatus.INFEASIBLE, 걸린시간ms, "어떤 조건이 문제인지")}</td></tr>
- *   <tr><td>시간 안에 해를 못 찾음</td><td>{@code failure(null, 걸린시간ms, "시간 제한 안에 해를 찾지 못했습니다.")}</td></tr>
- *   <tr><td>혜택 규칙이 하나도 없음</td><td>{@code failure(null, null, "...")} 또는 혜택 0인 균등 배분 성공 (팀과 합의)</td></tr>
- * </table>
- * 예외를 던지지 말고 실패 결과로 알린다. 실패하면 플랜 생성이 GREEDY 결과로 대신한다.
- *
- * <h2>꼭 지킬 것</h2>
- * <ul>
- *   <li>업종마다 {@code sum_k targetAmount == input.budgetByCategory()[c]}. 어기면 플랜 생성이 이 결과를 버린다.</li>
- *   <li>배분 결과에는 {@code CardInput#userCardId()}(보유카드 ID)를 쓴다. 카드 상품 ID가 아니다.</li>
- *   <li>같은 (카드, 업종) 조합은 한 번만 낸다.</li>
- *   <li>{@code confirmedOnly}: 사람이 원문과 대조해 확인한 규칙({@code ruleEngineReady})만 썼으면 true. 확인 전 규칙이 섞였으면 false.
- *       어떤 규칙을 쓸지는 혜택 계산 설정({@code richreach.benefit.rule-selection})을 따라가는 것을 권장한다.</li>
- *   <li>계산할 수 없어서 뺀 규칙은 {@code notes}에 이유를 남긴다. (빈 값을 0이나 무제한으로 해석하지 않는다.)</li>
- *   <li>소비 금액, 가맹점, 카드 번호를 로그에 남기지 않는다. (카드 ID, 개수, 풀이 상태, 시간은 괜찮다.)</li>
- * </ul>
- *
- * <h2>의존성과 PR</h2>
- * <ul>
- *   <li>OR-Tools는 {@code backend/build.gradle}에 추가하고, 버전과 이유를 PR 본문에 적는다.</li>
- *   <li>테스트는 {@code src/test/java/com/richreach/plan/optimizer/cpsat/}에 둔다. 최소한 총소비 불변, 시간 제한, 같은 입력의 같은 결과,
- *       해가 없을 때의 실패 결과를 확인한다. 총소비 불변과 카드 범위는
- *       {@code assertThat(result.violations(input)).isEmpty()} 한 줄로 확인할 수 있다.</li>
- *   <li>PR 대상은 develop이다. 이 파일과 같은 패키지의 새 파일만 고치는 것이 가장 안전하다.</li>
- * </ul>
+ * 월간 업종 예산을 사용자가 보유한 카드에 배분한다. 비율 혜택, 전월실적 구간,
+ * 규칙별 월 한도와 공유 월 한도를 CP-SAT으로 모델링한다. 반환 금액은 기존
+ * BenefitCalculator로 다시 계산한다. 가맹점·횟수·정액 혜택과 다음 달 실적 가치는
+ * 현재 입력 계약에 없으므로 모델 밖이다.
  */
 @Component
+@RequiredArgsConstructor
 public class CpSatPlanStrategyRunner implements PlanStrategyRunner {
 
-    /** 구현 전에 돌려주는 실패 이유. 구현하면서 이 상수와 아래 반환을 지운다. */
-    static final String NOT_IMPLEMENTED = "CP-SAT 전략이 아직 구현되지 않았습니다.";
+    // 혜택률은 최대 소수 넷째 자리(%)까지 정수 계수로 표현한다.
+    private static final long RATE_DENOMINATOR = 1_000_000;
+    private final BenefitRuleQueryService ruleQuery;
+    private final BenefitCalculator benefitCalculator;
+    private final BenefitProperties benefitProperties;
 
     @Override
     public PlanStrategy strategy() {
@@ -82,15 +56,196 @@ public class CpSatPlanStrategyRunner implements PlanStrategyRunner {
 
     @Override
     public PlanStrategyResult run(PlanStrategyInput input) {
-        // ▶▶▶ 여기를 구현하세요 (CP-SAT 담당자) ◀◀◀
-        //
-        // 1) input.cards()의 카드마다 혜택 규칙을 읽는다.            → BenefitRuleQueryService#findForCalculation(cardProductId)
-        // 2) 변수 x[카드][업종]과 "업종별 합 == 예산" 제약, 카드 규칙 제약을 건다. → input.budgetByCategory()
-        // 3) 예상 혜택 합을 최대화하도록 목적함수를 만들고, input.timeLimit() 안에서 푼다.
-        // 4) 풀이 결과를 PlanStrategyResult.success(...) 또는 failure(...)로 돌려준다.
-        //
-        // 아래 반환은 구현 전 임시값이다. 구현하면 지운다.
-        return PlanStrategyResult.failure(null, null, NOT_IMPLEMENTED);
+        long started = System.nanoTime();
+        if (input.cards().isEmpty()) {
+            return PlanStrategyResult.failure(null, elapsedMs(started), "분석할 보유카드가 없습니다.");
+        }
+        List<CardInput> cards = input.cards().stream()
+            .sorted(Comparator.comparingLong(CardInput::userCardId)).toList();
+        if (cards.stream().map(CardInput::userCardId).distinct().count() != cards.size()) {
+            return PlanStrategyResult.failure(null, elapsedMs(started), "보유카드 ID가 중복되었습니다.");
+        }
+        List<SpendingCategory> categories = input.budgetByCategory().entrySet().stream()
+            .filter(entry -> entry.getValue() > 0).map(Map.Entry::getKey).sorted().toList();
+        if (categories.isEmpty()) {
+            return PlanStrategyResult.success(List.of(), SolverStatus.OPTIMAL, elapsedMs(started), true, List.of());
+        }
+
+        try {
+            Loader.loadNativeLibraries();
+            CpModel model = new CpModel();
+            Map<Long, Map<SpendingCategory, IntVar>> spendVars = new HashMap<>();
+            for (CardInput card : cards) {
+                Map<SpendingCategory, IntVar> byCategory = new EnumMap<>(SpendingCategory.class);
+                for (SpendingCategory category : categories) {
+                    byCategory.put(category, model.newIntVar(0, input.budgetByCategory().get(category),
+                        "spend_" + card.userCardId() + "_" + category));
+                }
+                spendVars.put(card.userCardId(), byCategory);
+            }
+            for (SpendingCategory category : categories) {
+                IntVar[] variables = cards.stream()
+                    .map(card -> spendVars.get(card.userCardId()).get(category)).toArray(IntVar[]::new);
+                model.addEquality(LinearExpr.sum(variables), input.budgetByCategory().get(category));
+            }
+
+            boolean readyOnly = benefitProperties.ruleSelection() == BenefitProperties.RuleSelection.READY_ONLY;
+            List<IntVar> rewards = new ArrayList<>();
+            Set<String> notes = new LinkedHashSet<>();
+            for (CardInput card : cards) {
+                Map<String, List<IntVar>> groups = new HashMap<>();
+                Map<String, Long> groupBounds = new HashMap<>();
+                Map<String, Long> groupCaps = new HashMap<>();
+                for (CalculationRule rule : ruleQuery.findForCalculation(card.cardProductId())) {
+                    if (readyOnly && !rule.ruleEngineReady()) {
+                        continue;
+                    }
+                    if (!supported(rule, card.previousMonthSpend())) {
+                        notes.add("가맹점 지정·정액·특수 조건 등의 규칙은 월간 업종 배분에서 제외했습니다.");
+                        continue;
+                    }
+                    List<IntVar> targets = categories.stream()
+                        .filter(category -> rule.allMerchants() || rule.categories().contains(category))
+                        .map(category -> spendVars.get(card.userCardId()).get(category)).toList();
+                    if (targets.isEmpty()) {
+                        continue;
+                    }
+                    long scaledRate;
+                    try {
+                        scaledRate = rule.ratePercent().multiply(BigDecimal.valueOf(10_000)).longValueExact();
+                    } catch (ArithmeticException e) {
+                        notes.add("정수 계수로 표현할 수 없는 혜택률은 월간 배분에서 제외했습니다.");
+                        continue;
+                    }
+                    long maxSpend = 0;
+                    for (SpendingCategory category : categories) {
+                        if (rule.allMerchants() || rule.categories().contains(category)) {
+                            maxSpend = Math.addExact(maxSpend, input.budgetByCategory().get(category));
+                        }
+                    }
+                    long maximum = Math.multiplyExact(maxSpend, scaledRate) / RATE_DENOMINATOR;
+                    IntVar eligible = model.newIntVar(0, maxSpend,
+                        "eligible_" + card.userCardId() + "_" + rule.id());
+                    model.addEquality(eligible, LinearExpr.sum(targets.toArray(IntVar[]::new)));
+                    IntVar raw = model.newIntVar(0, maximum,
+                        "raw_" + card.userCardId() + "_" + rule.id());
+                    model.addDivisionEquality(raw, LinearExpr.term(eligible, scaledRate),
+                        model.newConstant(RATE_DENOMINATOR));
+                    IntVar reward = raw;
+                    if (rule.monthlyLimit() != null) {
+                        long cap = Math.max(0, rule.monthlyLimit());
+                        maximum = Math.min(maximum, cap);
+                        reward = model.newIntVar(0, maximum,
+                            "limit_" + card.userCardId() + "_" + rule.id());
+                        model.addMinEquality(reward, new LinearArgument[] {raw, model.newConstant(cap)});
+                    }
+                    if (rule.capGroupId() == null || rule.capGroupId().isBlank()) {
+                        rewards.add(reward);
+                    } else {
+                        String group = rule.capGroupId();
+                        groups.computeIfAbsent(group, ignored -> new ArrayList<>()).add(reward);
+                        groupBounds.merge(group, maximum, Math::addExact);
+                        if (rule.sharedMonthlyLimit() != null) {
+                            groupCaps.merge(group, Math.max(0, rule.sharedMonthlyLimit()), Math::min);
+                        }
+                    }
+                }
+                for (Map.Entry<String, List<IntVar>> group : groups.entrySet()) {
+                    long maximum = groupBounds.get(group.getKey());
+                    IntVar sum = model.newIntVar(0, maximum,
+                        "shared_sum_" + card.userCardId() + "_" + group.getKey());
+                    model.addEquality(sum, LinearExpr.sum(group.getValue().toArray(IntVar[]::new)));
+                    Long cap = groupCaps.get(group.getKey());
+                    if (cap == null) {
+                        rewards.add(sum);
+                    } else {
+                        IntVar limited = model.newIntVar(0, Math.min(maximum, cap),
+                            "shared_cap_" + card.userCardId() + "_" + group.getKey());
+                        model.addMinEquality(limited, new LinearArgument[] {sum, model.newConstant(cap)});
+                        rewards.add(limited);
+                    }
+                }
+            }
+            if (rewards.isEmpty()) {
+                return PlanStrategyResult.failure(null, elapsedMs(started), "계산 가능한 카드 혜택 규칙이 없습니다.");
+            }
+            model.maximize(LinearExpr.sum(rewards.toArray(IntVar[]::new)));
+            double remaining = input.timeLimit().toNanos() / 1_000_000_000.0
+                - (System.nanoTime() - started) / 1_000_000_000.0;
+            if (remaining <= 0) {
+                return PlanStrategyResult.failure(null, elapsedMs(started), "계산 시간 제한을 넘었습니다.");
+            }
+            CpSolver solver = new CpSolver();
+            solver.getParameters().setMaxTimeInSeconds(remaining);
+            solver.getParameters().setNumSearchWorkers(1);
+            solver.getParameters().setRandomSeed(1);
+            CpSolverStatus status = solver.solve(model);
+            if (status != CpSolverStatus.OPTIMAL && status != CpSolverStatus.FEASIBLE) {
+                SolverStatus failed = status == CpSolverStatus.INFEASIBLE ? SolverStatus.INFEASIBLE : null;
+                return PlanStrategyResult.failure(failed, elapsedMs(started),
+                    "시간 안에 카드 배분 결과를 찾지 못했습니다: " + status);
+            }
+
+            List<Allocation> allocations = new ArrayList<>();
+            boolean confirmedOnly = readyOnly;
+            for (CardInput card : cards) {
+                Map<SpendingCategory, Long> spend = new EnumMap<>(SpendingCategory.class);
+                for (SpendingCategory category : categories) {
+                    long amount = solver.value(spendVars.get(card.userCardId()).get(category));
+                    if (amount > 0) {
+                        spend.put(category, amount);
+                    }
+                }
+                if (spend.isEmpty()) {
+                    continue;
+                }
+                BenefitResult checked = benefitCalculator.calculate(
+                    new BenefitQuery(card.cardProductId(), spend, card.previousMonthSpend()));
+                confirmedOnly &= checked.confirmedOnly();
+                notes.addAll(checked.notes());
+                long allocatedBenefit = 0;
+                for (Map.Entry<SpendingCategory, Long> entry : spend.entrySet()) {
+                    long benefit = checked.benefitByCategory().getOrDefault(entry.getKey(), 0L);
+                    allocatedBenefit = Math.addExact(allocatedBenefit, benefit);
+                    allocations.add(new Allocation(card.userCardId(), entry.getKey(), entry.getValue(), benefit));
+                }
+                if (allocatedBenefit != checked.totalBenefit()) {
+                    return PlanStrategyResult.failure(null, elapsedMs(started),
+                        "혜택 계산 결과가 업종별 합계와 맞지 않습니다.");
+                }
+            }
+            // The solver's proof applies to the supported rate/cap model.
+            // Category rounding and omitted special rules can change the full result.
+            notes.add("풀이 상태의 최적성은 모델에 포함된 비율·월 한도에만 적용되며, 표시 혜택은 업종별 원 단위로 다시 계산했습니다.");
+            SolverStatus reported = status == CpSolverStatus.OPTIMAL ? SolverStatus.OPTIMAL : SolverStatus.FEASIBLE;
+            PlanStrategyResult result = PlanStrategyResult.success(allocations, reported,
+                elapsedMs(started), confirmedOnly, new ArrayList<>(notes));
+            if (!result.violations(input).isEmpty()) {
+                return PlanStrategyResult.failure(null, elapsedMs(started), "배분 결과가 입력 예산과 맞지 않습니다.");
+            }
+            return result;
+        } catch (ArithmeticException | IllegalArgumentException e) {
+            return PlanStrategyResult.failure(null, elapsedMs(started), "혜택 수치로 모델을 만들 수 없습니다.");
+        } catch (LinkageError e) {
+            return PlanStrategyResult.failure(null, elapsedMs(started), "CP-SAT 실행 라이브러리를 불러오지 못했습니다.");
+        }
     }
 
+    private static boolean supported(CalculationRule rule, long previousMonthSpend) {
+        if (rule.merchantSpecific() || rule.ratePercent() == null || rule.ratePercent().signum() < 0
+            || "MILE".equals(rule.rewardUnit())) {
+            return false;
+        }
+        if ("REPLACES_BASE".equals(rule.ruleMode()) || "PREFER_HIGHER".equals(rule.ruleMode())
+            || "ANNUAL_BONUS".equals(rule.ruleMode())) {
+            return false;
+        }
+        return (rule.previousMonthMinKrw() == null || previousMonthSpend >= rule.previousMonthMinKrw())
+            && (rule.previousMonthMaxExclusiveKrw() == null
+                || previousMonthSpend < rule.previousMonthMaxExclusiveKrw());
+    }
+
+    private static int elapsedMs(long started) {
+        return (int) Math.min(Integer.MAX_VALUE, (System.nanoTime() - started) / 1_000_000);
+    }
 }
