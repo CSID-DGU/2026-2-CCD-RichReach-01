@@ -63,6 +63,8 @@ public enum ErrorCode {
     PLAN_JOB_NOT_FOUND(HttpStatus.NOT_FOUND, "PLAN-002", "플랜 생성 작업을 찾을 수 없습니다."),
     INVALID_BUDGET(HttpStatus.BAD_REQUEST, "PLAN-003", "예산 금액이 올바르지 않습니다."),
     PLAN_ALREADY_EXISTS(HttpStatus.CONFLICT, "PLAN-004", "해당 월의 플랜이 이미 있습니다."),
+    PLAN_JOB_ALREADY_RUNNING(HttpStatus.CONFLICT, "PLAN-005", "이미 다른 플랜 생성이 진행 중입니다."),
+    PLAN_NO_ANALYSIS_CARD(HttpStatus.BAD_REQUEST, "PLAN-006", "분석 대상으로 고른 카드가 없어 플랜을 만들 수 없습니다."),
 
     // 추천
     INSUFFICIENT_RECOMMENDATION_INPUT(HttpStatus.BAD_REQUEST, "RECOMMEND-001", "추천에 필요한 정보가 부족합니다."),
