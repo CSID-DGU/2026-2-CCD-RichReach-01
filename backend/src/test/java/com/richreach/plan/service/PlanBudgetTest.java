@@ -61,7 +61,8 @@ class PlanBudgetTest {
     @Test
     @DisplayName("월이 yyyy-MM 형식이 아니면 COMMON-400이다")
     void rejectsInvalidMonth() {
-        for (String month : new String[] {null, "", " ", "2026-13", "2026/12", "202612", "12월", "2026-12-01"}) {
+        for (String month : new String[] {null, "", " ", "2026-13", "2026/12", "202612", "12월", "2026-12-01",
+            "+10000-01", "-0001-01", "10000-01", "2026-00", "2026-1", "٢٠٢٦-١٢"}) {
             assertThatThrownBy(() -> PlanBudget.parse(request(month, 400_000L, item("DINING", 400_000L))))
                 .as("month=%s", month).isInstanceOfSatisfying(BusinessException.class,
                     e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE));

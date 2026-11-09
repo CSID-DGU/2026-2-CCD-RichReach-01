@@ -68,6 +68,10 @@ public class EvenSplitPlanStrategyRunner implements PlanStrategyRunner {
         boolean confirmedOnly = true;
         Set<String> notes = new LinkedHashSet<>();
         for (int i = 0; i < cards.size(); i++) {
+            // 혜택 계산기가 느려져도 전략에 허용된 시간(input.timeLimit())을 넘기지 않도록 카드마다 확인한다.
+            if (System.nanoTime() - startedAt > input.timeLimit().toNanos()) {
+                return PlanStrategyResult.failure(null, null, "계산 시간이 제한을 넘었습니다.");
+            }
             CardInput card = cards.get(i);
             Map<SpendingCategory, Long> spend = spendByCard.get(i);
             if (spend.isEmpty()) {

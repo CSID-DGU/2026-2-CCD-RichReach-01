@@ -108,6 +108,27 @@ class EvenSplitPlanStrategyRunnerTest {
     }
 
     @Test
+    @DisplayName("허용된 계산 시간을 넘기면 예외 없이 실패 결과를 돌려준다")
+    void failsWhenTimeLimitExceeded() {
+        BenefitCalculator slow = query -> {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return ONE_PERCENT.calculate(query);
+        };
+        PlanStrategyInput tight = new PlanStrategyInput(1L, MONTH, Map.of(SpendingCategory.DINING, 3_000L),
+            List.of(new CardInput(1L, 10L, 0L), new CardInput(2L, 20L, 0L), new CardInput(3L, 30L, 0L)),
+            Duration.ofMillis(5));
+
+        PlanStrategyResult result = new EvenSplitPlanStrategyRunner(slow).run(tight);
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.failureReason()).isNotBlank();
+    }
+
+    @Test
     @DisplayName("계산기에는 카드 상품 ID와 그 카드의 전월 실적, 그 카드가 쓸 금액을 넘긴다")
     void passesCardProductAndPreviousSpendToCalculator() {
         java.util.List<com.richreach.benefit.dto.BenefitQuery> seen = new java.util.ArrayList<>();

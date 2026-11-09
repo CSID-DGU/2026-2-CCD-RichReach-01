@@ -15,6 +15,7 @@ import java.util.EnumSet;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -37,6 +38,9 @@ record PlanBudget(YearMonth month, long total, Map<SpendingCategory, Long> byCat
 
     /** 총예산 상한(원). 비정상적으로 큰 값이 계산을 넘치게 하지 않게 막는다. */
     static final long MAX_TOTAL = 100_000_000_000L;
+
+    /** 네 자리 연도와 두 자리 월. (plan_jobs.plan_month 같은 CHAR(7) 컬럼에 그대로 들어가는 형식이다.) */
+    private static final Pattern MONTH_FORMAT = Pattern.compile("\\d{4}-(0[1-9]|1[0-2])");
 
     static PlanBudget parse(PlanCreateRequest request) {
         if (request == null) {
@@ -86,8 +90,14 @@ record PlanBudget(YearMonth month, long total, Map<SpendingCategory, Long> byCat
         if (month == null || month.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "월은 yyyy-MM 형식이어야 합니다.");
         }
+        // YearMonth.parse는 +10000-01처럼 연도가 네 자리가 아닌 값도 받는다. 그런 값은 CHAR(7) 컬럼에 들어가지 않으므로
+        // 먼저 형식(네 자리 연도, 01~12월)을 확인한다.
+        String normalized = month.strip();
+        if (!MONTH_FORMAT.matcher(normalized).matches()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "월은 yyyy-MM 형식이어야 합니다.");
+        }
         try {
-            return YearMonth.parse(month.strip());
+            return YearMonth.parse(normalized);
         } catch (DateTimeParseException e) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "월은 yyyy-MM 형식이어야 합니다.");
         }
