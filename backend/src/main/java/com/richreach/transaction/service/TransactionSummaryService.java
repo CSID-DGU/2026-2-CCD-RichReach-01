@@ -12,6 +12,7 @@ import com.richreach.transaction.repository.CategoryTotal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -74,6 +75,18 @@ public class TransactionSummaryService {
         }).toList();
 
         return SummaryAssembler.assemble(period, from, to, earliest, totals, cardSummaries);
+    }
+
+    /**
+     * 한 달(달력 기준, 승인일) 동안 보유카드별로 쓴 금액(원). 취소·환불을 뺀 값이고, 거래가 없는 카드는 결과에 없다.
+     * 카드 혜택의 전월실적 조건을 판단할 때 쓴다. 카드사가 알려주는 실적이 아니라 수집한 거래로 계산한 추정값이다.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, Long> cardSpend(long userId, YearMonth month) {
+        LocalDateTime start = month.atDay(1).atStartOfDay();
+        LocalDateTime end = month.plusMonths(1).atDay(1).atStartOfDay();
+        return transactions.sumByCard(userId, start, end).stream()
+            .collect(Collectors.toMap(CardTotal::userCardId, total -> valueOf(total.netAmount())));
     }
 
     private static long valueOf(Long value) {

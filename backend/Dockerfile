@@ -2,7 +2,8 @@
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace
 
-COPY gradlew settings.gradle build.gradle ./
+# lombok.config는 @RequiredArgsConstructor가 만든 생성자에 @Qualifier를 복사하게 한다. 빠지면 같은 타입의 빈(TaskExecutor)을 이름으로 고르지 못해 앱이 시작되지 않는다.
+COPY gradlew settings.gradle build.gradle lombok.config ./
 COPY gradle gradle
 COPY src src
 

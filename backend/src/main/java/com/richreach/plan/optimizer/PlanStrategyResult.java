@@ -25,6 +25,8 @@ import java.util.Set;
  * @param solverStatus   최적화 풀이 상태(OPTIMAL, FEASIBLE, INFEASIBLE). 최적화를 쓰지 않는 전략(HABIT, GREEDY)은 null이다.
  * @param solveTimeMs    계산에 걸린 시간(ms). 모르면 null이다.
  * @param failureReason  실패 이유. 성공이면 null이다. (조건이 충돌해 풀 수 없을 때 어떤 조건이 문제였는지 적는다.)
+ *                       <b>이 문장은 플랜 생성 작업에 저장되어 상태 조회 응답으로 사용자에게 그대로 내려간다.</b> 그러므로 금액,
+ *                       카드 번호, 가맹점 같은 소비 정보와 서버 내부 정보(클래스 이름, 스택, 접속 주소 등)를 넣지 않는다.
  * @param confirmedOnly  사람이 원문과 대조해 확인한 혜택 규칙만 써서 계산했는지. false이면 참고용이다.
  * @param notes          계산에서 빼거나 단순화한 내용(예: "가맹점 지정 혜택은 제외"). 없으면 빈 목록이다.
  */
