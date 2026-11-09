@@ -182,16 +182,19 @@ class FakeRecommendationRepository implements RecommendationRepository {
     ],
     SpendingCategory.dining: ['외식', '식당', '아웃백', '맛집', '레스토랑', '배달', '치킨'],
     SpendingCategory.shopping: ['쇼핑', '쿠팡', '무신사', '온라인', '백화점', '옷'],
-    SpendingCategory.transport: ['교통', '택시', '버스', '지하철', 'KTX', '주유'],
+    SpendingCategory.transport: ['교통', '택시', '버스', '지하철', 'KTX'],
+    SpendingCategory.fuelVehicle: ['주유', '충전소', '세차'],
   };
 
-  /// 브랜드마다 혜택이 다른 업종: 브랜드를 알아볼 단어와, 되물을 때 보여줄 브랜드
+  /// 브랜드마다 혜택이 다른 업종: 되묻는 대상, 브랜드를 알아볼 단어와, 되물을 때 보여줄 브랜드
   static const _brands = {
     SpendingCategory.convenienceStore: (
+      subject: '편의점',
       words: ['GS25', 'CU', '세븐일레븐', '이마트24'],
       options: ['GS25', 'CU', '세븐일레븐', '이마트24'],
     ),
     SpendingCategory.cafe: (
+      subject: '카페',
       words: ['스타벅스', '투썸', '메가커피', '이디야'],
       options: ['스타벅스', '투썸플레이스', '메가커피', '이디야'],
     ),
@@ -293,10 +296,10 @@ class FakeRecommendationRepository implements RecommendationRepository {
             '예) 스타벅스, 편의점, 온라인 쇼핑',
       );
     }
-    if (_brands[category] case (:final words, :final options)) {
+    if (_brands[category] case (:final subject, :final words, :final options)) {
       final text = question.toUpperCase();
       if (!words.any((word) => text.contains(word.toUpperCase()))) {
-        return _askBrand(question, category, options);
+        return _askBrand(question, category, subject, options);
       }
     }
     final amount = amountOf(question);
@@ -309,15 +312,21 @@ class FakeRecommendationRepository implements RecommendationRepository {
   static Recommendation _askBrand(
     String question,
     SpendingCategory category,
+    String subject,
     List<String> brands,
   ) {
-    final label = category.label;
-    String withBrand(String brand) => question.contains(label)
-        ? question.replaceFirst(label, brand)
+    // 질문에 들어 있는 대상 이름(예: "편의점", "편의·마트")을 브랜드로 바꾼다.
+    final named = [
+      subject,
+      category.label,
+    ].where(question.contains).firstOrNull;
+    String withBrand(String brand) => named != null
+        ? question.replaceFirst(named, brand)
         : '$brand $question';
     return FollowUpQuestion(
-      message: '어느 $label에 가시나요? $label 브랜드마다 카드 혜택이 달라요.',
+      message: '어느 $subject에 가시나요? $subject 브랜드마다 카드 혜택이 달라요.',
       category: category,
+      subject: subject,
       options: [
         for (final brand in brands)
           FollowUpOption(label: brand, question: withBrand(brand)),

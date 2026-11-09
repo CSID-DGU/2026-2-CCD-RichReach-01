@@ -21,7 +21,7 @@ class FakeBudgetRepository implements BudgetRepository {
   final Duration delay;
   final DateTime Function() _now;
 
-  /// 와이어프레임: 외식 28%, 쇼핑 22%, 교통 15%, 편의점 12%, 기타 23%
+  /// 와이어프레임: 음식·배달 28%, 쇼핑 22%, 교통 15%, 편의·마트 12%, 기타 23%
   /// (비율, 3개월 금액, 건수). 금액은 월평균 820,000원 × 3개월 × 비율이다.
   static const _ratios = {
     SpendingCategory.dining: (28, 688800, 41),
@@ -29,6 +29,11 @@ class FakeBudgetRepository implements BudgetRepository {
     SpendingCategory.shopping: (22, 541200, 18),
     SpendingCategory.transport: (15, 369000, 52),
     SpendingCategory.convenienceStore: (12, 295200, 37),
+    SpendingCategory.fuelVehicle: (0, 0, 0),
+    SpendingCategory.lifeHealth: (0, 0, 0),
+    SpendingCategory.telecomSubscription: (0, 0, 0),
+    SpendingCategory.cultureTravel: (0, 0, 0),
+    SpendingCategory.education: (0, 0, 0),
     SpendingCategory.etc: (23, 565800, 24),
   };
 
@@ -60,13 +65,18 @@ class FakeBudgetRepository implements BudgetRepository {
     ];
   }
 
-  /// 와이어프레임: 외식 230,000 · 쇼핑 180,000 · 교통 120,000 · 편의점 100,000 · 기타 190,000
+  /// 와이어프레임: 음식·배달 230,000 · 쇼핑 180,000 · 교통 120,000 · 편의·마트 100,000 · 기타 190,000
   static const _suggestedByCategory = {
     SpendingCategory.dining: 230000,
     SpendingCategory.cafe: 0,
     SpendingCategory.shopping: 180000,
     SpendingCategory.transport: 120000,
     SpendingCategory.convenienceStore: 100000,
+    SpendingCategory.fuelVehicle: 0,
+    SpendingCategory.lifeHealth: 0,
+    SpendingCategory.telecomSubscription: 0,
+    SpendingCategory.cultureTravel: 0,
+    SpendingCategory.education: 0,
     SpendingCategory.etc: 190000,
   };
 

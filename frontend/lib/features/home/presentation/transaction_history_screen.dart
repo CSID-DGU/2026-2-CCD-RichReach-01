@@ -8,6 +8,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../onboarding/domain/owned_card.dart';
 import '../../onboarding/domain/transaction.dart';
 import '../../onboarding/presentation/load_failure_view.dart';
+import '../../onboarding/presentation/category_tabs.dart';
 import '../../onboarding/presentation/onboarding_images.dart';
 import '../../plan/presentation/plan_detail_widgets.dart';
 import '../application/home_providers.dart';
@@ -101,7 +102,7 @@ class _TransactionHistoryScreenState
           const SizedBox(height: 12),
         ],
         if (_view == TransactionView.byCategory) ...[
-          _CategoryTabs(
+          CategoryTabs(
             selected: _category,
             onChanged: (category) => setState(() => _category = category),
           ),
@@ -400,70 +401,6 @@ class _VerticalCard extends StatelessWidget {
                   quarterTurns: 1,
                   child: Image.asset(asset, fit: BoxFit.cover),
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-/// HOME-05 업종 탭 (월간 플랜의 업종 탭과 같은 모양).
-class _CategoryTabs extends StatelessWidget {
-  const _CategoryTabs({required this.selected, required this.onChanged});
-
-  final SpendingCategory selected;
-  final ValueChanged<SpendingCategory> onChanged;
-
-  static const _dividerColor = Color(0xFFE8E3F7);
-  static const _inactiveColor = Color(0xFF757D91);
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _dividerColor)),
-      ),
-      child: Row(
-        children: [
-          for (final category in SpendingCategory.values)
-            Expanded(child: _tab(category)),
-        ],
-      ),
-    );
-  }
-
-  Widget _tab(SpendingCategory category) {
-    final active = category == selected;
-    return Semantics(
-      button: true,
-      selected: active,
-      excludeSemantics: true,
-      label: '${category.label} 탭',
-      child: InkWell(
-        onTap: () => onChanged(category),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: Column(
-            children: [
-              Text(
-                category.label,
-                maxLines: 1,
-                style: AppTextStyles.caption.copyWith(
-                  fontSize: 11,
-                  height: 1.2,
-                  fontWeight: FontWeight.w600,
-                  color: active ? AppColors.primary : _inactiveColor,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                height: 2,
-                decoration: BoxDecoration(
-                  color: active ? AppColors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

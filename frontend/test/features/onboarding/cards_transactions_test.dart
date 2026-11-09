@@ -287,7 +287,7 @@ void main() {
       expect(findText('스타벅스'), findsOneWidget);
       expect(findText('카페 · 신한 Deep Dream'), findsOneWidget);
       expect(findText('-6,500원'), findsOneWidget);
-      expect(findText('편의점 · KB My WE:SH'), findsOneWidget);
+      expect(findText('편의·마트 · KB My WE:SH'), findsOneWidget);
       expect(findText('거래내역 다시 불러오기'), findsNothing);
     });
 

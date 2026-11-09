@@ -57,7 +57,7 @@ void main() {
       expect(detail.priorityCard!.card.name, '신한 Deep Dream');
       expect(detail.priorityCard!.benefit, '10% 할인');
       expect(detail.reasons.map((r) => r.text), [
-        '외식 10% 할인 적용',
+        '음식·배달 10% 할인 적용',
         '목표 실적까지 62,000원 남음',
         '이번 달 할인 한도 여유',
       ]);
@@ -126,25 +126,33 @@ void main() {
   group('PLAN-03 업종별 플랜 상세', () {
     testWidgets('자세히 보기를 누르면 고른 업종의 상세가 열린다', (tester) async {
       await pumpAppAt(tester, AppRoute.monthlyPlan);
-      await tester.scrollUntilVisible(findText('자세히 보기'), 200);
+      await tester.scrollUntilVisible(
+        findText('자세히 보기'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
 
       await tester.tap(find.bySemanticsLabel('자세히 보기'));
       await tester.pumpAndSettle();
 
       expect(find.byType(CategoryPlanDetailScreen), findsOneWidget);
-      expect(findText('외식 사용 계획'), findsOneWidget);
-      expect(findText('외식 예산'), findsOneWidget);
-      expect(find.bySemanticsLabel('외식 예산까지 사용률 45%'), findsOneWidget);
-      expect(findText('외식 10% 할인 · 목표까지 50,000원 남았어요'), findsOneWidget);
+      expect(findText('음식·배달 사용 계획'), findsOneWidget);
+      expect(findText('음식·배달 예산'), findsOneWidget);
+      expect(find.bySemanticsLabel('음식·배달 예산까지 사용률 45%'), findsOneWidget);
+      expect(findText('음식·배달 10% 할인 · 목표까지 50,000원 남았어요'), findsOneWidget);
       expect(findText('목표 실적까지 62,000원 남음'), findsOneWidget);
 
       await tester.scrollUntilVisible(findText('차선 카드'), 200);
-      expect(findText('외식 5% 할인 · 목표까지 40,000원 남았어요'), findsOneWidget);
+      expect(findText('음식·배달 5% 할인 · 목표까지 40,000원 남았어요'), findsOneWidget);
     });
 
     testWidgets('업종 탭을 바꾸고 자세히 보기를 누르면 그 업종이 열린다', (tester) async {
       await pumpAppAt(tester, AppRoute.monthlyPlan);
-      await tester.scrollUntilVisible(findText('자세히 보기'), 200);
+      await tester.scrollUntilVisible(
+        findText('자세히 보기'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
 
       await tester.tap(find.bySemanticsLabel('교통 탭'));
       await tester.pumpAndSettle();

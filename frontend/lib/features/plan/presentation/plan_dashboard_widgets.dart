@@ -10,6 +10,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/more_link.dart';
 import '../../../core/widgets/progress_track.dart';
 import '../../onboarding/domain/transaction.dart';
+import '../../onboarding/presentation/category_tabs.dart';
 import '../../onboarding/presentation/onboarding_images.dart';
 import '../domain/monthly_plan.dart';
 
@@ -499,28 +500,15 @@ class CategoryRanking extends StatefulWidget {
 class _CategoryRankingState extends State<CategoryRanking> {
   SpendingCategory _selected = SpendingCategory.values.first;
 
-  /// 탭 아래 구분선
-  static const _dividerColor = Color(0xFFE8E3F7);
-
-  /// 고르지 않은 탭 글자
-  static const _inactiveColor = Color(0xFF757D91);
-
   @override
   Widget build(BuildContext context) {
     final ranking = widget.categoryPlans[_selected] ?? const [];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DecoratedBox(
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: _dividerColor)),
-          ),
-          child: Row(
-            children: [
-              for (final category in SpendingCategory.values)
-                Expanded(child: _tab(category)),
-            ],
-          ),
+        CategoryTabs(
+          selected: _selected,
+          onChanged: (category) => setState(() => _selected = category),
         ),
         Align(
           alignment: Alignment.centerRight,
@@ -539,44 +527,6 @@ class _CategoryRankingState extends State<CategoryRanking> {
           for (final (index, item) in ranking.indexed)
             _RankRow(rank: index + 1, item: item),
       ],
-    );
-  }
-
-  Widget _tab(SpendingCategory category) {
-    final selected = category == _selected;
-    return Semantics(
-      button: true,
-      selected: selected,
-      excludeSemantics: true,
-      label: '${category.label} 탭',
-      child: InkWell(
-        onTap: () => setState(() => _selected = category),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: Column(
-            children: [
-              Text(
-                category.label,
-                maxLines: 1,
-                style: AppTextStyles.caption.copyWith(
-                  fontSize: 11,
-                  height: 1.2,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? AppColors.primary : _inactiveColor,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                height: 2,
-                decoration: BoxDecoration(
-                  color: selected ? AppColors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

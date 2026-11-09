@@ -56,7 +56,7 @@ void main() {
 
     expect(findText('이번 달 계획'), findsOneWidget);
     expect(findText('820,000원'), findsOneWidget);
-    expect(findText('외식·편의점 플랜이 변경됐어요'), findsOneWidget);
+    expect(findText('음식·배달, 편의·마트 플랜이 변경됐어요'), findsOneWidget);
     expect(findText('결제 전 카드 추천'), findsOneWidget);
     expect(findText('예정지출 추가'), findsOneWidget);
     expect(findText('카드별 목표 사용금액'), findsOneWidget);
@@ -68,7 +68,7 @@ void main() {
     await _scrollTo(tester, findText('스타벅스'));
 
     expect(findText('GS25'), findsOneWidget);
-    expect(findText('KB My WE:SH · 편의점'), findsOneWidget);
+    expect(findText('KB My WE:SH · 편의·마트'), findsOneWidget);
     expect(findText('8,400원'), findsOneWidget);
     expect(findText('혜택 420원'), findsOneWidget);
     expect(findText('스타벅스'), findsOneWidget);
@@ -90,12 +90,12 @@ void main() {
     expect(findText('변경된 월간 플랜'), findsOneWidget);
     await tester.tap(findText('변경된 플랜 확인'));
     await tester.pumpAndSettle();
-    expect(findText('외식·편의점 플랜이 변경됐어요'), findsNothing);
+    expect(findText('음식·배달, 편의·마트 플랜이 변경됐어요'), findsNothing);
 
     await tester.tap(find.bySemanticsLabel('월간 플랜'));
     await tester.pumpAndSettle();
     expect(find.byType(MonthlyPlanScreen), findsOneWidget);
-    expect(findText('외식·편의점 플랜이 변경됐어요'), findsNothing);
+    expect(findText('음식·배달, 편의·마트 플랜이 변경됐어요'), findsNothing);
   });
 
   testWidgets('결제 전 카드 추천을 누르면 카드 추천 탭으로 간다', (tester) async {
