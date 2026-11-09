@@ -127,6 +127,7 @@ class TransactionApiTest {
     void cleanUp() {
         jdbc.update("delete from card_transactions");
         jdbc.update("delete from user_cards");
+        SelectedCards.cleanUp(jdbc);
         orgAccounts.deleteAll();
         connections.deleteAll();
         refreshTokens.deleteAll();
@@ -148,7 +149,9 @@ class TransactionApiTest {
         CodefOrgAccount account = orgAccounts.save(CodefOrgAccount.connected(connection, "0301", now));
         ownedCardService.saveSynced(owner.getId(), account.getId(), CardCompany.KB,
             List.of(new CollectedCard(cardName, "1111", "check")));
-        return ownedCards.findByOrgAccountId(account.getId()).get(0).getId();
+        long cardId = ownedCards.findByOrgAccountId(account.getId()).get(0).getId();
+        SelectedCards.select(jdbc, cardId);
+        return cardId;
     }
 
     /** 같은 사용자의 두 번째 보유카드. 연결은 사용자당 하나라서 같은 연결의 다른 카드사 계정을 쓴다. */
@@ -158,7 +161,9 @@ class TransactionApiTest {
         CodefOrgAccount account = orgAccounts.save(CodefOrgAccount.connected(connection, "0306", now));
         ownedCardService.saveSynced(user.getId(), account.getId(), CardCompany.SHINHAN,
             List.of(new CollectedCard(cardName, "2222", "check")));
-        return ownedCards.findByOrgAccountId(account.getId()).get(0).getId();
+        long cardId = ownedCards.findByOrgAccountId(account.getId()).get(0).getId();
+        SelectedCards.select(jdbc, cardId);
+        return cardId;
     }
 
     private void save(User owner, long ownerCard, LocalDateTime at, String merchant, long amount, long canceled,
@@ -278,6 +283,33 @@ class TransactionApiTest {
         list("?cardId=" + second).andExpect(jsonPath("$.data.content[0].merchantName").value("카드B 거래"));
         list("?cardId=" + otherCard).andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(0));
         list("?cardId=abc").andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("기본은 분석 대상 카드의 거래만, cardScope=ALL이면 모두, cardId를 지정하면 그 카드가 우선이다")
+    void cardScopeFilter() throws Exception {
+        long unselected = newCardForSameUser("선택 안 한 카드");
+        jdbc.update("update user_cards set selected = false where id = ?", unselected);
+        save(user, card, today.minusDays(2).atTime(9, 0), "선택한 카드 거래", 1_000, 0, "CAFE");
+        save(user, unselected, today.minusDays(3).atTime(9, 0), "선택 안 한 카드 거래", 2_000, 0, "CAFE");
+
+        list("").andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].merchantName").value("선택한 카드 거래"));
+        list("?cardScope=selected").andExpect(jsonPath("$.data.totalElements").value(1));
+        list("?cardScope=ALL").andExpect(jsonPath("$.data.totalElements").value(2));
+        list("?cardId=" + unselected).andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].merchantName").value("선택 안 한 카드 거래"));
+        list("?cardScope=MINE").andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("COMMON-400"));
+    }
+
+    @Test
+    @DisplayName("분석 대상 카드가 없으면 기본 범위의 목록은 비어 있고 오류가 아니다")
+    void noSelectedCardsGivesEmptyList() throws Exception {
+        jdbc.update("update user_cards set selected = false where id = ?", card);
+        save(today.minusDays(2).atTime(9, 0), "거래", 1_000, "CAFE");
+
+        list("").andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(0));
+        list("?cardScope=ALL").andExpect(jsonPath("$.data.totalElements").value(1));
     }
 
     @Test
