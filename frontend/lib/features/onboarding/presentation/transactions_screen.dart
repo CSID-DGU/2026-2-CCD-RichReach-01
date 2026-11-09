@@ -17,13 +17,12 @@ import '../../../core/widgets/summary_card.dart';
 import '../application/onboarding_data_providers.dart';
 import '../domain/transaction.dart';
 import 'connection_widgets.dart';
-import 'load_failure_view.dart';
 import 'onboarding_images.dart';
 
 /// ONB-05 거래내역 확인 화면. 기본 조회 기간은 3개월이다.
 ///
 /// 조회한 기간에 거래가 없으면 ONB-05A 안내를 보여주고, 거래내역 없이 예산 화면으로 넘어가거나
-/// 다시 불러올 수 있다.
+/// 다시 불러올 수 있다. 불러오지 못했을 때도 같은 모양으로 안내한다.
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
 
@@ -37,7 +36,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     final summaryAsync = ref.watch(transactionSummaryProvider(_period));
-    final isEmpty = summaryAsync.value?.isEmpty ?? false;
+    // 거래가 없거나 불러오지 못했으면 안내와 함께 "거래내역 없이 계속하기", "다시 불러오기"를 보여준다.
+    final isEmpty =
+        (summaryAsync.value?.isEmpty ?? false) || summaryAsync.hasError;
 
     return OnboardingScaffold(
       header: const StepHeader(step: 4),
@@ -57,14 +58,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           SizedBox(height: isEmpty ? 31 : 20),
           switch (summaryAsync) {
             AsyncData(value: final summary) when summary.isEmpty =>
-              const _EmptyContent(),
+              const _NoticeContent(
+                title: '확인된 거래내역이 없어요',
+                description:
+                    '카드사 조회 범위 또는 연결 상태를 확인하거나\n소비예산을 직접 입력해 플랜을 만들 수 있어요.',
+              ),
             AsyncData(value: final summary) => _SummaryContent(
               summary: summary,
             ),
-            AsyncError() => LoadFailureView(
-              message: '거래내역을 불러오지 못했어요.',
-              onRetry: () =>
-                  ref.invalidate(transactionSummaryProvider(_period)),
+            AsyncError() when !summaryAsync.isLoading => const _NoticeContent(
+              title: '거래내역을 불러오지 못했어요',
+              description:
+                  '네트워크 연결 상태를 확인한 후 다시 불러오거나\n소비예산을 직접 입력해 플랜을 만들 수 있어요.',
             ),
             _ => const Padding(
               padding: EdgeInsets.symmetric(vertical: 48),
@@ -175,9 +180,12 @@ class _PeriodTab extends StatelessWidget {
   }
 }
 
-/// ONB-05A 거래내역 없음 안내.
-class _EmptyContent extends StatelessWidget {
-  const _EmptyContent();
+/// 경고 아이콘과 안내 (ONB-05A 거래내역 없음, 불러오기 실패).
+class _NoticeContent extends StatelessWidget {
+  const _NoticeContent({required this.title, required this.description});
+
+  final String title;
+  final String description;
 
   @override
   Widget build(BuildContext context) {
@@ -193,9 +201,9 @@ class _EmptyContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        const CenteredTitle(
-          title: '확인된 거래내역이 없어요',
-          description: '카드사 조회 범위 또는 연결 상태를 확인하거나\n소비예산을 직접 입력해 플랜을 만들 수 있어요.',
+        CenteredTitle(
+          title: title,
+          description: description,
           titleSize: 23,
           descriptionSize: 13,
           descriptionGap: 8,

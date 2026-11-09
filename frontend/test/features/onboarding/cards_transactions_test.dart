@@ -371,6 +371,51 @@ void main() {
       expect(findText('이 거래 내역으로 분석하기'), findsOneWidget);
     });
   });
+
+  group('ONB-05 거래내역 불러오기 실패', () {
+    testWidgets('불러오지 못하면 ONB-05A처럼 아이콘과 안내, 두 버튼을 보여준다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.transactions,
+        transactions: _FailingTransactions(),
+      );
+
+      expect(findText('거래내역을 불러오지 못했어요'), findsOneWidget);
+      expect(find.byType(Image), findsWidgets);
+      expect(findText('거래내역 없이 계속하기'), findsOneWidget);
+      expect(findText('다시 불러오기'), findsOneWidget);
+      expect(findText('이 거래 내역으로 분석하기'), findsNothing);
+      expect(findText('다시 시도'), findsNothing);
+    });
+
+    testWidgets('다시 불러오기에 성공하면 요약을 보여준다', (tester) async {
+      final repository = _FailingTransactions();
+      await pumpAppAt(tester, AppRoute.transactions, transactions: repository);
+      expect(findText('거래내역을 불러오지 못했어요'), findsOneWidget);
+
+      repository.failing = false;
+      await tester.tap(findText('다시 불러오기'));
+      await tester.pumpAndSettle();
+
+      expect(findText('거래내역을 불러오지 못했어요'), findsNothing);
+      expect(findText('이 거래 내역으로 분석하기'), findsOneWidget);
+    });
+  });
+}
+
+/// [failing]인 동안은 실패하고, 아니면 거래내역을 돌려준다.
+class _FailingTransactions implements TransactionRepository {
+  bool failing = true;
+
+  @override
+  Future<TransactionSummary> fetchSummary(
+    TransactionPeriod period,
+    List<CardCompany> companies,
+  ) async {
+    if (failing) throw const ApiException(ApiErrorKind.network);
+    return FakeTransactionRepository(delay: Duration.zero)
+        .fetchSummary(period, companies);
+  }
 }
 
 /// 처음 [emptyTimes]번은 빈 결과를, 그 뒤로는 거래내역을 돌려주고 호출 횟수를 센다.

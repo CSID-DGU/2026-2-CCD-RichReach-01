@@ -62,9 +62,13 @@ class AnalysisCards extends Notifier<List<OwnedCard>> {
 }
 
 /// 조회 기간별 거래내역 요약.
+///
+/// 실패하면 자동으로 다시 시도하지 않고 바로 실패 안내를 보여준다. (화면의 "다시 불러오기"로 다시 시도한다)
 final transactionSummaryProvider = FutureProvider.autoDispose
     .family<TransactionSummary, TransactionPeriod>((ref, period) {
       return ref
           .watch(transactionRepositoryProvider)
           .fetchSummary(period, ref.watch(connectedCompaniesProvider));
-    });
+    }, retry: _noRetry);
+
+Duration? _noRetry(int retryCount, Object error) => null;
