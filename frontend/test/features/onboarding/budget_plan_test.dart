@@ -355,7 +355,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(findText('이번 달 플랜이 이미 있어요.'), findsOneWidget);
+      expect(findText('이번 달 플랜이 이미 있어요'), findsOneWidget);
+      // 진행 막대와 다시 시도 버튼 대신 완료 아이콘과 하단 버튼을 보여준다.
+      expect(find.bySemanticsLabel('플랜 생성 진행률'), findsNothing);
+      expect(findText('다시 시도'), findsNothing);
       await tester.tap(findText('월간 플랜 보기'));
       await tester.pumpAndSettle();
       expect(find.byType(MonthlyPlanScreen), findsOneWidget);
