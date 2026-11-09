@@ -17,8 +17,8 @@ import java.time.LocalDateTime;
  * @param canceledAmount   취소·환불된 금액
  * @param netAmount        취소·환불을 뺀 실제 결제 금액
  * @param status           취소 상태 (APPROVED, PARTIALLY_CANCELED, CANCELED)
- * @param category         화면용 업종. 사용자가 고친 값이 있으면 그 값, 없으면 자동 분류 값이고 분류 전이거나 6개 업종이 아니면 ETC
- * @param autoCategory     자동 분류 값. 사용자가 고친 값과 상관없이 시스템이 분류한 업종 (분류 전이거나 6개 업종이 아니면 ETC)
+ * @param category         화면용 업종. 사용자가 고친 값이 있으면 그 값, 없으면 자동 분류 값이고 분류 전이거나 11개 업종이 아니면 ETC
+ * @param autoCategory     자동 분류 값. 사용자가 고친 값과 상관없이 시스템이 분류한 업종 (분류 전이거나 11개 업종이 아니면 ETC)
  * @param categoryEdited   사용자가 업종을 고쳤는지. true이면 {@code category}는 고친 값이다.
  * @param installmentMonths 할부 개월. 0이면 일시불
  * @param overseas         해외 결제 여부

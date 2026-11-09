@@ -39,7 +39,7 @@ public class MerchantCategoryRule extends BaseEntity {
     @Column(name = "match_type", nullable = false, length = 20)
     private MatchType matchType;
 
-    /** 화면용 6개 업종 코드 */
+    /** 화면용 11개 업종 코드 */
     @Column(name = "ui_category", nullable = false, length = 30)
     private String uiCategory;
 
@@ -54,7 +54,7 @@ public class MerchantCategoryRule extends BaseEntity {
     @Column(length = 200)
     private String note;
 
-    /** 화면용 업종. 규칙에 6개 업종이 아닌 값이 들어 있으면 비어 있다. */
+    /** 화면용 업종. 규칙에 11개 업종이 아닌 값이 들어 있으면 비어 있다. */
     public java.util.Optional<SpendingCategory> spendingCategory() {
         return SpendingCategory.fromCode(uiCategory);
     }

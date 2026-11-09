@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
- * 혜택의 업종 코드를 화면용 6개 업종으로 바꾼다. 혜택 계산이 "이 혜택은 어느 업종 거래에 적용되는가"를 정할 때 쓴다.
+ * 혜택의 업종 코드를 화면용 11개 업종으로 바꾼다. 혜택 계산이 "이 혜택은 어느 업종 거래에 적용되는가"를 정할 때 쓴다.
  *
  * <p>대응표는 DB({@code benefit_category_mappings})에 있고, 작아서 처음 쓸 때 한 번 읽어 둔다. 표를 바꾼 뒤에는
  * {@link #refresh()}로 다시 읽는다.

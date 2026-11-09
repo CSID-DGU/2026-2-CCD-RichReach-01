@@ -16,7 +16,7 @@ import org.springframework.data.jpa.domain.Specification;
  * 거래 목록의 조회 조건. 조건이 있는 것만 더한다. 항상 한 사용자의 거래만 본다.
  *
  * <p>업종 조건은 사용자가 고친 값이 있으면 그 값, 없으면 자동 분류 값(화면에 보이는 업종)으로 비교한다.
- * {@code ETC}는 분류 전(NULL)이거나 6개 업종이 아닌 값도 포함한다. 화면에서 ETC로 보이는 거래와 같게 하려는 것이다.
+ * {@code ETC}는 분류 전(NULL)이거나 11개 업종이 아닌 값도 포함한다. 화면에서 ETC로 보이는 거래와 같게 하려는 것이다.
  */
 final class TransactionSpecifications {
 
