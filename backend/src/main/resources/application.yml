@@ -49,6 +49,10 @@ richreach:
   staging:
     load-on-startup: ${STAGING_LOAD_ON_STARTUP:false}
     csv-dir: ${STAGING_CSV_DIR:}
+  # 혜택 계산기. engine은 쓸 계산기 이름, rule-selection은 READY_ONLY(확인된 규칙만) 또는 ALL(확인 전 규칙 포함, 개발·시연용)
+  benefit:
+    engine: ${BENEFIT_ENGINE:simple}
+    rule-selection: ${BENEFIT_RULE_SELECTION:READY_ONLY}
   # 시연용 보유카드·거래 만들기. 평소에는 꺼 두고, 로컬 DB에서 만들 때만 켠다. (DemoSeedRunner 참고)
   demo-seed:
     enabled: ${DEMO_SEED_ON_STARTUP:false}

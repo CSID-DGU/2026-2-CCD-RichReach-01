@@ -49,6 +49,9 @@ services:
       DEMO_SEED_ON_STARTUP: ${DEMO_SEED_ON_STARTUP:-false}
       DEMO_SEED_USER_EMAIL: ${DEMO_SEED_USER_EMAIL:-}
       DEMO_SEED_RESET: ${DEMO_SEED_RESET:-false}
+      # 혜택 계산기. 확인 전 규칙까지 써서 시연하려면 .env에서 BENEFIT_RULE_SELECTION=ALL로 바꾼다.
+      BENEFIT_ENGINE: ${BENEFIT_ENGINE:-simple}
+      BENEFIT_RULE_SELECTION: ${BENEFIT_RULE_SELECTION:-READY_ONLY}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:
