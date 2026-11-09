@@ -346,7 +346,7 @@ class FakeMonthlyPlanRepository implements MonthlyPlanRepository {
     );
   }
 
-  /// 디자인 예시 플랜 (예산 820,000원 중 486,000원 사용, 외식·편의점 플랜 변경).
+  /// 디자인 예시 플랜 (예산 820,000원 중 486,000원 사용, 음식·배달, 편의·마트 플랜 변경).
   static MonthlyPlan samplePlan(DateTime month) {
     final cards = {
       for (final card in FakeCardRepository.sampleCards([
@@ -389,7 +389,7 @@ class FakeMonthlyPlanRepository implements MonthlyPlanRepository {
       },
       change: PlanChange(
         updatedAt: DateTime(month.year, month.month, 21, 14, 30),
-        summary: '외식·편의점 플랜이 변경됐어요',
+        summary: '음식·배달, 편의·마트 플랜이 변경됐어요',
         items: [
           AmountChange(
             title: SpendingCategory.dining.label,
@@ -405,7 +405,7 @@ class FakeMonthlyPlanRepository implements MonthlyPlanRepository {
           const AmountChange(title: '이번 달 예상 혜택', before: 31600, after: 32400),
         ],
         reason:
-            '외식 지출이 예상보다 적고 편의점 이용이 늘어, '
+            '음식·배달 지출이 예상보다 적고 편의·마트 이용이 늘어, '
             '남은 혜택 한도를 더 활용할 수 있는 ${kb.name}를 우선 카드로 변경했어요.',
       ),
     );

@@ -126,9 +126,14 @@ class CardImage extends StatelessWidget {
 String categoryIconAsset(SpendingCategory category) => switch (category) {
   SpendingCategory.dining => AppAssets.iconRestaurant,
   SpendingCategory.cafe => AppAssets.iconCafe,
+  SpendingCategory.convenienceStore => AppAssets.iconConvenienceStore,
   SpendingCategory.shopping => AppAssets.iconShopping,
   SpendingCategory.transport => AppAssets.iconTransportation,
-  SpendingCategory.convenienceStore => AppAssets.iconConvenienceStore,
+  SpendingCategory.fuelVehicle => AppAssets.iconFuelAutomotive,
+  SpendingCategory.lifeHealth => AppAssets.iconLifeHealth,
+  SpendingCategory.telecomSubscription => AppAssets.iconTelecomRecurring,
+  SpendingCategory.cultureTravel => AppAssets.iconCultureTravel,
+  SpendingCategory.education => AppAssets.iconEducationBooks,
   SpendingCategory.etc => AppAssets.iconEtc,
 };
 

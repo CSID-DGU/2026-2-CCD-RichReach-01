@@ -54,9 +54,9 @@ void main() {
       expect(r.message, '현재 플랜을 기준으로 신한 Deep Dream이 가장 유리해요.');
       expect(r.card.name, '신한 Deep Dream');
       expect(r.expectedBenefit, 10000);
-      expect(r.benefitLabel, '외식 10% 할인');
+      expect(r.benefitLabel, '음식·배달 10% 할인');
       expect(r.performanceNote, '실적까지 62,000원 남음');
-      expect(r.planImpact, '외식 목표 130,000원 → 30,000원');
+      expect(r.planImpact, '음식·배달 목표 130,000원 → 30,000원');
       expect(r.reasons, [
         '혜택 한도가 남아 있어 10% 할인이 적용돼요.',
         '실적 달성에도 도움이 되고 추가 소비가 필요하지 않아요.',
@@ -139,7 +139,7 @@ void main() {
       expect(findText('현재 플랜을 기준으로 신한 Deep Dream이 가장 유리해요.'), findsOneWidget);
       expect(findText('추천'), findsOneWidget);
       expect(findText('10,000원'), findsOneWidget);
-      expect(findText('외식 목표 130,000원 → 30,000원'), findsOneWidget);
+      expect(findText('음식·배달 목표 130,000원 → 30,000원'), findsOneWidget);
       await tester.scrollUntilVisible(
         findText('다른 카드와 비교'),
         200,

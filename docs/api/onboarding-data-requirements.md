@@ -56,8 +56,9 @@
 
 **분석 가능 여부 (`AnalysisStatus`)**: `AVAILABLE`(분석 가능), `PARTIAL`(일부 혜택 제외), `UNAVAILABLE`(분석 불가)
 
-**업종 (`Category`)**: 화면에는 `DINING`(외식), `CAFE`(카페), `SHOPPING`(쇼핑), `TRANSPORT`(교통), `CONVENIENCE_STORE`(편의점), `ETC`(기타) 6개를 보여줍니다.
-내부 계산용 세부 업종(예: 30개)을 따로 두더라도, **API 응답에는 화면용 6개 코드로 묶어서** 내려주면 프론트는 매핑 없이 쓸 수 있습니다. (→ Q5)
+**업종 (`Category`)**: 화면에는 아래 11개를 이 순서로 보여줍니다. (백엔드 #190)
+`DINING`(음식·배달), `CAFE`(카페), `CONVENIENCE_STORE`(편의·마트), `SHOPPING`(쇼핑), `TRANSPORT`(교통), `FUEL_VEHICLE`(주유·차량), `LIFE_HEALTH`(생활·건강), `TELECOM_SUBSCRIPTION`(정기결제), `CULTURE_TRAVEL`(문화·여행), `EDUCATION`(교육·도서), `ETC`(기타)
+내부 계산용 세부 업종을 따로 두더라도, **API 응답에는 화면용 11개 코드로 묶어서** 내려줍니다. 앱이 모르는 코드는 "기타"로 보여줍니다. (→ Q5)
 
 **작업 상태 (`JobStatus`)**: `PENDING`, `IN_PROGRESS`, `SUCCESS`, `FAILED` (제안)
 
@@ -323,12 +324,12 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
   "monthlyAverage": 820000,
   "topCategory": "DINING",
   "categoryRatios": [
-    { "category": "DINING", "ratio": 28 },
-    { "category": "CAFE", "ratio": 8 },
-    { "category": "SHOPPING", "ratio": 22 },
-    { "category": "TRANSPORT", "ratio": 15 },
-    { "category": "CONVENIENCE_STORE", "ratio": 12 },
-    { "category": "ETC", "ratio": 15 }
+    { "category": "DINING", "ratio": 28, "amount": 688800, "transactionCount": 41, "rank": 1 },
+    { "category": "CAFE", "ratio": 8, "amount": 196800, "transactionCount": 30, "rank": 5 },
+    { "category": "SHOPPING", "ratio": 22, "amount": 541200, "transactionCount": 18, "rank": 2 },
+    { "category": "TRANSPORT", "ratio": 15, "amount": 369000, "transactionCount": 52, "rank": 3 },
+    { "category": "CONVENIENCE_STORE", "ratio": 12, "amount": 295200, "transactionCount": 37, "rank": 4 },
+    { "category": "ETC", "ratio": 15, "amount": 369000, "transactionCount": 24, "rank": 6 }
   ],
   "suggestedBudget": {
     "total": 820000,
@@ -344,10 +345,21 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
 }
 ```
 
+- `categoryRatios`의 우선순위 `rank`는 서버가 정합니다. (백엔드 답변)
+  - 규칙: 금액이 큰 순 → 같으면 건수가 많은 순 → 그래도 같으면 업종 고정 순서
+  - `topCategory`는 `rank`가 1인 업종입니다.
+  - 배열은 지금처럼 업종 고정 순서입니다.
+- 화면의 업종별 소비패턴은 `rank` 순으로 **5개까지만** 보여 주고 나머지는 숨깁니다. "기타"와 비율이 0인 업종은 보여 주지 않습니다.
+  - `amount`·`transactionCount`·`rank`가 아직 오지 않으면 프론트는 비율이 큰 순, 같으면 업종 순서로 대신 정렬합니다.
+- 기간(`period`)은 ONB-05에서 고른 기간을 보냅니다. (기본 3개월)
+- 백엔드 #192에서 `hasData`, `partial`이 추가됐습니다.
+  - `hasData=false`(분석할 소비 없음)이면 안내를 보여 주고, 업종별 예산을 직접 입력해 총액이 0보다 커야 플랜을 만들 수 있습니다.
+  - `topCategory`는 소비가 없으면 `null`입니다.
+- 업종별 예산은 `suggestedBudget.byCategory`의 업종을 모두 씁니다.
 - 예산은 사용자가 **수정**할 수 있습니다.
   - 총액을 바꾸면 업종별 예산을 지금 비율대로 다시 나눕니다.
   - 업종별 예산을 바꾸면 총액은 업종별 예산의 합이 됩니다.
-- 누가 다시 나눌지는 미정입니다. (→ Q6) 다루는 업종이 6개뿐이라 **프론트가 바로 계산해 화면에 보여주고, 서버는 확정한 값을 받아 검증·저장**하는 방식을 제안합니다. 프론트는 지금 이 방식으로 만들어 두었습니다.
+- 누가 다시 나눌지는 미정입니다. (→ Q6) 업종 수가 적어(11개) **프론트가 바로 계산해 화면에 보여주고, 서버는 확정한 값을 받아 검증·저장**하는 방식을 제안합니다. 프론트는 지금 이 방식으로 만들어 두었습니다.
 - 확정한 예산은 아래 플랜 생성 요청(`POST /api/plans`) 본문의 `budget`으로 보냅니다. (Q13 답변)
 - 새 디자인에서 "이번 달 예정지출 추가"는 빠졌습니다. 예정지출 API는 온보딩에서는 쓰지 않습니다.
 
@@ -410,7 +422,7 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
 | Q2 | 오래 걸리는 작업은 한 번에 기다릴까요, 시작 후 상태를 조회할까요? | ONB-03A, 07A | 비동기 작업 → 상태 조회(폴링) | 카드 연결은 명세서 경로, 플랜 생성은 `GET /api/plans/jobs/{jobId}` (Q14) |
 | Q3 | 약관 본문은 서버에서 내려주나요, 앱에 넣어두나요? | AUTH-01, ONB-02 | 약관 본문은 앱에 두고, 서버는 동의한 약관 버전을 기록 (가입은 구현됨. 서버가 현재 버전을 정하므로 가입 요청에 버전을 보내지 않음) | 카드 연동 동의(ONB-02)의 `termsVersion` 처리는 해당 API를 만들 때 정함 |
 | Q4 | 카드사 인증은 카드사별로 호출하나요, 한 번에 보내나요? | ONB-02B | 카드사별로 각각 호출 (순차, 1:N) | 지금 팝업 흐름과 일치 |
-| Q5 | 업종 분류는 몇 개로 하나요? | ONB-05, 06 | 논의 필요 (화면 6개, 내부 30개 등) | 내부 분류와 상관없이 API 응답은 화면용 6개 코드로 묶어서 내려주기 제안 |
+| Q5 | 업종 분류는 몇 개로 하나요? | ONB-05, 06 | 화면용 11개로 확정 (백엔드 #190) | 내부 분류와 상관없이 API 응답은 화면용 11개 코드로 내려줌 |
 | Q6 | 예산 총액을 수정하면 업종별 예산은 누가 다시 나누나요? | ONB-06 | 미정 (논의 필요) | 프론트가 계산해 바로 보여주고, 서버는 확정 값을 검증·저장하는 방식 제안 |
 | Q7 | 플랜 완료 화면의 카드별 막대는 무엇의 비율인가요? | ONB-07B | 카드별 비중 | `targetAmount`로 프론트가 계산. 추가 필드 필요 없음 |
 | Q8 | 온보딩을 중간에 그만두면 어디서부터 시작하나요? | 전체 | 진행 단계를 저장하는 칼럼 없음. 로그인 응답에도 온보딩 여부를 넣지 않음 (구현 확인) | **칼럼 추가 없이** 처리 가능: 로그인 후 `GET /api/connections`가 비면 ONB-01, 플랜이 없으면 ONB-04, `GET /api/plans?month=`에 플랜이 있으면 홈 |

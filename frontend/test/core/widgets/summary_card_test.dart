@@ -14,7 +14,7 @@ void main() {
             child: SummaryCard(
               child: Align(
                 alignment: Alignment.centerRight,
-                child: SummaryPill(label: '외식 비중 1위', minWidth: 116),
+                child: SummaryPill(label: '음식·배달 비중 1위', minWidth: 116),
               ),
             ),
           ),

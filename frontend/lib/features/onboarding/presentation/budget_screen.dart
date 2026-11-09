@@ -81,7 +81,10 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
       },
       bottom: PrimaryButton(
         label: '이 예산으로 플랜 만들기',
-        onPressed: budget == null || _saving ? null : () => _createPlan(budget),
+        // 예산이 0원이면(분석할 소비가 없고 아직 입력하지 않음) 플랜을 만들 수 없다.
+        onPressed: budget == null || budget.total <= 0 || _saving
+            ? null
+            : () => _createPlan(budget),
       ),
     );
   }
@@ -102,17 +105,13 @@ class _BudgetContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // "기타"는 소비패턴으로 보여주지 않고, 비율이 있는 업종만 큰 순서대로 보여준다.
-    final ratios =
-        analysis.categoryRatios
-            .where((r) => r.ratio > 0 && r.category != SpendingCategory.etc)
-            .toList()
-          ..sort((a, b) => b.ratio.compareTo(a.ratio));
-    final maxRatio = ratios.isEmpty ? 0 : ratios.first.ratio;
+    // 우선순위가 높은 5개 업종만 보여준다. 막대 길이는 가장 큰 비율을 기준으로 한다.
+    final ratios = analysis.patternRatios;
+    final maxRatio = ratios.fold(0, (max, r) => r.ratio > max ? r.ratio : max);
+    // 업종별 예산은 예산이 없는 업종도 포함해 모든 업종을 보여준다.
     final categoryBudgets = [
       for (final category in SpendingCategory.values)
-        if ((budget.byCategory[category] ?? 0) > 0)
-          (category, budget.byCategory[category]!),
+        (category, budget.byCategory[category] ?? 0),
     ];
 
     return Column(
@@ -120,20 +119,25 @@ class _BudgetContent extends StatelessWidget {
       children: [
         PageTitle(
           title: '이번 달 소비계획을 확인해 주세요',
-          description: '최근 ${analysis.analyzedMonths}개월의 소비내역을 분석했어요.',
+          description: analysis.hasData
+              ? '최근 ${analysis.analyzedMonths}개월의 소비내역을 분석했어요.'
+              : '업종별 예산을 직접 입력해 플랜을 만들 수 있어요.',
           descriptionGap: 8,
         ),
         const SizedBox(height: 25),
-        _AnalysisSummary(analysis: analysis),
-        const SizedBox(height: 30),
-        const Text('업종별 소비패턴', style: AppTextStyles.sectionTitle),
-        const SizedBox(height: 14),
-        for (final ratio in ratios)
-          _RatioBar(
-            ratio: ratio,
-            maxRatio: maxRatio,
-            highlighted: ratio == ratios.first,
-          ),
+        if (analysis.hasData) ...[
+          _AnalysisSummary(analysis: analysis),
+          const SizedBox(height: 30),
+          const Text('업종별 소비패턴', style: AppTextStyles.sectionTitle),
+          const SizedBox(height: 14),
+          for (final ratio in ratios)
+            _RatioBar(
+              ratio: ratio,
+              maxRatio: maxRatio,
+              highlighted: ratio == ratios.first,
+            ),
+        ] else
+          const _NoDataNotice(),
         const SizedBox(height: 26),
         _TotalBudgetBox(total: budget.total, onEdit: onEditTotal),
         const SizedBox(height: 30),
@@ -149,6 +153,33 @@ class _BudgetContent extends StatelessWidget {
           const SizedBox(height: 8),
         ],
       ],
+    );
+  }
+}
+
+/// 분석할 소비내역이 없을 때의 안내 (거래내역 없이 계속한 경우 등).
+class _NoDataNotice extends StatelessWidget {
+  const _NoDataNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('분석할 소비내역이 없어요', style: AppTextStyles.bodyStrong),
+          const SizedBox(height: 4),
+          Text(
+            '연필 버튼을 눌러 업종별 예산을 입력하면 그 합이 이번 달 소비예산이 돼요.',
+            style: AppTextStyles.caption.copyWith(fontSize: 13),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -181,14 +212,13 @@ class _AnalysisSummary extends StatelessWidget {
               color: AppColors.onPrimary,
             ),
           ),
-          const SizedBox(height: 2),
-          Align(
-            alignment: Alignment.centerRight,
-            child: SummaryPill(
-              label: '${analysis.topCategory.label} 비중 1위',
-              minWidth: 116,
+          if (analysis.topCategory case final top?) ...[
+            const SizedBox(height: 2),
+            Align(
+              alignment: Alignment.centerRight,
+              child: SummaryPill(label: '${top.label} 비중 1위', minWidth: 116),
             ),
-          ),
+          ],
         ],
       ),
     );

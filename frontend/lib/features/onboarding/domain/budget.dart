@@ -2,12 +2,28 @@ import 'transaction.dart';
 
 /// 업종별 소비 비율.
 class CategoryRatio {
-  const CategoryRatio({required this.category, required this.ratio});
+  const CategoryRatio({
+    required this.category,
+    required this.ratio,
+    required this.amount,
+    required this.transactionCount,
+    required this.rank,
+  });
 
   final SpendingCategory category;
 
-  /// 0~100
+  /// 금액 비중 (0~100)
   final int ratio;
+
+  /// 분석 기간의 소비금액 (원)
+  final int amount;
+
+  /// 분석 기간의 이용 건수
+  final int transactionCount;
+
+  /// 서버가 정한 우선순위 (1부터).
+  /// 금액이 큰 순 → 같으면 건수가 많은 순 → 그래도 같으면 업종 고정 순서다.
+  final int rank;
 }
 
 /// 최근 소비내역 분석 결과 (데이터 규약 문서의 ONB-06 응답 형식).
@@ -16,7 +32,7 @@ class SpendingAnalysis {
     required this.analyzedMonths,
     required this.monthlyAverage,
     required this.topCategory,
-    required this.mainCardName,
+    required this.hasData,
     required this.categoryRatios,
     required this.suggestedBudget,
   });
@@ -25,10 +41,27 @@ class SpendingAnalysis {
 
   /// 원 단위 월평균 소비
   final int monthlyAverage;
-  final SpendingCategory topCategory;
-  final String mainCardName;
+
+  /// 소비가 가장 큰 업종. 소비가 없으면 null
+  final SpendingCategory? topCategory;
+
+  /// 분석할 소비가 있는지. false면 비율과 추천 예산이 모두 0이라 예산을 직접 입력해야 한다.
+  final bool hasData;
   final List<CategoryRatio> categoryRatios;
   final MonthlyBudget suggestedBudget;
+
+  /// 소비패턴에 보여줄 업종 수
+  static const patternLimit = 5;
+
+  /// 소비패턴에 보여줄 업종. 우선순위([CategoryRatio.rank]) 순으로 [patternLimit]개까지이고, 나머지는 숨긴다.
+  /// "기타"와 비율이 0인 업종은 보여주지 않는다.
+  List<CategoryRatio> get patternRatios =>
+      (categoryRatios
+              .where((r) => r.ratio > 0 && r.category != SpendingCategory.etc)
+              .toList()
+            ..sort((a, b) => a.rank.compareTo(b.rank)))
+          .take(patternLimit)
+          .toList();
 }
 
 /// 한 달 예산. 업종별 예산은 업종 순서([SpendingCategory.values])대로 다룬다.

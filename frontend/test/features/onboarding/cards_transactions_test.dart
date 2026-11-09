@@ -285,9 +285,17 @@ void main() {
       expect(findText('62건 연결 완료'), findsOneWidget);
       expect(findText('80건 연결 완료'), findsOneWidget);
       expect(findText('스타벅스'), findsOneWidget);
+      // 최근 거래는 5건까지 보여준다.
+      await tester.scrollUntilVisible(
+        findText('올리브영'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(findText('배달의민족'), findsOneWidget);
+      expect(findText('올리브영'), findsOneWidget);
       expect(findText('카페 · 신한 Deep Dream'), findsOneWidget);
       expect(findText('-6,500원'), findsOneWidget);
-      expect(findText('편의점 · KB My WE:SH'), findsOneWidget);
+      expect(findText('편의·마트 · KB My WE:SH'), findsOneWidget);
       expect(findText('거래내역 다시 불러오기'), findsNothing);
     });
 
@@ -316,6 +324,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(BudgetScreen), findsOneWidget);
+    });
+
+    testWidgets('고른 기간으로 소비를 분석한다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.transactions,
+        transactions: _transactions(),
+      );
+
+      await tester.tap(findText('1개월'));
+      await tester.pumpAndSettle();
+      await tester.tap(findText('이 거래 내역으로 분석하기'));
+      await tester.pumpAndSettle();
+
+      expect(findText('최근 1개월의 소비내역을 분석했어요.'), findsOneWidget);
     });
   });
 

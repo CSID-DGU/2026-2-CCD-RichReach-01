@@ -52,6 +52,90 @@ void main() {
     });
   });
 
+  group('ONB-06 소비패턴 우선순위', () {
+    SpendingAnalysis analysis(List<CategoryRatio> ratios) => SpendingAnalysis(
+      analyzedMonths: 3,
+      monthlyAverage: 0,
+      topCategory: SpendingCategory.dining,
+      hasData: true,
+      categoryRatios: ratios,
+      suggestedBudget: _sampleBudget(),
+    );
+
+    test('금액이 큰 순, 같으면 건수가 많은 순, 그래도 같으면 업종 순서로 우선순위를 매긴다', () {
+      final ranked = FakeBudgetRepository.rankRatios({
+        for (final category in SpendingCategory.values) category: (0, 0, 0),
+        SpendingCategory.dining: (20, 100000, 5),
+        SpendingCategory.cafe: (20, 100000, 9),
+        SpendingCategory.shopping: (40, 200000, 1),
+        SpendingCategory.transport: (10, 50000, 3),
+        SpendingCategory.convenienceStore: (10, 50000, 3),
+      });
+
+      // 배열은 업종 고정 순서를 유지한다.
+      expect(ranked.map((r) => r.category), SpendingCategory.values);
+      expect(
+        {for (final r in ranked) r.category: r.rank},
+        {
+          SpendingCategory.shopping: 1,
+          SpendingCategory.cafe: 2,
+          SpendingCategory.dining: 3,
+          // 금액·건수가 같으면 업종 순서가 앞선 편의·마트가 먼저다.
+          SpendingCategory.convenienceStore: 4,
+          SpendingCategory.transport: 5,
+          SpendingCategory.fuelVehicle: 6,
+          SpendingCategory.lifeHealth: 7,
+          SpendingCategory.telecomSubscription: 8,
+          SpendingCategory.cultureTravel: 9,
+          SpendingCategory.education: 10,
+          SpendingCategory.etc: 11,
+        },
+      );
+    });
+
+    test('소비패턴은 우선순위 순으로 5개까지 보여주고, 기타와 소비 없는 업종은 뺀다', () {
+      CategoryRatio ratio(SpendingCategory category, int rank, int amount) =>
+          CategoryRatio(
+            category: category,
+            ratio: amount == 0 ? 0 : 10,
+            amount: amount,
+            transactionCount: 1,
+            rank: rank,
+          );
+
+      final shown = analysis([
+        ratio(SpendingCategory.dining, 3, 30000),
+        ratio(SpendingCategory.cafe, 6, 0),
+        ratio(SpendingCategory.shopping, 2, 40000),
+        ratio(SpendingCategory.transport, 4, 20000),
+        ratio(SpendingCategory.convenienceStore, 5, 10000),
+        ratio(SpendingCategory.etc, 1, 50000),
+      ]).patternRatios;
+
+      expect(shown.map((r) => r.category), [
+        SpendingCategory.shopping,
+        SpendingCategory.dining,
+        SpendingCategory.transport,
+        SpendingCategory.convenienceStore,
+      ]);
+    });
+
+    test('보여줄 업종은 최대 5개다', () {
+      final many = [
+        for (var i = 0; i < 7; i++)
+          CategoryRatio(
+            category: SpendingCategory.dining,
+            ratio: 10,
+            amount: 1000,
+            transactionCount: 1,
+            rank: i + 1,
+          ),
+      ];
+
+      expect(analysis(many).patternRatios.map((r) => r.rank), [1, 2, 3, 4, 5]);
+    });
+  });
+
   group('금액 입력 형식', () {
     String type(String input) => const AmountInputFormatter()
         .formatEditUpdate(TextEditingValue.empty, TextEditingValue(text: input))
@@ -104,14 +188,50 @@ void main() {
 
       expect(findText('최근 3개월의 소비내역을 분석했어요.'), findsOneWidget);
       expect(findText('820,000원'), findsOneWidget); // 월평균 소비
-      expect(findText('외식 비중 1위'), findsOneWidget);
+      expect(findText('음식·배달 비중 1위'), findsOneWidget);
       expect(findText('28%'), findsOneWidget);
       // "기타"는 소비패턴에 보여주지 않는다.
       expect(findText('23%'), findsNothing);
       expect(findText('820,000'), findsOneWidget); // 이번 달 소비예산
       expect(findText('230,000원'), findsOneWidget);
       expect(findText('190,000원'), findsOneWidget);
+      // 업종별 예산은 예산이 없는 업종도 0원으로 모두 보여준다.
+      expect(findText('주유·차량'), findsOneWidget);
+      expect(findText('교육·도서'), findsOneWidget);
+      expect(findText('0원'), findsNWidgets(6));
       expect(findText('＋ 이번 달 예정지출 추가'), findsNothing);
+    });
+
+    testWidgets('분석할 소비가 없으면 안내를 보여주고, 예산을 입력하기 전에는 플랜을 만들 수 없다', (
+      tester,
+    ) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.budget,
+        budget: FakeBudgetRepository(delay: Duration.zero, empty: true),
+      );
+
+      expect(findText('분석할 소비내역이 없어요'), findsOneWidget);
+      expect(findText('업종별 소비패턴'), findsNothing);
+      expect(findText('업종별 예산을 직접 입력해 플랜을 만들 수 있어요.'), findsOneWidget);
+      final button = find.widgetWithText(FilledButton, '이 예산으로 플랜 만들기');
+      expect(tester.widget<FilledButton>(button).onPressed, isNull);
+
+      await tester.ensureVisible(find.byTooltip('업종별 예산 수정'));
+      await tester.tap(find.byTooltip('업종별 예산 수정'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, '0').first,
+        '300000',
+      );
+      await tester.pump();
+      await tester.ensureVisible(findText('수정하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(findText('수정하기'));
+      await tester.pumpAndSettle();
+
+      expect(findText('300,000'), findsOneWidget);
+      expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
     });
 
     testWidgets('소비예산을 수정하면 업종별 예산이 비율대로 바뀐다', (tester) async {
@@ -140,6 +260,9 @@ void main() {
         '330000',
       );
       await tester.pump();
+      // 업종이 11개라 확인 버튼은 대화상자를 스크롤해야 보인다.
+      await tester.ensureVisible(findText('수정하기'));
+      await tester.pumpAndSettle();
       await tester.tap(findText('수정하기'));
       await tester.pumpAndSettle();
 
