@@ -165,16 +165,74 @@ class SpendingAnalysisCalculatorTest {
 
     // ---- 가장 큰 업종 ----
 
+    private static SpendingCategory top(Map<SpendingCategory, Long> amounts, Map<SpendingCategory, Long> counts) {
+        return SpendingAnalysisCalculator.topCategory(amounts, SpendingAnalysisCalculator.ranks(amounts, counts));
+    }
+
     @Test
     @DisplayName("소비가 가장 큰 업종을 찾고, 같으면 앞 업종이며, 소비가 없으면 null이다")
     void topCategory() {
-        assertThat(SpendingAnalysisCalculator.topCategory(amounts(
-            SpendingCategory.CAFE, 10, SpendingCategory.DINING, 30, SpendingCategory.SHOPPING, 20)))
-            .isEqualTo(SpendingCategory.DINING);
-        assertThat(SpendingAnalysisCalculator.topCategory(amounts(
-            SpendingCategory.SHOPPING, 10, SpendingCategory.CAFE, 10))).isEqualTo(SpendingCategory.CAFE);
-        assertThat(SpendingAnalysisCalculator.topCategory(Map.of())).isNull();
-        assertThat(SpendingAnalysisCalculator.topCategory(amounts(SpendingCategory.CAFE, 0))).isNull();
+        assertThat(top(amounts(SpendingCategory.CAFE, 10, SpendingCategory.DINING, 30, SpendingCategory.SHOPPING, 20),
+            Map.of())).isEqualTo(SpendingCategory.DINING);
+        assertThat(top(amounts(SpendingCategory.SHOPPING, 10, SpendingCategory.CAFE, 10), Map.of()))
+            .isEqualTo(SpendingCategory.CAFE);
+        assertThat(top(Map.of(), Map.of())).isNull();
+        assertThat(top(amounts(SpendingCategory.CAFE, 0), Map.of())).isNull();
+    }
+
+    @Test
+    @DisplayName("금액이 같으면 건수가 많은 업종이 topCategory다 (rank와 같은 기준)")
+    void topCategoryBreaksTiesByCount() {
+        assertThat(top(amounts(SpendingCategory.CAFE, 100, SpendingCategory.SHOPPING, 100),
+            amounts(SpendingCategory.CAFE, 1, SpendingCategory.SHOPPING, 5))).isEqualTo(SpendingCategory.SHOPPING);
+    }
+
+    @Test
+    @DisplayName("topCategory는 기타(ETC)를 빼고, 소비가 있는 업종이 기타뿐이면 null이다")
+    void topCategoryExcludesEtc() {
+        assertThat(top(amounts(SpendingCategory.ETC, 900, SpendingCategory.CAFE, 100), Map.of()))
+            .isEqualTo(SpendingCategory.CAFE);
+        assertThat(top(amounts(SpendingCategory.ETC, 900), Map.of())).isNull();
+    }
+
+    // ---- 순위 ----
+
+    @Test
+    @DisplayName("순위는 11개 업종에 1~11을 한 번씩 주고 금액이 큰 순서다 (기타도 포함)")
+    void ranksByAmountIncludingEtc() {
+        Map<SpendingCategory, Integer> ranks = SpendingAnalysisCalculator.ranks(amounts(
+            SpendingCategory.CAFE, 100, SpendingCategory.ETC, 500, SpendingCategory.DINING, 300), Map.of());
+
+        assertThat(ranks.values()).containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+        assertThat(ranks.get(SpendingCategory.ETC)).isEqualTo(1);
+        assertThat(ranks.get(SpendingCategory.DINING)).isEqualTo(2);
+        assertThat(ranks.get(SpendingCategory.CAFE)).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("금액이 같으면 건수가 많은 업종이, 건수도 같으면 업종 순서가 앞선 업종이 앞선다")
+    void ranksBreakTiesByCountThenOrder() {
+        Map<SpendingCategory, Integer> byCount = SpendingAnalysisCalculator.ranks(
+            amounts(SpendingCategory.CAFE, 100, SpendingCategory.SHOPPING, 100),
+            amounts(SpendingCategory.CAFE, 1, SpendingCategory.SHOPPING, 5));
+        assertThat(byCount.get(SpendingCategory.SHOPPING)).isEqualTo(1);
+        assertThat(byCount.get(SpendingCategory.CAFE)).isEqualTo(2);
+
+        Map<SpendingCategory, Integer> byOrder = SpendingAnalysisCalculator.ranks(
+            amounts(SpendingCategory.CAFE, 100, SpendingCategory.SHOPPING, 100),
+            amounts(SpendingCategory.CAFE, 2, SpendingCategory.SHOPPING, 2));
+        assertThat(byOrder.get(SpendingCategory.CAFE)).isEqualTo(1);
+        assertThat(byOrder.get(SpendingCategory.SHOPPING)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("소비가 없어도 순위는 업종 순서대로 1~11이다")
+    void ranksWithoutData() {
+        Map<SpendingCategory, Integer> ranks = SpendingAnalysisCalculator.ranks(Map.of(), Map.of());
+
+        for (SpendingCategory category : SpendingCategory.values()) {
+            assertThat(ranks.get(category)).isEqualTo(category.ordinal() + 1);
+        }
     }
 
     @Test

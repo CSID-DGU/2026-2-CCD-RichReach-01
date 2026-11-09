@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
@@ -59,18 +60,32 @@ final class SpendingAnalysisCalculator {
         return result;
     }
 
-    /** 소비가 가장 큰 업종. 같으면 앞 업종이고, 소비가 없으면 null이다. */
-    static SpendingCategory topCategory(Map<SpendingCategory, Long> amounts) {
-        SpendingCategory top = null;
-        long max = 0;
-        for (SpendingCategory category : SpendingCategory.values()) {
-            long amount = amounts.getOrDefault(category, 0L);
-            if (amount > max) {
-                max = amount;
-                top = category;
-            }
+    /**
+     * 업종 순위(1부터). 11개 업종 모두에 1~11을 한 번씩 준다. 금액이 큰 순서이고, 같으면 거래 건수가 많은 업종이, 그것도 같으면
+     * 업종 순서가 앞선 업종이 앞선다. 기타(ETC)도 순위에 포함한다. 소비가 없는 업종도 순위를 받는다. (맨 뒤쪽이다.)
+     */
+    static Map<SpendingCategory, Integer> ranks(Map<SpendingCategory, Long> amounts,
+                                                Map<SpendingCategory, Long> counts) {
+        List<SpendingCategory> ordered = new ArrayList<>(List.of(SpendingCategory.values()));
+        ordered.sort(Comparator.<SpendingCategory>comparingLong(c -> amounts.getOrDefault(c, 0L)).reversed()
+            .thenComparing(Comparator.<SpendingCategory>comparingLong(c -> counts.getOrDefault(c, 0L)).reversed())
+            .thenComparingInt(SpendingCategory::ordinal));
+        Map<SpendingCategory, Integer> result = new EnumMap<>(SpendingCategory.class);
+        for (int i = 0; i < ordered.size(); i++) {
+            result.put(ordered.get(i), i + 1);
         }
-        return top;
+        return result;
+    }
+
+    /**
+     * 소비가 가장 큰 업종. {@link #ranks}로 계산한 순위가 가장 앞선 업종이라서, 금액이 같을 때의 건수·업종 순서 기준도 순위와
+     * 똑같다. 기타(ETC)는 "어떤 업종인지" 알려주지 못해서 뺀다. 소비가 있는 업종이 기타뿐이거나 소비가 없으면 null이다.
+     */
+    static SpendingCategory topCategory(Map<SpendingCategory, Long> amounts, Map<SpendingCategory, Integer> ranks) {
+        return Arrays.stream(SpendingCategory.values())
+            .filter(category -> category != SpendingCategory.ETC && amounts.getOrDefault(category, 0L) > 0)
+            .min(Comparator.comparingInt(ranks::get))
+            .orElse(null);
     }
 
     /**
