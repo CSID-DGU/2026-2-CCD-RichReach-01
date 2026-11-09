@@ -438,7 +438,7 @@ class TransactionSummaryApiTest {
             .andExpect(jsonPath("$.data.totalAmount").value(0))
             .andExpect(jsonPath("$.data.transactionCount").value(0))
             .andExpect(jsonPath("$.data.collectedFrom").doesNotExist())
-            .andExpect(jsonPath("$.data.categories.length()").value(6));
+            .andExpect(jsonPath("$.data.categories.length()").value(11));
         summary(accessToken, "?period=1M&cardScope=ALL").andExpect(jsonPath("$.data.totalAmount").value(1_000));
     }
 
