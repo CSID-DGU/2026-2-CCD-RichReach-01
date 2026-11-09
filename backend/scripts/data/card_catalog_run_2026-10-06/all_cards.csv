@@ -1,0 +1,320 @@
+issuer,card_id,card_name,card_type,status,detail_url,source_text_path,source_text_length
+KB국민카드,09828,Less Go 카드,credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09828,outputs\card_catalog_run_2026-10-06\kb\text\09828.txt,21253
+KB국민카드,09297,WE:SH All+ 카드,credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09297,outputs\card_catalog_run_2026-10-06\kb\text\09297.txt,23665
+KB국민카드,09922,ALL 카드,credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09922,outputs\card_catalog_run_2026-10-06\kb\text\09922.txt,23373
+KB국민카드,09570,WE:SH Daily 카드,credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09570,outputs\card_catalog_run_2026-10-06\kb\text\09570.txt,23751
+KB국민카드,09162,ALL point 카드,credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09162,outputs\card_catalog_run_2026-10-06\kb\text\09162.txt,24206
+KB국민카드,09137,NEED Global 카드,credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09137,outputs\card_catalog_run_2026-10-06\kb\text\09137.txt,20454
+KB국민카드,09250,The Easy카드,credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09250,outputs\card_catalog_run_2026-10-06\kb\text\09250.txt,23464
+KB국민카드,09247,마이핏카드(적립형),credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09247,outputs\card_catalog_run_2026-10-06\kb\text\09247.txt,21975
+KB국민카드,09113,KB Pay 챌린지카드,credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09113,outputs\card_catalog_run_2026-10-06\kb\text\09113.txt,22146
+KB국민카드,09114,KB Pay 챌린지+카드,credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09114,outputs\card_catalog_run_2026-10-06\kb\text\09114.txt,22605
+KB국민카드,04350,toss KB국민카드,credit,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=04350,outputs\card_catalog_run_2026-10-06\kb\text\04350.txt,21795
+KB국민카드,09322,K-패스체크카드,check,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09322,outputs\card_catalog_run_2026-10-06\kb\text\09322.txt,22358
+KB국민카드,09347,K-패스체크카드(경기패스 디자인),check,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09347,outputs\card_catalog_run_2026-10-06\kb\text\09347.txt,22332
+KB국민카드,01782,카카오페이 KB국민 체크카드,check,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=01782,outputs\card_catalog_run_2026-10-06\kb\text\01782.txt,24820
+KB국민카드,01998,가온 올포인트 체크카드,check,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=01998,outputs\card_catalog_run_2026-10-06\kb\text\01998.txt,24963
+KB국민카드,09156,가온체크카드,check,listed,https://card.kbcard.com/CRD/DVIEW/HCAMCXPRICAC0076?mainCC=a&cooperationcode=09156,outputs\card_catalog_run_2026-10-06\kb\text\09156.txt,22880
+현대카드,ME4,M,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ME4,outputs\card_catalog_run_2026-10-06\hyundai\text\ME4.txt,13709
+현대카드,CSTCE2,코스트코 리워드 현대카드 Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=CSTCE2,outputs\card_catalog_run_2026-10-06\hyundai\text\CSTCE2.txt,10204
+현대카드,ZROE3,ZERO Edition3 (할인형),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ZROE3,outputs\card_catalog_run_2026-10-06\hyundai\text\ZROE3.txt,12205
+현대카드,MRDED2,Kia Members 신용카드 Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MRDED2,outputs\card_catalog_run_2026-10-06\hyundai\text\MRDED2.txt,13912
+현대카드,HMHC,Hyundai Mobility카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HMHC,outputs\card_catalog_run_2026-10-06\hyundai\text\HMHC.txt,9696
+현대카드,MZROE3,ZERO Edition3 (포인트형),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MZROE3,outputs\card_catalog_run_2026-10-06\hyundai\text\MZROE3.txt,16053
+현대카드,MRDEV,Kia Members 전기차 신용카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MRDEV,outputs\card_catalog_run_2026-10-06\hyundai\text\MRDEV.txt,13228
+현대카드,HMHCP,Hyundai Mobility Platinum카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HMHCP,outputs\card_catalog_run_2026-10-06\hyundai\text\HMHCP.txt,11905
+현대카드,NOLHC,NOL 카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=NOLHC,outputs\card_catalog_run_2026-10-06\hyundai\text\NOLHC.txt,13004
+현대카드,HCS,S,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HCS,outputs\card_catalog_run_2026-10-06\hyundai\text\HCS.txt,10525
+현대카드,ZRUP,ZERO Up (할인형),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ZRUP,outputs\card_catalog_run_2026-10-06\hyundai\text\ZRUP.txt,10962
+현대카드,HCD,D,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HCD,outputs\card_catalog_run_2026-10-06\hyundai\text\HCD.txt,10032
+현대카드,ZFE2,Z family Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ZFE2,outputs\card_catalog_run_2026-10-06\hyundai\text\ZFE2.txt,11316
+현대카드,HCO,O,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HCO,outputs\card_catalog_run_2026-10-06\hyundai\text\HCO.txt,10385
+현대카드,HEHC,Hyundai EV카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HEHC,outputs\card_catalog_run_2026-10-06\hyundai\text\HEHC.txt,14517
+현대카드,MLGTE3,LG U+-현대카드M Edition3(통신할인형2.0),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MLGTE3,outputs\card_catalog_run_2026-10-06\hyundai\text\MLGTE3.txt,14769
+현대카드,KALE2T1,대한항공카드 060,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=KALE2T1,outputs\card_catalog_run_2026-10-06\hyundai\text\KALE2T1.txt,12543
+현대카드,KALE2T2,대한항공카드 120,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=KALE2T2,outputs\card_catalog_run_2026-10-06\hyundai\text\KALE2T2.txt,14552
+현대카드,SGE2,SSG.COM카드 Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=SGE2,outputs\card_catalog_run_2026-10-06\hyundai\text\SGE2.txt,9332
+현대카드,NXNX,넥슨 현대카드 Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=NXNX,outputs\card_catalog_run_2026-10-06\hyundai\text\NXNX.txt,12244
+현대카드,ZWK,Z everyday,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ZWK,outputs\card_catalog_run_2026-10-06\hyundai\text\ZWK.txt,13441
+현대카드,GEPHC,에너지플러스 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=GEPHC,outputs\card_catalog_run_2026-10-06\hyundai\text\GEPHC.txt,10744
+현대카드,MKTE3TP,kt-현대카드M Edition3(통신할인형 2.0),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MKTE3TP,outputs\card_catalog_run_2026-10-06\hyundai\text\MKTE3TP.txt,14738
+현대카드,ZWE2,Z work Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ZWE2,outputs\card_catalog_run_2026-10-06\hyundai\text\ZWE2.txt,11970
+현대카드,MSKTE3,SKT-현대카드M Edition3(라이트할부형2.0),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MSKTE3,outputs\card_catalog_run_2026-10-06\hyundai\text\MSKTE3.txt,14802
+현대카드,MSKTE3TP,SKT-현대카드M Edition3(통신할인형2.0),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MSKTE3TP,outputs\card_catalog_run_2026-10-06\hyundai\text\MSKTE3TP.txt,14704
+현대카드,CWYHC,코웨이 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=CWYHC,outputs\card_catalog_run_2026-10-06\hyundai\text\CWYHC.txt,7732
+현대카드,HCT,T,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HCT,outputs\card_catalog_run_2026-10-06\hyundai\text\HCT.txt,8625
+현대카드,HCH,H,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HCH,outputs\card_catalog_run_2026-10-06\hyundai\text\HCH.txt,10141
+현대카드,KALE2T3,대한항공카드 300,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=KALE2T3,outputs\card_catalog_run_2026-10-06\hyundai\text\KALE2T3.txt,14713
+현대카드,AMGLE2,American Express ® Gold Card Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=AMGLE2,outputs\card_catalog_run_2026-10-06\hyundai\text\AMGLE2.txt,17439
+현대카드,MCWYE3,coway-현대카드M Edition3,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MCWYE3,outputs\card_catalog_run_2026-10-06\hyundai\text\MCWYE3.txt,12093
+현대카드,SKIHC,SK인텔릭스 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=SKIHC,outputs\card_catalog_run_2026-10-06\hyundai\text\SKIHC.txt,7763
+현대카드,ZOE2,Z play,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ZOE2,outputs\card_catalog_run_2026-10-06\hyundai\text\ZOE2.txt,11322
+현대카드,SCHC,쏘카카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=SCHC,outputs\card_catalog_run_2026-10-06\hyundai\text\SCHC.txt,8184
+현대카드,KALE2T4,대한항공카드 the First Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=KALE2T4,outputs\card_catalog_run_2026-10-06\hyundai\text\KALE2T4.txt,14474
+현대카드,CCKHC,쿠쿠 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=CCKHC,outputs\card_catalog_run_2026-10-06\hyundai\text\CCKHC.txt,7722
+현대카드,MPE4,MM,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MPE4,outputs\card_catalog_run_2026-10-06\hyundai\text\MPE4.txt,15152
+현대카드,MZRUP,ZERO Up (포인트형),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MZRUP,outputs\card_catalog_run_2026-10-06\hyundai\text\MZRUP.txt,11494
+현대카드,CHHHC,청호나이스 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=CHHHC,outputs\card_catalog_run_2026-10-06\hyundai\text\CHHHC.txt,7754
+현대카드,TO,the Orange,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=TO,outputs\card_catalog_run_2026-10-06\hyundai\text\TO.txt,16903
+현대카드,LTTDSHC,SILVER FOR LOTTE DEPARTMENT STORE,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=LTTDSHC,outputs\card_catalog_run_2026-10-06\hyundai\text\LTTDSHC.txt,13532
+현대카드,AMGRE2,American Express ® Green Card Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=AMGRE2,outputs\card_catalog_run_2026-10-06\hyundai\text\AMGRE2.txt,16453
+현대카드,SPM,Summit,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=SPM,outputs\card_catalog_run_2026-10-06\hyundai\text\SPM.txt,16477
+현대카드,AMPTE2,American Express The Platinum Card ® Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=AMPTE2,outputs\card_catalog_run_2026-10-06\hyundai\text\AMPTE2.txt,20527
+현대카드,LTTDSHCP,GOLD FOR LOTTE DEPARTMENT STORE,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=LTTDSHCP,outputs\card_catalog_run_2026-10-06\hyundai\text\LTTDSHCP.txt,16546
+현대카드,MXBE2,MX Black Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MXBE2,outputs\card_catalog_run_2026-10-06\hyundai\text\MXBE2.txt,16484
+현대카드,MKTE3,kt-현대카드M Edition3(청구할인형),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MKTE3,outputs\card_catalog_run_2026-10-06\hyundai\text\MKTE3.txt,12296
+현대카드,CSTMBE2,코스트코 리워드 비즈니스 현대카드 Edition2,business,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=CSTMBE2,outputs\card_catalog_run_2026-10-06\hyundai\text\CSTMBE2.txt,10418
+현대카드,TRE6,the Red,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=TRE6,outputs\card_catalog_run_2026-10-06\hyundai\text\TRE6.txt,18941
+현대카드,HDSHE2,현대홈쇼핑 현대카드 Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HDSHE2,outputs\card_catalog_run_2026-10-06\hyundai\text\HDSHE2.txt,9306
+현대카드,MIMB,iM뱅크-현대카드M,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MIMB,outputs\card_catalog_run_2026-10-06\hyundai\text\MIMB.txt,11929
+현대카드,MKTE3P,kt-현대카드M Edition3(청구할인형2.0),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MKTE3P,outputs\card_catalog_run_2026-10-06\hyundai\text\MKTE3P.txt,12472
+현대카드,HSCHC,Hyundai Mobility카드 (CASPER),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HSCHC,outputs\card_catalog_run_2026-10-06\hyundai\text\HSCHC.txt,10132
+현대카드,XPE4,X,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=XPE4,outputs\card_catalog_run_2026-10-06\hyundai\text\XPE4.txt,12866
+현대카드,XCUT,X Cut,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=XCUT,outputs\card_catalog_run_2026-10-06\hyundai\text\XCUT.txt,11268
+현대카드,BTST,Boutique - Satin,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=BTST,outputs\card_catalog_run_2026-10-06\hyundai\text\BTST.txt,16713
+현대카드,TPE4,the Purple,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=TPE4,outputs\card_catalog_run_2026-10-06\hyundai\text\TPE4.txt,17381
+현대카드,EMTE3S,이마트 e카드 Plus,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=EMTE3S,outputs\card_catalog_run_2026-10-06\hyundai\text\EMTE3S.txt,10544
+현대카드,BTCP,Boutique - Copper,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=BTCP,outputs\card_catalog_run_2026-10-06\hyundai\text\BTCP.txt,16711
+현대카드,MCJE2,The CJ-현대카드M Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MCJE2,outputs\card_catalog_run_2026-10-06\hyundai\text\MCJE2.txt,11892
+현대카드,EMTE3M,이마트 e카드 Basic,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=EMTE3M,outputs\card_catalog_run_2026-10-06\hyundai\text\EMTE3M.txt,9612
+현대카드,LGEHC,LG전자 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=LGEHC,outputs\card_catalog_run_2026-10-06\hyundai\text\LGEHC.txt,7751
+현대카드,XSAV,X Save,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=XSAV,outputs\card_catalog_run_2026-10-06\hyundai\text\XSAV.txt,11098
+현대카드,BTVV,Boutique - Velvet,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=BTVV,outputs\card_catalog_run_2026-10-06\hyundai\text\BTVV.txt,16727
+현대카드,TRSTE2,the Red Stripe Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=TRSTE2,outputs\card_catalog_run_2026-10-06\hyundai\text\TRSTE2.txt,19181
+현대카드,YSHC,예스24 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=YSHC,outputs\card_catalog_run_2026-10-06\hyundai\text\YSHC.txt,6868
+현대카드,BTMCE,Summit CE,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=BTMCE,outputs\card_catalog_run_2026-10-06\hyundai\text\BTMCE.txt,15028
+현대카드,MDBI,DB손해보험 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MDBI,outputs\card_catalog_run_2026-10-06\hyundai\text\MDBI.txt,11695
+현대카드,MHMFI,현대해상 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MHMFI,outputs\card_catalog_run_2026-10-06\hyundai\text\MHMFI.txt,11690
+현대카드,ZKFE2,케이뱅크-현대카드Z family Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ZKFE2,outputs\card_catalog_run_2026-10-06\hyundai\text\ZKFE2.txt,10033
+현대카드,HGE2P,제네시스 현대카드 the Honors,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HGE2P,outputs\card_catalog_run_2026-10-06\hyundai\text\HGE2P.txt,13341
+현대카드,TRSCSTE2,SC제일은행- the Red Stripe Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=TRSCSTE2,outputs\card_catalog_run_2026-10-06\hyundai\text\TRSCSTE2.txt,16607
+현대카드,TRSCE6,SC제일은행- the Red,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=TRSCE6,outputs\card_catalog_run_2026-10-06\hyundai\text\TRSCE6.txt,15924
+현대카드,TGE4,the Green Edition4,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=TGE4,outputs\card_catalog_run_2026-10-06\hyundai\text\TGE4.txt,16896
+현대카드,TPIE3,the Pink Edition3,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=TPIE3,outputs\card_catalog_run_2026-10-06\hyundai\text\TPIE3.txt,17556
+현대카드,HGE2,제네시스 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HGE2,outputs\card_catalog_run_2026-10-06\hyundai\text\HGE2.txt,12977
+현대카드,ALD,D BOLD,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ALD,outputs\card_catalog_run_2026-10-06\hyundai\text\ALD.txt,14548
+현대카드,ALS,S BOLD,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ALS,outputs\card_catalog_run_2026-10-06\hyundai\text\ALS.txt,15460
+현대카드,ALT,T BOLD,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ALT,outputs\card_catalog_run_2026-10-06\hyundai\text\ALT.txt,14292
+현대카드,MSCE4,SC제일은행-현대카드M,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MSCE4,outputs\card_catalog_run_2026-10-06\hyundai\text\MSCE4.txt,12152
+현대카드,GMSE4,지마켓 꼭 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=GMSE4,outputs\card_catalog_run_2026-10-06\hyundai\text\GMSE4.txt,8466
+현대카드,KWWLSHC,교원웰스 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=KWWLSHC,outputs\card_catalog_run_2026-10-06\hyundai\text\KWWLSHC.txt,7998
+현대카드,NXTRHC,넥센타이어 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=NXTRHC,outputs\card_catalog_run_2026-10-06\hyundai\text\NXTRHC.txt,8010
+현대카드,BDFRHC,바디프랜드 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=BDFRHC,outputs\card_catalog_run_2026-10-06\hyundai\text\BDFRHC.txt,8011
+현대카드,CRMHC,세라젬 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=CRMHC,outputs\card_catalog_run_2026-10-06\hyundai\text\CRMHC.txt,7986
+현대카드,ZKOE2,케이뱅크-현대카드Z Play,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ZKOE2,outputs\card_catalog_run_2026-10-06\hyundai\text\ZKOE2.txt,10025
+현대카드,ZKWE2,케이뱅크-현대카드Z work Edition2,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ZKWE2,outputs\card_catalog_run_2026-10-06\hyundai\text\ZKWE2.txt,9732
+현대카드,HDQHC,현대큐밍 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=HDQHC,outputs\card_catalog_run_2026-10-06\hyundai\text\HDQHC.txt,7998
+현대카드,ALB,B,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ALB,outputs\card_catalog_run_2026-10-06\hyundai\text\ALB.txt,10434
+현대카드,ALP,P,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ALP,outputs\card_catalog_run_2026-10-06\hyundai\text\ALP.txt,10160
+현대카드,ALR,R,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ALR,outputs\card_catalog_run_2026-10-06\hyundai\text\ALR.txt,10836
+현대카드,NVE3,네이버 현대카드 Edition3,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=NVE3,outputs\card_catalog_run_2026-10-06\hyundai\text\NVE3.txt,9468
+현대카드,OLVYE2,올리브영 현대카드 Plus,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=OLVYE2,outputs\card_catalog_run_2026-10-06\hyundai\text\OLVYE2.txt,10802
+현대카드,MZROSCE3,SC제일은행-현대카드 ZERO Edition3(포인트형),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=MZROSCE3,outputs\card_catalog_run_2026-10-06\hyundai\text\MZROSCE3.txt,11086
+현대카드,ZROSCE3,SC제일은행-현대카드 ZERO Edition3(할인형),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=ZROSCE3,outputs\card_catalog_run_2026-10-06\hyundai\text\ZROSCE3.txt,8083
+현대카드,CCDH,하이브리드(캐시백형),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=CCDH,outputs\card_catalog_run_2026-10-06\hyundai\text\CCDH.txt,10458
+현대카드,CCMH,하이브리드(포인트형),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=CCMH,outputs\card_catalog_run_2026-10-06\hyundai\text\CCMH.txt,12453
+현대카드,CCAH,하이브리드(Apple Pay Rewards),credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=CCAH,outputs\card_catalog_run_2026-10-06\hyundai\text\CCAH.txt,10303
+현대카드,PHHC,국민행복 현대카드,credit_or_special,listed,https://www.hyundaicard.com/cpc/cr/CPCCR0201_01.hc?cardwcd=PHHC,outputs\card_catalog_run_2026-10-06\hyundai\text\PHHC.txt,11751
+NH농협카드,90010626,the Origins카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010626.txt,13746
+NH농협카드,90010629,zgm 러닝,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010629.txt,14769
+NH농협카드,90010618,zgm 저장체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010618.txt,11426
+NH농협카드,90010610,올바른이음체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010610.txt,13221
+NH농협카드,90010611,올바른이음카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010611.txt,14746
+NH농협카드,90010604,NH올원더풀카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010604.txt,16097
+NH농협카드,90010575,zgm 스스로카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010575.txt,11812
+NH농협카드,90010576,NH글로벌위드체크카드 (NH GlobalWITH checkcard),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010576.txt,26015
+NH농협카드,90010565,이응패스-여민전 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010565.txt,11173
+NH농협카드,90010545,쿵야싱싱체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010545.txt,11661
+NH농협카드,90010544,클래시 트래블카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010544.txt,13511
+NH농협카드,90010543,미미카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010543.txt,15109
+NH농협카드,90010526,기후동행카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010526.txt,11743
+NH농협카드,90010527,기후동행카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010527.txt,11923
+NH농협카드,90010521,춘식이달달체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010521.txt,11822
+NH농협카드,90010517,NH트래블리체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010517.txt,13820
+NH농협카드,90010518,히어로즈 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010518.txt,11455
+NH농협카드,90010516,NANA카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010516.txt,10088
+NH농협카드,90010515,zgm 할인카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010515.txt,14787
+NH농협카드,90010513,zgm point카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010513.txt,14307
+NH농협카드,90010470,NH 모두의카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010470.txt,12902
+NH농협카드,90010471,NH 모두의카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010471.txt,12513
+NH농협카드,90010509,전남 꿈 실현 공생카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010509.txt,11786
+NH농협카드,90010510,전남 New 다자녀행복카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010510.txt,13226
+NH농협카드,90010511,경북 New 다복가정희망카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010511.txt,13230
+NH농협카드,90010508,폼 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010508.txt,11627
+NH농협카드,90010507,KT할부 Plus NH농협카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010507.txt,13222
+NH농협카드,90010504,zgm living카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010504.txt,14448
+NH농협카드,90010505,zgm shopping카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010505.txt,14914
+NH농협카드,90010491,NH 무럭이 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010491.txt,11824
+NH농협카드,90010490,어디로든 그린카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010490.txt,13688
+NH농협카드,90010476,zgm.일본여행중 카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010476.txt,14869
+NH농협카드,90010467,zgm.play카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010467.txt,13559
+NH농협카드,90010468,zgm.play++카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010468.txt,17286
+NH농협카드,90010461,zgm.고향으로체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010461.txt,12071
+NH농협카드,90010216,zgm.고향으로카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010216.txt,13290
+NH농협카드,90010213,zgm.rounding카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010213.txt,13078
+NH농협카드,90010184,zgm.휴가중카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010184.txt,15226
+NH농협카드,90010166,나무 NH농협카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010166.txt,12942
+NH농협카드,90010186,GOODGAME 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010186.txt,12255
+NH농협카드,90010178,zgm.the pay카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010178.txt,11296
+NH농협카드,90010179,zgm.streaming카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010179.txt,12273
+NH농협카드,90010161,올바른HOMETOWN카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010161.txt,13134
+NH농협카드,90010162,GS리테일 NH농협카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010162.txt,12865
+NH농협카드,90010163,GS리테일 NH농협체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010163.txt,11521
+NH농협카드,90010158,올바른지구카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010158.txt,11537
+NH농협카드,90010137,별다줄카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010137.txt,13311
+NH농협카드,90010133,올바른NEW HAVE(원이)체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010133.txt,11817
+NH농협카드,90010141,SOHO 다사로이OIL카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010141.txt,11683
+NH농협카드,90010115,NH1961카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010115.txt,13208
+NH농협카드,90010117,NH1961체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010117.txt,11702
+NH농협카드,90010118,SOHO 다사로이카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010118.txt,11840
+NH농협카드,90010119,SOHO 다사로이+카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010119.txt,12858
+NH농협카드,90010120,SOHO 다사로이체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010120.txt,10865
+NH농협카드,90010057,ON PLATINUM카드(포인트),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010057.txt,12783
+NH농협카드,90010058,ON PLATINUM카드(스카이패스),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010058.txt,12639
+NH농협카드,90010059,ON PLATINUM카드(아시아나클럽),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010059.txt,12631
+NH농협카드,90010051,올바른FLEX카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010051.txt,12889
+NH농협카드,90010042,올리 POINT 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010042.txt,11238
+NH농협카드,90010034,올바른NEW HAVE+카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010034.txt,12708
+NH농협카드,90010035,올바른NEW HAVE카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010035.txt,12360
+NH농협카드,90010036,올바른NEW HAVE체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010036.txt,11961
+NH농협카드,90010031,올바른OIL&PASS카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010031.txt,12871
+NH농협카드,90010030,어피치 스윗 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010030.txt,10982
+NH농협카드,90010019,올바른MYPICK 카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010019.txt,14770
+NH농협카드,90010026,위 테라카드(스카이패스),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010026.txt,22687
+NH농협카드,90010027,위 테라카드(아시아나클럽),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010027.txt,22681
+NH농협카드,90010028,위 테라카드(포인트),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010028.txt,22421
+NH농협카드,90010022,위 레아카드(포인트),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010022.txt,21639
+NH농협카드,90010023,위 레아카드(스카이패스),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010023.txt,21908
+NH농협카드,90010024,위 레아카드(아시아나클럽),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010024.txt,21911
+NH농협카드,90010067,올바른SAFE Platinum카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010067.txt,13760
+NH농협카드,90010068,올바른SAFE카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010068.txt,12026
+NH농협카드,90010021,올바른GIVE 카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010021.txt,12628
+NH농협카드,90010013,라이언 치즈 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010013.txt,11113
+NH농협카드,90010011,NH농협 올바른하나로(Hanaro) 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010011.txt,10940
+NH농협카드,90010012,NH농협 올바른하나로(Hanaro) 카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010012.txt,12400
+NH농협카드,90010008,NH농협 올바른LIFE카드(적립형),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010008.txt,11561
+NH농협카드,90010009,NH농협 올바른LIFE카드(할인형),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010009.txt,11153
+NH농협카드,90010004,NH1934 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010004.txt,8783
+NH농협카드,90010005,적립조아카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010005.txt,10142
+NH농협카드,90010006,할인조아카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010006.txt,10421
+NH농협카드,90010007,쇼핑조아카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010007.txt,10256
+NH농협카드,90000417,올바른BAZIC 카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000417.txt,11209
+NH농협카드,90000418,올바른BAZIC+ 카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000418.txt,12310
+NH농협카드,90000413,올바른POINT UP 카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000413.txt,12646
+NH농협카드,90000414,올바른POINT UP+ 카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000414.txt,13334
+NH농협카드,90000412,올바른Edu 카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000412.txt,12469
+NH농협카드,90000411,펫블리(PETvely) 카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000411.txt,12579
+NH농협카드,90000399,T라이트카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000399.txt,12507
+NH농협카드,90000397,올바른OIL카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000397.txt,11837
+NH농협카드,90000396,KT수퍼할부카드(비씨),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000396.txt,9967
+NH농협카드,90000390,올바른GLOBAL체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000390.txt,10885
+NH농협카드,90000387,올바른TRAVEL카드(일본특화),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000387.txt,13570
+NH농협카드,90000388,올바른TRAVEL카드(중국특화),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000388.txt,13780
+NH농협카드,90000385,NH올원 LG전자BEST카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000385.txt,12077
+NH농협카드,90000380,NH올원 Shopping&TLC카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000380.txt,11375
+NH농협카드,90000379,NH올원 LGU+카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000379.txt,11436
+NH농협카드,90000377,콕카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000377.txt,13546
+NH농협카드,90000378,콕체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000378.txt,11388
+NH농협카드,90000372,NH20해봄카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000372.txt,13559
+NH농협카드,90000371,부자되세요 아파트카드(비씨),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000371.txt,10329
+NH농협카드,90000359,NH20해봄체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000359.txt,10926
+NH농협카드,90000357,SolSol(쏠쏠)카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000357.txt,11302
+NH농협카드,90000358,SolSol++(쏠쏠투플러스)카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000358.txt,11917
+NH농협카드,90000349,NH올원 파이카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000349.txt,11169
+NH농협카드,90000342,위카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000342.txt,28488
+NH농협카드,90010512,광주교육 꿈드리미카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010512.txt,11794
+NH농협카드,90010607,NH FIT 기본교통 체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010607.txt,11729
+NH농협카드,90010599,NH대한민국히어로카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010599.txt,12910
+NH농협카드,90010569,서울교육사랑카드(개인체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010569.txt,12780
+NH농협카드,90010570,서울교육사랑카드_개인신용,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010570.txt,12884
+NH농협카드,90010564,경상남도교육청 꿈디딤카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010564.txt,11844
+NH농협카드,90010561,더자람카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010561.txt,11674
+NH농협카드,90010539,경상남도교육청 다자녀카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010539.txt,11944
+NH농협카드,90010538,충북 다자녀 행복카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010538.txt,10251
+NH농협카드,90000234,#ing+(샵핑플러스)카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000234.txt,11477
+NH농협카드,90000237,ME+(미플러스)카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000237.txt,11935
+NH농협카드,90000232,Free&[프리앤]카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000232.txt,10504
+NH농협카드,90000233,#ing(샵핑)카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000233.txt,10394
+NH농협카드,90000310,NH올원+(플러스)카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000310.txt,11638
+NH농협카드,90000323,NH올원 All100카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000323.txt,12401
+NH농협카드,90010210,전북 New 아이조아카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010210.txt,12873
+NH농협카드,90010211,전북 New 아이조아카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010211.txt,12885
+NH농협카드,90010181,제주교통복지카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010181.txt,9653
+NH농협카드,90010182,제주교통복지카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010182.txt,10057
+NH농협카드,90010172,NH FIT 신용할인형 (대한궁도협회),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010172.txt,13272
+NH농협카드,90010173,NH FIT 체크할인형 (대한궁도협회),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010173.txt,13331
+NH농협카드,90010152,NH FIT 신용할인형(경남FC),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010152.txt,13814
+NH농협카드,90010153,NH FIT 체크할인형(경남FC),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010153.txt,14106
+NH농협카드,90010600,NH대한민국히어로카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010600.txt,13213
+NH농협카드,90010049,New 제주아이사랑행복카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010049.txt,11822
+NH농협카드,90010050,New 제주아이사랑행복카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010050.txt,11951
+NH농협카드,90010043,인천 New아이모아카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010043.txt,11741
+NH농협카드,90010044,인천 New아이모아카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010044.txt,11974
+NH농협카드,90010045,충남 다자녀행복키움카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010045.txt,11521
+NH농협카드,90010046,충남 다자녀행복키움카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010046.txt,11921
+NH농협카드,90010033,강원여성경력이음카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010033.txt,9475
+NH농협카드,90010020,New 경기 i-PLUS카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010020.txt,11369
+NH농협카드,90010003,강원 청년 카드(채움),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010003.txt,8445
+NH농협카드,90010001,경남 아이다누리카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010001.txt,11390
+NH농협카드,90010002,경남 아이다누리카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010002.txt,11184
+NH농협카드,90000207,내일배움카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000207.txt,10390
+NH농협카드,90000410,경남 청년드림카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000410.txt,10608
+NH농협카드,90000375,SIM형후불하이패스카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000375.txt,8986
+NH농협카드,90000365,NH올원 Rental&바디프랜드카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000365.txt,10299
+NH농협카드,90000370,NH올원 Direct&DB손해보험카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000370.txt,10365
+NH농협카드,90000366,NH올원 Rental&코웨이카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000366.txt,10279
+NH농협카드,90000367,NH올원 Shopping&AMOREPACIFIC카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000367.txt,10787
+NH농협카드,90000364,NH올원 Rental&넥센타이어카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000364.txt,10242
+NH농협카드,90000368,e나라도움카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000368.txt,7722
+NH농협카드,90000369,e나라도움체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000369.txt,7774
+NH농협카드,90000351,New후불하이패스카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000351.txt,9539
+NH농협카드,90000319,국민행복카드(신용),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000319.txt,14568
+NH농협카드,90000320,국민행복카드(체크),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000320.txt,14227
+NH농협카드,90000239,국민연금증카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000239.txt,9441
+NH농협카드,90000240,국민연금증체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000240.txt,8709
+NH농협카드,90010029,내일배움체크카드,check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90010029.txt,12273
+NH농협카드,90000056,공무원연금카드(재직)(비씨),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000056.txt,11225
+NH농협카드,90000081,공무원연금체크카드(재직)(비씨),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000081.txt,9797
+NH농협카드,90000198,공무원연금체크카드(퇴직)(비씨),check,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000198.txt,8127
+NH농협카드,90000199,공무원연금카드(퇴직)(비씨),credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000199.txt,11283
+NH농협카드,90000183,채움 아시아나클럽(ASIANA CLUB)카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000183.txt,9802
+NH농협카드,90000184,채움 스카이패스(SKYPASS)카드,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000184.txt,10957
+NH농협카드,90000163,기프트카드 50만원,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000163.txt,8062
+NH농협카드,90000164,기프트카드 30만원,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000164.txt,8062
+NH농협카드,90000165,기프트카드 20만원,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000165.txt,8062
+NH농협카드,90000166,기프트카드 10만원,credit_or_special,listed,https://card.nonghyup.com/servlet/IpCc2021R.act,outputs\card_catalog_run_2026-10-06\nh\text\90000166.txt,8062
+한국씨티은행 씨티카드,080025,씨티 NEW 캐시백 카드,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=080025&PROD_MAIN=08,outputs\card_catalog_run_2026-10-06\citi\text\080025.txt,9306
+한국씨티은행 씨티카드,080005,씨티 리워드 카드,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=080005&PROD_MAIN=05,outputs\card_catalog_run_2026-10-06\citi\text\080005.txt,9399
+한국씨티은행 씨티카드,080041,NEW 씨티 클리어 카드,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=080041&PROD_MAIN=02,outputs\card_catalog_run_2026-10-06\citi\text\080041.txt,9256
+한국씨티은행 씨티카드,070082,신세계 씨티 클리어,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=070082&PROD_MAIN=02,outputs\card_catalog_run_2026-10-06\citi\text\070082.txt,7984
+한국씨티은행 씨티카드,080043,씨티 프리미어마일 카드 대한항공,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=080043&PROD_MAIN=04,outputs\card_catalog_run_2026-10-06\citi\text\080043.txt,14153
+한국씨티은행 씨티카드,080044,씨티 프리미어마일 카드 아시아나,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=080044&PROD_MAIN=04,outputs\card_catalog_run_2026-10-06\citi\text\080044.txt,14157
+한국씨티은행 씨티카드,070047,씨티 메가마일 스카이패스,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=070047&PROD_MAIN=12,outputs\card_catalog_run_2026-10-06\citi\text\070047.txt,9349
+한국씨티은행 씨티카드,080017,씨티 메가마일 아시아나,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=080017&PROD_MAIN=04,outputs\card_catalog_run_2026-10-06\citi\text\080017.txt,9114
+한국씨티은행 씨티카드,070065,신세계 씨티 리워드(비자),credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=070065&PROD_MAIN=02,outputs\card_catalog_run_2026-10-06\citi\text\070065.txt,9862
+한국씨티은행 씨티카드,070022,신세계 씨티카드 콰트로,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=070022&PROD_MAIN=02,outputs\card_catalog_run_2026-10-06\citi\text\070022.txt,8829
+한국씨티은행 씨티카드,070033,갤러리아 씨티카드 프레스티지,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=070033&PROD_MAIN=02,outputs\card_catalog_run_2026-10-06\citi\text\070033.txt,8847
+한국씨티은행 씨티카드,070029,대백 씨티카드 아인스,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=070029&PROD_MAIN=02,outputs\card_catalog_run_2026-10-06\citi\text\070029.txt,8390
+한국씨티은행 씨티카드,010076,신세계 씨티 플래티늄 아시아나,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=010076&PROD_MAIN=04,outputs\card_catalog_run_2026-10-06\citi\text\010076.txt,6660
+한국씨티은행 씨티카드,010072,신세계 씨티 아시아나,credit,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=010072&PROD_MAIN=02,outputs\card_catalog_run_2026-10-06\citi\text\010072.txt,6434
+한국씨티은행 씨티카드,080031,씨티 글로벌 월렛 체크카드(신규 판매 중단),check,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=080031&PROD_MAIN=10,outputs\card_catalog_run_2026-10-06\citi\text\080031.txt,9964
+한국씨티은행 씨티카드,070067,씨티 캐시백 체크카드(신규 판매 중단),check,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=070067&PROD_MAIN=10,outputs\card_catalog_run_2026-10-06\citi\text\070067.txt,9382
+한국씨티은행 씨티카드,010113,신세계 씨티 플러스 체크카드(신규 판매 중단),check,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=010113&PROD_MAIN=10,outputs\card_catalog_run_2026-10-06\citi\text\010113.txt,10190
+한국씨티은행 씨티카드,070049,씨티 체크+신용카드(신규 판매 중단),check,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=070049&PROD_MAIN=10,outputs\card_catalog_run_2026-10-06\citi\text\070049.txt,13582
+한국씨티은행 씨티카드,270584,A+ 체크카드(신규 판매 중단),check,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=270584&PROD_MAIN=10,outputs\card_catalog_run_2026-10-06\citi\text\270584.txt,7598
+한국씨티은행 씨티카드,275001,Save 체크카드(신규 판매 중단),check,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=275001&PROD_MAIN=10,outputs\card_catalog_run_2026-10-06\citi\text\275001.txt,7520
+한국씨티은행 씨티카드,270568,항공사 마일리지 체크카드(신규 판매 중단),check,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=270568&PROD_MAIN=10,outputs\card_catalog_run_2026-10-06\citi\text\270568.txt,6936
+한국씨티은행 씨티카드,270364,비즈니스 체크카드(신규 판매 중단),check,issuance_suspended,https://www.citibank.co.kr/CrdPrdcAllc9600.act?PROD_CODE=270364&PROD_MAIN=10,outputs\card_catalog_run_2026-10-06\citi\text\270364.txt,5868
+우리카드,cardDetail_kookminHappy,국민행복카드S2,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_kookminHappy.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_kookminHappy.txt,14581
+우리카드,cardDetail_standard2,카드의 정석2,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_standard2.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_standard2.txt,8118
+우리카드,cardDetail_standard2Daily,카드의 정석2 Daily,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_standard2Daily.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_standard2Daily.txt,10877
+우리카드,cardDetail_standard2Shopper,카드의 정석2 SHOPPER,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_standard2Shopper.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_standard2Shopper.txt,10240
+우리카드,cardDetail_standard2Super,카드의 정석2 SUPER,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_standard2Super.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_standard2Super.txt,7250
+우리카드,cardDetail_standard7Core,카드의 정석2 7CORE,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_standard7Core.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_standard7Core.txt,13130
+우리카드,cardDetail_standard25Routine,카드의 정석2 ROUTINE,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_standard25Routine.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_standard25Routine.txt,12326
+우리카드,cardDetail_standardEveryMileSkypass,카드의정석 EVERY MILE SKYPASS,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_standardEveryMileSkypass.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_standardEveryMileSkypass.txt,13290
+우리카드,cardDetail_standardShoppingPlus,카드의 정석2 SHOPPING+,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_standardShoppingPlus.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_standardShoppingPlus.txt,10383
+우리카드,cardDetail_standardTwoncheck,카드의 정석2 T-WON 체크,check,listed,https://m.wooricard.com/ai-data/cardDetail_standardTwoncheck.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_standardTwoncheck.txt,12515
+우리카드,cardDetail_theOpusBlue,the OPUS blue,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_theOpusBlue.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_theOpusBlue.txt,23705
+우리카드,cardDetail_TheOpusSilver,the OPUS silver,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_TheOpusSilver.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_TheOpusSilver.txt,22112
+우리카드,cardDetail_UniMile,우리카드 UniMile,credit_or_special,listed,https://m.wooricard.com/ai-data/cardDetail_UniMile.html,outputs\card_catalog_run_2026-10-06\woori\text\cardDetail_UniMile.txt,15614

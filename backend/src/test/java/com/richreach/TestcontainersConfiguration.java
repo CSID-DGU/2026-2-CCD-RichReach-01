@@ -7,7 +7,7 @@ import org.testcontainers.mysql.MySQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @TestConfiguration(proxyBeanMethods = false)
-class TestcontainersConfiguration {
+public class TestcontainersConfiguration {
 
     // 운영 DB와 같은 메이저 버전으로 고정 (latest 사용 금지)
     @Bean

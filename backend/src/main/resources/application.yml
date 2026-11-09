@@ -17,6 +17,48 @@ spring:
   flyway:
     enabled: true
 
+# 로그인 토큰(JWT). secret은 32바이트 이상이어야 하고, 비워 두면 실행할 때마다 임시 키를 만든다.
+# (임시 키는 서버를 다시 켜면 모든 로그인이 풀리므로 운영에서는 JWT_SECRET을 반드시 설정한다.)
+app:
+  jwt:
+    issuer: richreach
+    access-token-ttl: 30m
+    refresh-token-ttl: 14d
+    secret: ${JWT_SECRET:}
+  auth:
+    # 로그인 실패 잠금: max-failures번 연속으로 틀리면 lock-duration 동안 로그인할 수 없다.
+    login-lock:
+      max-failures: 5
+      lock-duration: 10m
+    # 비밀번호 재설정 인증번호. expose-code가 true면 인증번호를 응답에도 담는다.
+    # 실제 이메일/SMS 발송이 없는 개발 단계에서만 켜야 해서 기본값은 false이고,
+    # 로컬 개발(local 프로파일, application-local.yml)에서만 true로 켠다.
+    password-reset:
+      code-ttl: 3m
+      resend-interval: 60s
+      max-attempts: 5
+      reset-token-ttl: 10m
+      expose-code: false
+  # 현재 약관 버전. 약관 본문은 앱에 있고 서버는 동의한 버전만 기록한다. 약관을 고치면 이 값을 바꾼다.
+  terms:
+    signup-version: 2026-10-01
+    card-connection-version: 2026-10-01
+
+# 카드 혜택 CSV 스테이징 적재. 평소에는 꺼 두고, 적재할 때만 환경변수로 켠다. (StagingRunner 참고)
+richreach:
+  staging:
+    load-on-startup: ${STAGING_LOAD_ON_STARTUP:false}
+    csv-dir: ${STAGING_CSV_DIR:}
+  # 혜택 계산기. engine은 쓸 계산기 이름, rule-selection은 READY_ONLY(확인된 규칙만) 또는 ALL(확인 전 규칙 포함, 개발·시연용)
+  benefit:
+    engine: ${BENEFIT_ENGINE:simple}
+    rule-selection: ${BENEFIT_RULE_SELECTION:READY_ONLY}
+  # 시연용 보유카드·거래 만들기. 평소에는 꺼 두고, 로컬 DB에서 만들 때만 켠다. (DemoSeedRunner 참고)
+  demo-seed:
+    enabled: ${DEMO_SEED_ON_STARTUP:false}
+    user-email: ${DEMO_SEED_USER_EMAIL:}
+    reset: ${DEMO_SEED_RESET:false}
+
 # DB 접속 정보(spring.datasource.*)는 프로파일별 설정(application-local.yml 등)에서 환경변수로 주입한다.
 
 management:

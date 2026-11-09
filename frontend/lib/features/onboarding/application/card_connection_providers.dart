@@ -1,0 +1,96 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/network/api_config.dart';
+import '../../../core/network/api_providers.dart';
+import '../data/card_connection_repository.dart';
+import '../data/connection_setup_repository.dart';
+import '../domain/card_company.dart';
+import '../domain/card_connection.dart';
+
+const _fakeFailCompanies = String.fromEnvironment('FAKE_FAIL_COMPANIES');
+const _fakeRestrictedCompanies = String.fromEnvironment(
+  'FAKE_RESTRICTED_COMPANIES',
+);
+
+/// 카드 연결 저장소. `USE_FAKE_API=false`면 카드사 인증은 백엔드 API를 쓴다.
+final cardConnectionRepositoryProvider = Provider<CardConnectionRepository>((
+  ref,
+) {
+  if (!ApiConfig.useFakeApi) {
+    return ApiCardConnectionRepository(ref.watch(apiClientProvider));
+  }
+  return FakeCardConnectionRepository(
+    failingCompanies: FakeCardConnectionRepository.parseFailingCompanies(
+      _fakeFailCompanies,
+    ),
+    restrictedCompanies: FakeCardConnectionRepository.parseFailingCompanies(
+      _fakeRestrictedCompanies,
+    ),
+  );
+});
+
+/// 카드사 목록·동의 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
+final connectionSetupRepositoryProvider = Provider<ConnectionSetupRepository>(
+  (ref) => ApiConfig.useFakeApi
+      ? const FakeConnectionSetupRepository()
+      : ApiConnectionSetupRepository(ref.watch(apiClientProvider)),
+);
+
+/// 카드사별 지원·연결 상태 (ONB-02A).
+final cardCompanyStatusesProvider =
+    FutureProvider.autoDispose<List<CardCompanyStatus>>(
+      (ref) =>
+          ref.watch(connectionSetupRepositoryProvider).fetchCardCompanies(),
+    );
+
+/// 카드사별 연결 ID (카드사 인증 때 받는다). 실패한 카드사의 데이터만 다시 불러올 때도 쓴다.
+final connectionIdsProvider =
+    NotifierProvider<ConnectionIds, Map<CardCompany, int>>(ConnectionIds.new);
+
+class ConnectionIds extends Notifier<Map<CardCompany, int>> {
+  @override
+  Map<CardCompany, int> build() => const {};
+
+  void put(CardCompany company, int connectionId) =>
+      state = Map.unmodifiable({...state, company: connectionId});
+}
+
+/// 이번에 연결할 카드사 (카드사 선택 화면, 다시 연결하기에서 정한다).
+final connectingCompaniesProvider =
+    NotifierProvider<ConnectingCompanies, List<CardCompany>>(
+      ConnectingCompanies.new,
+    );
+
+class ConnectingCompanies extends Notifier<List<CardCompany>> {
+  @override
+  List<CardCompany> build() => const [];
+
+  void set(List<CardCompany> companies) => state = List.unmodifiable(companies);
+}
+
+/// 지금까지의 카드사별 연결 결과.
+final cardConnectionResultsProvider =
+    NotifierProvider<CardConnectionResults, List<CardConnectionResult>>(
+      CardConnectionResults.new,
+    );
+
+class CardConnectionResults extends Notifier<List<CardConnectionResult>> {
+  @override
+  List<CardConnectionResult> build() => const [];
+
+  /// 새 결과로 같은 카드사의 이전 결과를 덮어쓴다. (다시 연결하기는 실패한 카드사만 다시 연결하므로)
+  /// 순서는 카드사 목록 순서를 따른다.
+  void merge(List<CardConnectionResult> results) {
+    final byCompany = {for (final r in state) r.company: r};
+    for (final r in results) {
+      byCompany[r.company] = r;
+    }
+    state = List.unmodifiable([
+      for (final company in CardCompany.values) ?byCompany[company],
+    ]);
+  }
+
+  /// 실패한 결과를 지운다. (전체 실패 후 카드사를 다시 고르는 경우)
+  void removeFailures() =>
+      state = List.unmodifiable(state.where((r) => r.isSuccess));
+}

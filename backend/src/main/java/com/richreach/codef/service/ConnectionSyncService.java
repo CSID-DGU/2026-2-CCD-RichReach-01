@@ -1,0 +1,217 @@
+package com.richreach.codef.service;
+
+import com.richreach.codef.config.CodefSyncProperties;
+import com.richreach.codef.dto.ConnectionSummaryResponse;
+import com.richreach.codef.dto.ConnectionSyncRequest;
+import com.richreach.codef.dto.ConnectionSyncStartResponse;
+import com.richreach.codef.dto.ConnectionSyncStatusResponse;
+import com.richreach.codef.dto.ConnectionSyncStatusResponse.Result;
+import com.richreach.codef.entity.CardCompany;
+import com.richreach.codef.entity.CodefOrgAccount;
+import com.richreach.codef.entity.CodefSyncJob;
+import com.richreach.codef.repository.CodefOrgAccountRepository;
+import com.richreach.codef.repository.CodefSyncJobRepository;
+import com.richreach.global.exception.BusinessException;
+import com.richreach.global.exception.ErrorCode;
+import com.richreach.global.util.Times;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.core.task.TaskRejectedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+
+/**
+ * 연결한 카드사에서 카드 데이터를 가져오는 동기화를 시작하고, 진행 상태와 카드사별 연결 상태를 알려준다.
+ *
+ * <p>시작할 때는 카드사마다 작업(IN_PROGRESS)을 기록하고 바로 응답한다. 실제 수집은 별도 스레드({@link CardSyncWorker})가
+ * 하고, 화면은 {@code jobId}로 상태를 주기적으로 조회한다. 이번 범위는 수집을 시작하고 상태를 알려주는 것까지이며,
+ * 가져온 카드를 보유카드로 저장하는 일은 하지 않는다.
+ *
+ * <p>반복 로그인으로 계정이 일시 제한된 카드사는 {@code codef.sync.retry-block}(기본 1시간) 동안 건너뛰고, 요청한 카드사가
+ * 모두 제한 중이면 {@code CONN-008}이다.
+ *
+ * <p>같은 사용자가 동시에 시작하면 사용자 행을 잠가 한쪽이 {@code CONN-007}을 받게 한다. 서버가 작업 도중 멈춰 진행 중으로
+ * 남은 기록은 {@code codef.sync.timeout}이 지나면 멈춘 것으로 보고 실패로 알리며, 새 동기화를 막지 않는다.
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ConnectionSyncService {
+
+    static final String IN_PROGRESS = "IN_PROGRESS";
+    static final String SUCCESS = "SUCCESS";
+    static final String FAILED = "FAILED";
+    static final String PARTIAL_SUCCESS = "PARTIAL_SUCCESS";
+    static final String NOT_SYNCED = "NOT_SYNCED";
+
+    private final ConnectionUserLock userLock;
+    private final CodefOrgAccountRepository orgAccounts;
+    private final CodefSyncJobRepository jobs;
+    private final CardSyncWorker worker;
+    @Qualifier("codefSyncExecutor")
+    private final TaskExecutor executor;
+    private final TransactionTemplate transaction;
+    private final CodefSyncProperties properties;
+    private final Clock clock;
+
+    /** 동기화를 시작한다. 작업 기록이 저장된 뒤에 수집을 실행기에 넘기므로, 응답을 받은 시점에 상태를 조회할 수 있다. */
+    public ConnectionSyncStartResponse start(long userId, ConnectionSyncRequest request) {
+        Started started = transaction.execute(status -> register(userId, request));
+        for (Long jobId : started.jobIds()) {
+            dispatch(jobId);
+        }
+        return new ConnectionSyncStartResponse(started.batchId());
+    }
+
+    private Started register(long userId, ConnectionSyncRequest request) {
+        userLock.lock(userId);
+
+        List<Long> requested = request == null || request.connectionIds() == null
+            ? List.of() : request.connectionIds().stream().distinct().toList();
+        List<CodefOrgAccount> accounts = (requested.isEmpty()
+            ? orgAccounts.findActiveByUserId(userId)
+            : orgAccounts.findActiveByUserIdAndIdIn(userId, requested))
+            .stream().filter(CodefOrgAccount::isConnected).toList();
+        // 연결한 카드사가 없거나, 지정한 연결 중 없는(또는 다른 사용자의, 연결되지 않은) 것이 있으면 연결 정보를 찾을 수 없다.
+        if (accounts.isEmpty() || (!requested.isEmpty() && accounts.size() != requested.size())) {
+            throw new BusinessException(ErrorCode.CONNECTION_NOT_FOUND);
+        }
+
+        LocalDateTime now = now();
+        if (jobs.existsRunningSince(userId, now.minus(properties.timeout()))) {
+            throw new BusinessException(ErrorCode.SYNC_ALREADY_RUNNING);
+        }
+
+        // 계정이 일시 제한된 카드사는 제한 시간 동안 건너뛴다. 다시 요청하면 제한이 길어질 수 있어서다. 요청한 카드사가
+        // 모두 제한 중이면 시작할 것이 없으므로 막고, 일부만 제한 중이면 나머지만 동기화한다. (건너뛴 카드사의 상태는
+        // 연결 목록에서 확인한다.)
+        List<CodefOrgAccount> syncable = accounts.stream().filter(account -> !isRetryBlocked(account, now)).toList();
+        if (syncable.isEmpty()) {
+            throw new BusinessException(ErrorCode.CONNECTION_RETRY_BLOCKED);
+        }
+
+        String batchId = UUID.randomUUID().toString();
+        List<Long> jobIds = jobs.saveAll(syncable.stream()
+                .map(account -> CodefSyncJob.startCardList(account, batchId, now)).toList())
+            .stream().map(CodefSyncJob::getId).toList();
+        return new Started(batchId, jobIds);
+    }
+
+    /** 가장 최근 카드 목록 수집이 다시 시도하면 안 되는 이유로 실패했고, 아직 제한 시간이 지나지 않았는지. */
+    private boolean isRetryBlocked(CodefOrgAccount account, LocalDateTime now) {
+        return jobs.findFirstByOrgAccountIdAndApiTypeOrderByIdDesc(account.getId(), CodefSyncJob.API_CARD_LIST)
+            .map(job -> job.blocksRetry(properties.retryBlock(), now))
+            .orElse(false);
+    }
+
+    private void dispatch(long jobId) {
+        try {
+            executor.execute(() -> {
+                try {
+                    worker.run(jobId);
+                } catch (RuntimeException e) {
+                    // 작업을 기록하는 데 실패한 경우. 진행 중으로 남은 기록은 timeout 뒤에 실패로 보인다.
+                    log.error("카드 동기화 실행 실패: jobId={}, type={}", jobId, e.getClass().getSimpleName());
+                }
+            });
+        } catch (TaskRejectedException e) {
+            log.error("카드 동기화 대기열이 가득 차 작업을 시작하지 못했습니다: jobId={}", jobId);
+            worker.markRejected(jobId);
+        }
+    }
+
+    /** 동기화 진행 상태. 없거나 다른 사용자의 jobId면 {@code CONN-006}이다. */
+    @Transactional(readOnly = true)
+    public ConnectionSyncStatusResponse status(long userId, String jobId) {
+        List<CodefSyncJob> batch = jobs.findByBatchIdAndUserId(jobId, userId);
+        if (batch.isEmpty()) {
+            throw new BusinessException(ErrorCode.SYNC_JOB_NOT_FOUND);
+        }
+        LocalDateTime now = now();
+        List<Result> results = batch.stream().map(job -> toResult(job, now)).toList();
+
+        int completed = (int) results.stream().filter(result -> !IN_PROGRESS.equals(result.status())).count();
+        long succeeded = results.stream().filter(result -> SUCCESS.equals(result.status())).count();
+        String status;
+        if (completed < results.size()) {
+            status = IN_PROGRESS;
+        } else if (succeeded == results.size()) {
+            status = SUCCESS;
+        } else if (succeeded == 0) {
+            status = FAILED;
+        } else {
+            status = PARTIAL_SUCCESS;
+        }
+        return new ConnectionSyncStatusResponse(jobId, status, results.size(), completed, results);
+    }
+
+    /** 사용자가 연결한 카드사 목록과 카드사별 최근 동기화 상태. 연결한 카드사가 없으면 빈 목록이다. */
+    @Transactional(readOnly = true)
+    public List<ConnectionSummaryResponse> list(long userId) {
+        Map<Long, CodefSyncJob> latest = jobs.findLatestCardListJobsByUserId(userId).stream()
+            .collect(Collectors.toMap(job -> job.getOrgAccount().getId(), Function.identity()));
+        LocalDateTime now = now();
+
+        return orgAccounts.findActiveByUserId(userId).stream()
+            .flatMap(account -> {
+                CardCompany company = CardCompany.fromOrganizationCode(account.getOrganization());
+                // 모르는 기관 코드의 계정은 화면에 보여줄 수 없어서 목록에서 뺀다.
+                return company == null
+                    ? Stream.<ConnectionSummaryResponse>empty()
+                    : Stream.of(toSummary(account, company, latest.get(account.getId()), now));
+            })
+            .toList();
+    }
+
+    private ConnectionSummaryResponse toSummary(CodefOrgAccount account, CardCompany company, CodefSyncJob latestJob,
+                                                LocalDateTime now) {
+        OffsetDateTime syncedAt = account.getLastSyncedAt() == null ? null
+            : account.getLastSyncedAt().atZone(clock.getZone()).toOffsetDateTime();
+        if (latestJob == null) {
+            return new ConnectionSummaryResponse(account.getId(), company, NOT_SYNCED, 0, null, null, syncedAt);
+        }
+        Result result = toResult(latestJob, company, now);
+        return new ConnectionSummaryResponse(account.getId(), company, result.status(), result.cardCount(),
+            result.failureCode(), result.failureReason(), syncedAt);
+    }
+
+    private Result toResult(CodefSyncJob job, LocalDateTime now) {
+        return toResult(job, CardCompany.fromOrganizationCode(job.getOrgAccount().getOrganization()), now);
+    }
+
+    private Result toResult(CodefSyncJob job, CardCompany company, LocalDateTime now) {
+        Long connectionId = job.getOrgAccount().getId();
+        boolean timedOut = job.isTimedOut(properties.timeout(), now);
+
+        if (job.isInProgress() && !timedOut) {
+            return new Result(connectionId, company, IN_PROGRESS, 0, null, null);
+        }
+        if (job.hasFailed(properties.timeout(), now)) {
+            SyncFailure failure = SyncFailure.of(job, timedOut);
+            return new Result(connectionId, company, FAILED, 0, failure.code(), failure.reason());
+        }
+        int count = job.getFetchedCount() == null ? 0 : job.getFetchedCount();
+        return new Result(connectionId, company, SUCCESS, count, null, null);
+    }
+
+    private LocalDateTime now() {
+        return Times.nowSeconds(clock);
+    }
+
+    private record Started(String batchId, List<Long> jobIds) {
+
+    }
+
+}

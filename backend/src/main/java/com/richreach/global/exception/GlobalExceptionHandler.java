@@ -9,6 +9,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -30,6 +32,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("BusinessException: {} - {}", errorCode.getCode(), e.getMessage());
         return ResponseEntity.status(errorCode.getStatus())
             .body(ApiResponse.error(errorCode, e.getMessage()));
+    }
+
+    /** 컨트롤러/서비스에서 던진 인증 오류. URL 단위 보안은 보안 필터가 처리하고, 메서드 단위 보안은 여기로 온다. */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthentication(AuthenticationException e) {
+        log.warn("AuthenticationException: {}", e.getMessage());
+        ErrorCode errorCode = ErrorCode.UNAUTHORIZED;
+        return ResponseEntity.status(errorCode.getStatus()).body(ApiResponse.error(errorCode));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException e) {
+        log.warn("AccessDeniedException: {}", e.getMessage());
+        ErrorCode errorCode = ErrorCode.FORBIDDEN;
+        return ResponseEntity.status(errorCode.getStatus()).body(ApiResponse.error(errorCode));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
