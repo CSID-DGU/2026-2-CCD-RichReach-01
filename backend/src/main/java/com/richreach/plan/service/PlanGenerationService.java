@@ -9,6 +9,7 @@ import com.richreach.plan.dto.PlanJobStatusResponse;
 import com.richreach.plan.entity.PlanJob;
 import com.richreach.plan.repository.MonthlyPlanRepository;
 import com.richreach.plan.repository.PlanJobRepository;
+import com.richreach.user.service.UserLockService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -43,7 +44,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @RequiredArgsConstructor
 public class PlanGenerationService {
 
-    private final PlanUserLock userLock;
+    static final String TIMEOUT_REASON = "플랜 생성이 제한 시간 안에 끝나지 않았습니다. 다시 시도해 주세요.";
+
+    private final UserLockService userLock;
     private final PlanInputAssembler inputs;
     private final PlanJobRepository jobs;
     private final MonthlyPlanRepository plans;
@@ -75,8 +78,13 @@ public class PlanGenerationService {
         }
 
         LocalDateTime now = now();
-        Optional<PlanJob> running = jobs.findFirstByUserIdAndStatusOrderByIdDesc(userId, PlanJob.STATUS_IN_PROGRESS)
-            .filter(job -> !job.isTimedOut(properties.timeout(), now));
+        Optional<PlanJob> running = jobs.findFirstByUserIdAndStatusOrderByIdDesc(userId, PlanJob.STATUS_IN_PROGRESS);
+        if (running.isPresent() && running.get().isTimedOut(properties.timeout(), now)) {
+            // 멈춘 작업은 실패로 기록해 두고 새 요청을 받는다. (늦게 끝나도 완료로 바뀌지 않는다.)
+            jobs.failIfTimedOut(running.get().getId(), PlanGenerationWorker.CODE_TIMEOUT, TIMEOUT_REASON, now,
+                now.minus(properties.timeout()));
+            running = Optional.empty();
+        }
         if (running.isPresent()) {
             PlanJob job = running.get();
             if (job.getPlanMonth().equals(budget.month().toString()) && job.getRequestHash().equals(budget.fingerprint())) {
@@ -107,13 +115,17 @@ public class PlanGenerationService {
     }
 
     /** 플랜 생성 진행 상태. 없거나 다른 사용자의 jobId면 {@code PLAN-002}다. */
-    @Transactional(readOnly = true)
+    @Transactional
     public PlanJobStatusResponse status(long userId, String jobId) {
         PlanJob job = jobs.findByJobIdAndUserId(jobId, userId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PLAN_JOB_NOT_FOUND));
         if (job.isTimedOut(properties.timeout(), now())) {
-            return new PlanJobStatusResponse(PlanJob.STATUS_FAILED, job.getProgress(), null,
-                PlanGenerationWorker.CODE_TIMEOUT, "플랜 생성이 제한 시간 안에 끝나지 않았습니다. 다시 시도해 주세요.");
+            // 시간 초과를 DB에 실패로 남긴다. 조건부 UPDATE라 그 사이 완료된 작업은 바뀌지 않고, 다시 읽어 실제 상태를 알린다.
+            LocalDateTime now = now();
+            jobs.failIfTimedOut(job.getId(), PlanGenerationWorker.CODE_TIMEOUT, TIMEOUT_REASON, now,
+                now.minus(properties.timeout()));
+            job = jobs.findByJobIdAndUserId(jobId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PLAN_JOB_NOT_FOUND));
         }
         return new PlanJobStatusResponse(job.getStatus(), job.getProgress(), job.getPlanId(), job.getFailureCode(),
             job.getFailureReason());

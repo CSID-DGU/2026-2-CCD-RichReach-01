@@ -83,7 +83,11 @@ public class PlanGenerationWorker {
 
     private void execute(long id) {
         PlanJob job = transaction.execute(status -> jobs.findById(id).orElse(null));
-        if (job == null || !job.isInProgress() || job.isTimedOut(properties.timeout(), now())) {
+        if (job == null || !job.isInProgress()) {
+            return;
+        }
+        if (job.isTimedOut(properties.timeout(), now())) {
+            timeOut(id);
             return;
         }
         long userId = job.getUserId();
@@ -139,11 +143,6 @@ public class PlanGenerationWorker {
     /** 프로필, 전략별 플랜, 배분을 저장하고 작업을 완료한다. 한 트랜잭션이다. */
     private void save(long id, long userId, PlanBudget budget, Map<PlanStrategy, PlanStrategyResult> succeeded) {
         transaction.executeWithoutResult(status -> {
-            PlanJob job = jobs.findById(id).orElse(null);
-            // 제한 시간이 지난 작업이거나 이미 끝난 작업이면 늦게 끝난 결과를 반영하지 않는다.
-            if (job == null || !job.isInProgress() || job.isTimedOut(properties.timeout(), now())) {
-                return;
-            }
             YearMonth month = budget.month();
             // 확정한 예산으로 만든 프로필이다. 근거 기간은 플랜 대상 월 직전 두 달로 둔다.
             SpendingProfile profile = profiles.save(SpendingProfile.create(userId, month,
@@ -165,22 +164,35 @@ public class PlanGenerationWorker {
             });
 
             PlanStrategy primary = PlanPrimarySelector.select(savedPlanIds.keySet()).orElseThrow();
-            job.complete(savedPlanIds.get(primary), now());
+            // 완료는 "진행 중이고 제한 시간이 지나지 않은" 작업에만 적용되는 조건부 UPDATE다. 시간 초과나 실패로 이미 끝난
+            // 작업이면 0행이라, 방금 저장한 프로필·플랜·배분을 모두 되돌려 늦게 끝난 결과가 남지 않게 한다.
+            LocalDateTime now = now();
+            int completed = jobs.completeIfInTime(id, savedPlanIds.get(primary), now, now.minus(properties.timeout()));
+            if (completed == 0) {
+                status.setRollbackOnly();
+                log.info("플랜 생성 결과를 반영하지 않았습니다(이미 끝난 작업): id={}", id);
+                return;
+            }
             log.info("플랜 생성 완료: id={}, strategies={}, primary={}", id, savedPlanIds.keySet(), primary);
         });
     }
 
     private void progress(long id, int value) {
-        transaction.executeWithoutResult(status -> jobs.findById(id).ifPresent(job -> job.updateProgress(value)));
+        transaction.executeWithoutResult(status -> jobs.updateProgress(id, Math.min(value, 99)));
     }
 
-    /** 진행 중이고 제한 시간이 지나지 않은 작업만 실패로 기록한다. */
+    /** 진행 중인 작업만 실패로 기록한다. 이미 끝난 작업은 바뀌지 않는다. */
     private void fail(long id, String code, String reason) {
-        transaction.executeWithoutResult(status -> jobs.findById(id).ifPresent(job -> {
-            if (job.isInProgress() && !job.isTimedOut(properties.timeout(), now())) {
-                job.fail(code, reason, now());
-            }
-        }));
+        String trimmed = reason == null || reason.length() <= PlanJob.FAILURE_REASON_MAX_LENGTH
+            ? reason : reason.substring(0, PlanJob.FAILURE_REASON_MAX_LENGTH);
+        transaction.executeWithoutResult(status -> jobs.failIfInProgress(id, code, trimmed, now()));
+    }
+
+    /** 제한 시간이 지난 진행 중 작업을 시간 초과로 기록한다. */
+    private void timeOut(long id) {
+        LocalDateTime now = now();
+        transaction.executeWithoutResult(status -> jobs.failIfTimedOut(id, CODE_TIMEOUT,
+            PlanGenerationService.TIMEOUT_REASON, now, now.minus(properties.timeout())));
     }
 
     private LocalDateTime now() {

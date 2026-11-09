@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 플랜 전략에 줄 입력을 만든다. 쓸 수 있는 카드는 사용자가 분석 대상으로 고른 카드뿐이고, 카드 정보와 전월 소비는 각 도메인의
@@ -21,13 +22,14 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-class PlanInputAssembler {
+public class PlanInputAssembler {
 
     private final OwnedCardQueryService ownedCards;
     private final TransactionSummaryService transactions;
 
-    /** 분석 대상 카드가 하나도 없으면 비어 있다. */
-    Optional<PlanStrategyInput> assemble(long userId, PlanBudget budget, Duration timeLimit) {
+    /** 분석 대상 카드가 하나도 없으면 비어 있다. 카드와 거래 조회가 같은 시점의 데이터를 보도록 읽기 전용 트랜잭션 하나로 묶는다. */
+    @Transactional(readOnly = true)
+    public Optional<PlanStrategyInput> assemble(long userId, PlanBudget budget, Duration timeLimit) {
         List<OwnedCardResponse> targets = analysisTargets(userId);
         if (targets.isEmpty()) {
             return Optional.empty();
@@ -40,7 +42,7 @@ class PlanInputAssembler {
     }
 
     /** 사용자가 분석 대상으로 고른 카드. 카드 상품에 매칭된 카드만 분석 대상이 될 수 있다. */
-    List<OwnedCardResponse> analysisTargets(long userId) {
+    public List<OwnedCardResponse> analysisTargets(long userId) {
         return ownedCards.list(userId).stream().filter(card -> card.selected() && card.cardProductId() != null).toList();
     }
 
