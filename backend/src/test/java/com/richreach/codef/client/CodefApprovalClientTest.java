@@ -66,8 +66,8 @@ class CodefApprovalClientTest {
         assertThat(result.approvalCount()).isEqualTo(2);
         assertThat(result.approvals()).containsExactly(
             new CodefApproval("12345678", LocalDate.of(2026, 9, 20), LocalTime.of(12, 30, 45), "테스트 상점A", 22_000, 0,
-                0, "음식점"),
-            new CodefApproval("", LocalDate.of(2026, 9, 21), null, "테스트 상점B", 1_500, 0, 3, ""));
+                0, "음식점", "", "0", "", "", ""),
+            new CodefApproval("", LocalDate.of(2026, 9, 21), null, "테스트 상점B", 1_500, 0, 3, "", "", "0", "", "", ""));
     }
 
     @Test
@@ -169,11 +169,27 @@ class CodefApprovalClientTest {
     }
 
     @Test
+    @DisplayName("카드번호, 결제 구분, 국내/해외 구분, 통화, 취소 구분은 카드사가 준 값 그대로 읽는다")
+    void readsRawCodes() throws Exception {
+        ApprovalListResult result = parse("{\"result\":{\"code\":\"CF-00000\"},\"data\":["
+            + entry("20260920", "3000", ",\"resCardNo\":\"1234567890123456\",\"resPaymentType\":\"1\","
+                + "\"resHomeForeignType\":\"1\",\"resAccountCurrency\":\"KRW\",\"resCancelYN\":\"0\"") + "]}");
+
+        CodefApproval approval = result.approvals().get(0);
+        assertThat(approval.cardNumber()).isEqualTo("1234567890123456");
+        assertThat(approval.paymentType()).isEqualTo("1");
+        assertThat(approval.homeForeignType()).isEqualTo("1");
+        assertThat(approval.currency()).isEqualTo("KRW");
+        assertThat(approval.cancelStatus()).isEqualTo("0");
+    }
+
+    @Test
     @DisplayName("toString은 가맹점명과 금액을 드러내지 않는다")
     void toStringHidesValues() {
-        CodefApproval approval = new CodefApproval("1", LocalDate.of(2026, 9, 20), null, "비밀상점", 99_999, 0, 0, "");
+        CodefApproval approval = new CodefApproval("1", LocalDate.of(2026, 9, 20), null, "비밀상점", 99_999, 0, 0, "", "1234567890123456", "0", "1", "1", "KRW");
 
-        assertThat(approval.toString()).doesNotContain("비밀상점").doesNotContain("99999");
+        assertThat(approval.toString()).doesNotContain("비밀상점").doesNotContain("99999")
+            .doesNotContain("1234567890123456");
     }
 
 }

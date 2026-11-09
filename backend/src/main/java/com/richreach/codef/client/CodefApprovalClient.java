@@ -39,6 +39,10 @@ public class CodefApprovalClient {
     static final String FIELD_CANCEL_STATUS = "resCancelYN";
     static final String FIELD_CANCEL_AMOUNT = "resCancelAmount";
     static final String FIELD_MERCHANT_TYPE = "resMemberStoreType";
+    static final String FIELD_CARD_NUMBER = "resCardNo";
+    static final String FIELD_PAYMENT_TYPE = "resPaymentType";
+    static final String FIELD_HOME_FOREIGN = "resHomeForeignType";
+    static final String FIELD_CURRENCY = "resAccountCurrency";
 
     /** 취소 구분. 0이면 정상, 1이면 전체 취소, 2이면 부분 취소로 읽는다. (확인 필요) */
     static final String CANCEL_NONE = "0";
@@ -115,7 +119,12 @@ public class CodefApprovalClient {
             amountValue,
             canceled,
             parseInstallment(text(entry, FIELD_INSTALLMENT_MONTH)),
-            text(entry, FIELD_MERCHANT_TYPE)));
+            text(entry, FIELD_MERCHANT_TYPE),
+            text(entry, FIELD_CARD_NUMBER),
+            cancelStatus,
+            text(entry, FIELD_PAYMENT_TYPE),
+            text(entry, FIELD_HOME_FOREIGN),
+            text(entry, FIELD_CURRENCY)));
     }
 
     private static String text(JsonNode entry, String field) {
@@ -177,7 +186,7 @@ public class CodefApprovalClient {
     }
 
     /**
-     * CODEF가 알려준 승인내역 한 건. 가맹점명과 금액은 소비 정보라서 {@code toString}에서 가린다.
+     * CODEF가 알려준 승인내역 한 건. 가맹점명, 금액, 카드번호는 개인 정보라서 {@code toString}에서 가린다.
      *
      * @param approvalNo      승인번호. 없으면 빈 문자열
      * @param usedDate        이용 일자
@@ -186,9 +195,16 @@ public class CodefApprovalClient {
      * @param canceledAmount  취소·환불된 금액(원). 취소가 없으면 0
      * @param installmentMonths 할부 개월. 일시불이면 0
      * @param merchantType    카드사가 준 가맹점 업종 구분. 없으면 빈 문자열
+     * @param cardNumber      이 거래를 한 카드의 번호. 마스킹되어 있지 않을 수 있어서 저장하기 전에 가려야 한다.
+     * @param cancelStatus    카드사가 준 취소 구분 코드 그대로 (값의 뜻은 통계로 확인 중)
+     * @param paymentType     카드사가 준 결제 구분 코드 그대로
+     * @param homeForeignType 카드사가 준 국내/해외 구분 코드 그대로
+     * @param currency        카드사가 준 통화 코드 그대로
      */
     public record CodefApproval(String approvalNo, LocalDate usedDate, LocalTime usedTime, String merchantName,
-                                long amount, long canceledAmount, int installmentMonths, String merchantType) {
+                                long amount, long canceledAmount, int installmentMonths, String merchantType,
+                                String cardNumber, String cancelStatus, String paymentType, String homeForeignType,
+                                String currency) {
 
         @Override
         public String toString() {
