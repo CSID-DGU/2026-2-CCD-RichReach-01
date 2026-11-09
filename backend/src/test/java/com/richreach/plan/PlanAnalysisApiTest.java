@@ -313,4 +313,17 @@ class PlanAnalysisApiTest {
             .andExpect(jsonPath("$.data.suggestedBudget.total").value(90_000));
     }
 
+    @Test
+    @DisplayName("부분 데이터에서 월평균은 응답의 analyzedMonths로 나눈 값이다 (응답끼리 어긋나지 않는다)")
+    void monthlyAverageMatchesReturnedMonths() throws Exception {
+        // 3개월 기간(약 90일) 중 47일만 수집: 약 1.5개월이라 2개월로 반올림하고, 월평균도 2로 나눈다.
+        save(today.minusDays(46).atTime(9, 0), 120_000, "DINING");
+
+        analysis("3M").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.partial").value(true))
+            .andExpect(jsonPath("$.data.analyzedMonths").value(2))
+            .andExpect(jsonPath("$.data.monthlyAverage").value(60_000))
+            .andExpect(jsonPath("$.data.suggestedBudget.total").value(60_000));
+    }
+
 }

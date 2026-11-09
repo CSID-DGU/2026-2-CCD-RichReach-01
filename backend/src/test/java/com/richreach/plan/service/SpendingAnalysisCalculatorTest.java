@@ -177,4 +177,20 @@ class SpendingAnalysisCalculatorTest {
         assertThat(SpendingAnalysisCalculator.topCategory(amounts(SpendingCategory.CAFE, 0))).isNull();
     }
 
+    @Test
+    @DisplayName("매우 큰 금액에서도 오버플로 없이 합이 맞게 나눈다 (총예산 1,000억 원 × 업종 소비 1,000억 원)")
+    void handlesVeryLargeAmountsWithoutOverflow() {
+        Map<SpendingCategory, Long> spend = amounts(
+            SpendingCategory.DINING, 100_000_000_000L, SpendingCategory.CAFE, 50_000_000_000L);
+
+        Map<SpendingCategory, Long> budget = SpendingAnalysisCalculator.budgetByCategory(100_000_000_000L, spend);
+
+        assertThat(sum(budget)).isEqualTo(100_000_000_000L);
+        // 2 : 1 로 나누면 66,666,666.67 : 33,333,333.33 (1,000원 단위). 남는 1단위는 소수 부분이 큰 DINING이 받는다.
+        assertThat(budget.get(SpendingCategory.DINING)).isEqualTo(66_666_667_000L);
+        assertThat(budget.get(SpendingCategory.CAFE)).isEqualTo(33_333_333_000L);
+        assertThat(SpendingAnalysisCalculator.ratios(spend).values().stream().mapToInt(Integer::intValue).sum())
+            .isEqualTo(100);
+    }
+
 }

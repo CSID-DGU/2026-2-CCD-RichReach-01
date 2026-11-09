@@ -2,6 +2,7 @@ package com.richreach.plan.service;
 
 import com.richreach.global.category.SpendingCategory;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -97,9 +98,11 @@ final class SpendingAnalysisCalculator {
         long given = 0;
         for (SpendingCategory category : SpendingCategory.values()) {
             long weight = Math.max(0, weights.getOrDefault(category, 0L));
-            long numerator = Math.multiplyExact(totalUnits, weight);
-            long floor = numerator / weightSum;
-            shares.add(new Share(category, weight, floor, numerator % weightSum));
+            // 곱이 long을 넘을 수 있어(예: 총예산 1,000억 원 × 업종 소비 1,000억 원) 큰 수로 계산한다. 몫과 나머지는 long에 들어간다.
+            BigInteger[] division = BigInteger.valueOf(totalUnits).multiply(BigInteger.valueOf(weight))
+                .divideAndRemainder(BigInteger.valueOf(weightSum));
+            long floor = division[0].longValueExact();
+            shares.add(new Share(category, weight, floor, division[1].longValueExact()));
             given += floor;
         }
 
