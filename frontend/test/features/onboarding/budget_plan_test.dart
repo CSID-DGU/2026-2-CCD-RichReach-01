@@ -52,6 +52,84 @@ void main() {
     });
   });
 
+  group('ONB-06 소비패턴 우선순위', () {
+    SpendingAnalysis analysis(List<CategoryRatio> ratios) => SpendingAnalysis(
+      analyzedMonths: 3,
+      monthlyAverage: 0,
+      topCategory: SpendingCategory.dining,
+      mainCardName: '-',
+      categoryRatios: ratios,
+      suggestedBudget: _sampleBudget(),
+    );
+
+    test('금액이 큰 순, 같으면 건수가 많은 순, 그래도 같으면 업종 순서로 우선순위를 매긴다', () {
+      final ranked = FakeBudgetRepository.rankRatios({
+        SpendingCategory.dining: (20, 100000, 5),
+        SpendingCategory.cafe: (20, 100000, 9),
+        SpendingCategory.shopping: (40, 200000, 1),
+        SpendingCategory.transport: (10, 50000, 3),
+        SpendingCategory.convenienceStore: (10, 50000, 3),
+        SpendingCategory.etc: (0, 0, 0),
+      });
+
+      // 배열은 업종 고정 순서를 유지한다.
+      expect(ranked.map((r) => r.category), SpendingCategory.values);
+      expect(
+        {for (final r in ranked) r.category: r.rank},
+        {
+          SpendingCategory.shopping: 1,
+          SpendingCategory.cafe: 2,
+          SpendingCategory.dining: 3,
+          SpendingCategory.transport: 4,
+          SpendingCategory.convenienceStore: 5,
+          SpendingCategory.etc: 6,
+        },
+      );
+    });
+
+    test('소비패턴은 우선순위 순으로 5개까지 보여주고, 기타와 소비 없는 업종은 뺀다', () {
+      CategoryRatio ratio(SpendingCategory category, int rank, int amount) =>
+          CategoryRatio(
+            category: category,
+            ratio: 10,
+            amount: amount,
+            transactionCount: 1,
+            rank: rank,
+          );
+
+      final shown = analysis([
+        ratio(SpendingCategory.dining, 3, 30000),
+        ratio(SpendingCategory.cafe, 6, 0),
+        ratio(SpendingCategory.shopping, 2, 40000),
+        ratio(SpendingCategory.transport, 4, 20000),
+        ratio(SpendingCategory.convenienceStore, 5, 10000),
+        ratio(SpendingCategory.etc, 1, 50000),
+      ]).patternRatios;
+
+      expect(shown.map((r) => r.category), [
+        SpendingCategory.shopping,
+        SpendingCategory.dining,
+        SpendingCategory.transport,
+        SpendingCategory.convenienceStore,
+      ]);
+    });
+
+    test('보여줄 업종은 최대 5개다', () {
+      final many = [
+        for (var i = 0; i < 7; i++)
+          CategoryRatio(
+            category: SpendingCategory.dining,
+            ratio: 10,
+            amount: 1000,
+            transactionCount: 1,
+            rank: i + 1,
+          ),
+      ];
+
+      expect(analysis(many).patternRatios.map((r) => r.rank), [1, 2, 3, 4, 5]);
+    });
+  });
+
   group('금액 입력 형식', () {
     String type(String input) => const AmountInputFormatter()
         .formatEditUpdate(TextEditingValue.empty, TextEditingValue(text: input))

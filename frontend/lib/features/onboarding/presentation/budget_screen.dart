@@ -102,13 +102,9 @@ class _BudgetContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // "기타"는 소비패턴으로 보여주지 않고, 비율이 있는 업종만 큰 순서대로 보여준다.
-    final ratios =
-        analysis.categoryRatios
-            .where((r) => r.ratio > 0 && r.category != SpendingCategory.etc)
-            .toList()
-          ..sort((a, b) => b.ratio.compareTo(a.ratio));
-    final maxRatio = ratios.isEmpty ? 0 : ratios.first.ratio;
+    // 우선순위가 높은 5개 업종만 보여준다. 막대 길이는 가장 큰 비율을 기준으로 한다.
+    final ratios = analysis.patternRatios;
+    final maxRatio = ratios.fold(0, (max, r) => r.ratio > max ? r.ratio : max);
     final categoryBudgets = [
       for (final category in SpendingCategory.values)
         if ((budget.byCategory[category] ?? 0) > 0)
