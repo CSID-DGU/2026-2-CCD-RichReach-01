@@ -285,6 +285,14 @@ void main() {
       expect(findText('62건 연결 완료'), findsOneWidget);
       expect(findText('80건 연결 완료'), findsOneWidget);
       expect(findText('스타벅스'), findsOneWidget);
+      // 최근 거래는 5건까지 보여준다.
+      await tester.scrollUntilVisible(
+        findText('올리브영'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(findText('배달의민족'), findsOneWidget);
+      expect(findText('올리브영'), findsOneWidget);
       expect(findText('카페 · 신한 Deep Dream'), findsOneWidget);
       expect(findText('-6,500원'), findsOneWidget);
       expect(findText('편의·마트 · KB My WE:SH'), findsOneWidget);

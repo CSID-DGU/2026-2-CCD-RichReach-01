@@ -26,7 +26,7 @@ class ApiTransactionRepository implements TransactionRepository {
   final ApiClient _api;
 
   /// 최근 거래로 보여줄 건수
-  static const recentCount = 3;
+  static const recentCount = 5;
 
   @override
   Future<TransactionSummary> fetchSummary(
@@ -228,6 +228,8 @@ class FakeTransactionRepository implements TransactionRepository {
     (CardCompany.shinhan, '스타벅스', SpendingCategory.cafe, 6500),
     (CardCompany.kb, 'GS25', SpendingCategory.convenienceStore, 12400),
     (CardCompany.woori, '카카오T', SpendingCategory.transport, 12300),
+    (CardCompany.shinhan, '배달의민족', SpendingCategory.dining, 23500),
+    (CardCompany.kb, '올리브영', SpendingCategory.lifeHealth, 18900),
   ];
 
   @override
