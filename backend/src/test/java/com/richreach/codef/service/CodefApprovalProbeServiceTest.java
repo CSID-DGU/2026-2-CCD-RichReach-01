@@ -37,8 +37,8 @@ class CodefApprovalProbeServiceTest {
     private final CodefApprovalClient approvals = mock(CodefApprovalClient.class);
     private final TransactionTemplate transaction = mock(TransactionTemplate.class);
     private final Clock clock = Clock.fixed(TODAY.atStartOfDay(ZONE).toInstant(), ZONE);
-    private final CodefApprovalProbeService service =
-        new CodefApprovalProbeService(orgAccounts, approvals, transaction, clock);
+    private final CodefApprovalProbeService service = new CodefApprovalProbeService(
+        new CodefApprovalTargets(orgAccounts, transaction, clock), approvals);
 
     @SuppressWarnings("unchecked")
     private CodefApprovalProbeServiceTest() {
