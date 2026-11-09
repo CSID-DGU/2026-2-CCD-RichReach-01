@@ -63,10 +63,15 @@ abstract final class AppAssets {
   // Category icons (업종, SVG)
   static const iconCafe = '$_icons/cafe.svg';
   static const iconConvenienceStore = '$_icons/convenience_store.svg';
+  static const iconCultureTravel = '$_icons/culture-travel.svg';
+  static const iconEducationBooks = '$_icons/education-books.svg';
   static const iconEtc = '$_icons/etc.svg';
+  static const iconFuelAutomotive = '$_icons/fuel-automotive.svg';
+  static const iconLifeHealth = '$_icons/life-health.svg';
   static const iconPencil = '$_icons/pencil.svg';
   static const iconRestaurant = '$_icons/restaurant.svg';
   static const iconShopping = '$_icons/shopping.svg';
+  static const iconTelecomRecurring = '$_icons/telecom-recurring.svg';
   static const iconTransportation = '$_icons/transportation.svg';
 
   // Navigation icons (SVG는 ColorFilter로 활성/비활성 색상을 적용한다.)
@@ -115,10 +120,15 @@ abstract final class AppAssets {
     infoPayment,
     iconCafe,
     iconConvenienceStore,
+    iconCultureTravel,
+    iconEducationBooks,
     iconEtc,
+    iconFuelAutomotive,
+    iconLifeHealth,
     iconPencil,
     iconRestaurant,
     iconShopping,
+    iconTelecomRecurring,
     iconTransportation,
     navigationHome,
     navigationMonthlyPlan,

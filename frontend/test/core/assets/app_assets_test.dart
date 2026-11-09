@@ -67,6 +67,29 @@ void main() {
     }
   });
 
+  testWidgets('업종 SVG를 오류 없이 그린다', (tester) async {
+    for (final path in [
+      AppAssets.iconRestaurant,
+      AppAssets.iconCafe,
+      AppAssets.iconConvenienceStore,
+      AppAssets.iconShopping,
+      AppAssets.iconTransportation,
+      AppAssets.iconFuelAutomotive,
+      AppAssets.iconLifeHealth,
+      AppAssets.iconTelecomRecurring,
+      AppAssets.iconCultureTravel,
+      AppAssets.iconEducationBooks,
+      AppAssets.iconEtc,
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(home: Center(child: SvgPicture.asset(path, width: 24))),
+      );
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+      expect(tester.takeException(), isNull, reason: path);
+    }
+  });
+
   testWidgets('네비게이션 SVG를 오류 없이 그린다', (tester) async {
     for (final path in [
       AppAssets.navigationHome,
