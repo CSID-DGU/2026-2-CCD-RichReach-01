@@ -15,7 +15,7 @@ abstract interface class TransactionRepository {
 }
 
 /// 백엔드 거래 API로 ONB-05 요약을 만든다.
-/// - 기간, 총액, 거래 수, 업종: `GET /api/transactions/summary?period=`
+/// - 기간, 총액, 거래 수: `GET /api/transactions/summary?period=`
 /// - 카드사별 건수: 보유카드마다 `GET /api/transactions?cardId=`의 `totalElements`
 ///   (요약 API에 카드별 값이 없어서다. 서버에 추가되면 바꾼다.)
 /// - 최근 거래: `GET /api/transactions?size=`[recentCount]. 카드 이름은 보유카드 목록과 `cardId`로 맞춘다.
@@ -70,7 +70,6 @@ class ApiTransactionRepository implements TransactionRepository {
       totalCount: summary.transactionCount,
       totalAmount: summary.totalAmount,
       connectedCardCount: cards.length,
-      categorizedRate: summary.categorizedRate,
       byCompany: [
         for (final company in CardCompany.values)
           if (byCompany[company] case final count?)
@@ -103,7 +102,6 @@ class _Summary {
     required this.to,
     required this.totalAmount,
     required this.transactionCount,
-    required this.categorizedRate,
   });
 
   final DateTime from;
@@ -111,23 +109,13 @@ class _Summary {
   final int totalAmount;
   final int transactionCount;
 
-  /// 기타(ETC)가 아닌 업종으로 분류된 거래 비율 (0~100)
-  final int categorizedRate;
-
   static _Summary fromJson(Object? data) {
     final json = data as Map;
-    final count = json['transactionCount'] as int;
-    final etc = [
-      for (final item in json['categories'] as List)
-        if ((item as Map)['category'] == SpendingCategory.etc.code)
-          item['transactionCount'] as int,
-    ].fold(0, (sum, c) => sum + c);
     return _Summary(
       from: DateTime.parse(json['from'] as String),
       to: DateTime.parse(json['to'] as String),
       totalAmount: json['totalAmount'] as int,
-      transactionCount: count,
-      categorizedRate: count == 0 ? 0 : ((count - etc) * 100 / count).round(),
+      transactionCount: json['transactionCount'] as int,
     );
   }
 }
@@ -256,7 +244,6 @@ class FakeTransactionRepository implements TransactionRepository {
       totalCount: byCompany.fold(0, (sum, c) => sum + c.count),
       totalAmount: totalAmount,
       connectedCardCount: companies.length,
-      categorizedRate: 96,
       byCompany: byCompany,
       recentTransactions: empty
           ? const []

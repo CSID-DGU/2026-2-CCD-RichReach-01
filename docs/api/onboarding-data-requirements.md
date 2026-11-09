@@ -292,7 +292,6 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
   "totalCount": 184,
   "totalAmount": 2480000,
   "connectedCardCount": 3,
-  "categorizedRate": 96,
   "byCompany": [
     { "cardCompany": "KB", "count": 62 },
     { "cardCompany": "SHINHAN", "count": 80 },
@@ -311,7 +310,6 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
 }
 ```
 
-- `categorizedRate`: 업종 분류에 성공한 거래 비율 (지금 화면에는 보이지 않음)
 - 최근 거래는 "업종 · 카드 이름"(예: "카페 · 신한 Deep Dream")으로 보여 주므로 `cardName`이 필요합니다.
 - 새 디자인에서 "거래내역 다시 불러오기" 버튼은 빠졌습니다. `POST /api/transactions/sync`는 온보딩에서는 쓰지 않습니다.
 

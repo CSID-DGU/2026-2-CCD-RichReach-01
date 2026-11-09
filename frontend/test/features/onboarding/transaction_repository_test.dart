@@ -183,7 +183,6 @@ void main() {
     expect(summary.totalCount, 10);
     expect(summary.totalAmount, 486000);
     expect(summary.connectedCardCount, 3);
-    expect(summary.categorizedRate, 90);
     // 카드사 순서(KB, 우리)로, 같은 카드사의 카드는 합친다.
     expect(summary.byCompany.map((c) => (c.company, c.count)), [
       (CardCompany.kb, 6),
@@ -216,7 +215,6 @@ void main() {
     );
 
     expect(summary.isEmpty, isTrue);
-    expect(summary.categorizedRate, 0);
     expect(summary.recentTransactions, isEmpty);
   });
 }
