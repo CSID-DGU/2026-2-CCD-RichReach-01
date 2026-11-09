@@ -323,12 +323,12 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
   "monthlyAverage": 820000,
   "topCategory": "DINING",
   "categoryRatios": [
-    { "category": "DINING", "ratio": 28 },
-    { "category": "CAFE", "ratio": 8 },
-    { "category": "SHOPPING", "ratio": 22 },
-    { "category": "TRANSPORT", "ratio": 15 },
-    { "category": "CONVENIENCE_STORE", "ratio": 12 },
-    { "category": "ETC", "ratio": 15 }
+    { "category": "DINING", "ratio": 28, "amount": 688800, "transactionCount": 41, "rank": 1 },
+    { "category": "CAFE", "ratio": 8, "amount": 196800, "transactionCount": 30, "rank": 5 },
+    { "category": "SHOPPING", "ratio": 22, "amount": 541200, "transactionCount": 18, "rank": 2 },
+    { "category": "TRANSPORT", "ratio": 15, "amount": 369000, "transactionCount": 52, "rank": 3 },
+    { "category": "CONVENIENCE_STORE", "ratio": 12, "amount": 295200, "transactionCount": 37, "rank": 4 },
+    { "category": "ETC", "ratio": 15, "amount": 369000, "transactionCount": 24, "rank": 6 }
   ],
   "suggestedBudget": {
     "total": 820000,
@@ -344,6 +344,12 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
 }
 ```
 
+- `categoryRatios`의 우선순위 `rank`는 서버가 정합니다. (백엔드 답변)
+  - 규칙: 금액이 큰 순 → 같으면 건수가 많은 순 → 그래도 같으면 업종 고정 순서
+  - `topCategory`는 `rank`가 1인 업종입니다.
+  - 배열은 지금처럼 업종 고정 순서입니다.
+- 화면의 업종별 소비패턴은 `rank` 순으로 **5개까지만** 보여 주고 나머지는 숨깁니다. "기타"와 금액이 0인 업종은 보여 주지 않습니다.
+- 업종별 예산은 `suggestedBudget.byCategory`의 업종을 모두 씁니다.
 - 예산은 사용자가 **수정**할 수 있습니다.
   - 총액을 바꾸면 업종별 예산을 지금 비율대로 다시 나눕니다.
   - 업종별 예산을 바꾸면 총액은 업종별 예산의 합이 됩니다.

@@ -22,14 +22,43 @@ class FakeBudgetRepository implements BudgetRepository {
   final DateTime Function() _now;
 
   /// 와이어프레임: 외식 28%, 쇼핑 22%, 교통 15%, 편의점 12%, 기타 23%
+  /// (비율, 3개월 금액, 건수). 금액은 월평균 820,000원 × 3개월 × 비율이다.
   static const _ratios = {
-    SpendingCategory.dining: 28,
-    SpendingCategory.cafe: 0,
-    SpendingCategory.shopping: 22,
-    SpendingCategory.transport: 15,
-    SpendingCategory.convenienceStore: 12,
-    SpendingCategory.etc: 23,
+    SpendingCategory.dining: (28, 688800, 41),
+    SpendingCategory.cafe: (0, 0, 0),
+    SpendingCategory.shopping: (22, 541200, 18),
+    SpendingCategory.transport: (15, 369000, 52),
+    SpendingCategory.convenienceStore: (12, 295200, 37),
+    SpendingCategory.etc: (23, 565800, 24),
   };
+
+  /// 서버 규칙대로 우선순위를 매긴다: 금액이 큰 순 → 같으면 건수가 많은 순 → 그래도 같으면 업종 고정 순서.
+  static List<CategoryRatio> rankRatios(
+    Map<SpendingCategory, (int ratio, int amount, int count)> values,
+  ) {
+    final order = [
+      for (final category in SpendingCategory.values)
+        if (values[category] case final value?) (category, value),
+    ];
+    final ranked = [...order]
+      ..sort((a, b) {
+        final byAmount = b.$2.$2.compareTo(a.$2.$2);
+        if (byAmount != 0) return byAmount;
+        final byCount = b.$2.$3.compareTo(a.$2.$3);
+        if (byCount != 0) return byCount;
+        return a.$1.index.compareTo(b.$1.index);
+      });
+    return [
+      for (final (category, (ratio, amount, count)) in order)
+        CategoryRatio(
+          category: category,
+          ratio: ratio,
+          amount: amount,
+          transactionCount: count,
+          rank: ranked.indexWhere((r) => r.$1 == category) + 1,
+        ),
+    ];
+  }
 
   /// 와이어프레임: 외식 230,000 · 쇼핑 180,000 · 교통 120,000 · 편의점 100,000 · 기타 190,000
   static const _suggestedByCategory = {
@@ -52,10 +81,7 @@ class FakeBudgetRepository implements BudgetRepository {
       monthlyAverage: 820000,
       topCategory: SpendingCategory.dining,
       mainCardName: (mainCard ?? cards.firstOrNull)?.name ?? '-',
-      categoryRatios: [
-        for (final category in SpendingCategory.values)
-          CategoryRatio(category: category, ratio: _ratios[category]!),
-      ],
+      categoryRatios: rankRatios(_ratios),
       suggestedBudget: sampleBudget(now),
     );
   }
