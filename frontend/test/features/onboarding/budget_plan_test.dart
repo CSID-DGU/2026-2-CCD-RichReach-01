@@ -57,7 +57,7 @@ void main() {
       analyzedMonths: 3,
       monthlyAverage: 0,
       topCategory: SpendingCategory.dining,
-      mainCardName: '-',
+      hasData: true,
       categoryRatios: ratios,
       suggestedBudget: _sampleBudget(),
     );
@@ -97,7 +97,7 @@ void main() {
       CategoryRatio ratio(SpendingCategory category, int rank, int amount) =>
           CategoryRatio(
             category: category,
-            ratio: 10,
+            ratio: amount == 0 ? 0 : 10,
             amount: amount,
             transactionCount: 1,
             rank: rank,
@@ -200,6 +200,38 @@ void main() {
       expect(findText('교육·도서'), findsOneWidget);
       expect(findText('0원'), findsNWidgets(6));
       expect(findText('＋ 이번 달 예정지출 추가'), findsNothing);
+    });
+
+    testWidgets('분석할 소비가 없으면 안내를 보여주고, 예산을 입력하기 전에는 플랜을 만들 수 없다', (
+      tester,
+    ) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.budget,
+        budget: FakeBudgetRepository(delay: Duration.zero, empty: true),
+      );
+
+      expect(findText('분석할 소비내역이 없어요'), findsOneWidget);
+      expect(findText('업종별 소비패턴'), findsNothing);
+      expect(findText('업종별 예산을 직접 입력해 플랜을 만들 수 있어요.'), findsOneWidget);
+      final button = find.widgetWithText(FilledButton, '이 예산으로 플랜 만들기');
+      expect(tester.widget<FilledButton>(button).onPressed, isNull);
+
+      await tester.ensureVisible(find.byTooltip('업종별 예산 수정'));
+      await tester.tap(find.byTooltip('업종별 예산 수정'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, '0').first,
+        '300000',
+      );
+      await tester.pump();
+      await tester.ensureVisible(findText('수정하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(findText('수정하기'));
+      await tester.pumpAndSettle();
+
+      expect(findText('300,000'), findsOneWidget);
+      expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
     });
 
     testWidgets('소비예산을 수정하면 업종별 예산이 비율대로 바뀐다', (tester) async {

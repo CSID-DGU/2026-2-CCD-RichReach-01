@@ -14,6 +14,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
 import '../../../core/widgets/word_wrap_text.dart';
 import '../../../core/widgets/summary_card.dart';
+import '../application/budget_plan_providers.dart';
 import '../application/onboarding_data_providers.dart';
 import '../domain/transaction.dart';
 import 'connection_widgets.dart';
@@ -32,6 +33,12 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   TransactionPeriod _period = TransactionPeriod.threeMonths;
+
+  /// 고른 기간으로 소비를 분석하도록 ONB-06에 넘긴다.
+  void _goToBudget() {
+    ref.read(analysisPeriodProvider.notifier).set(_period);
+    context.push(AppRoute.budget.path);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +94,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 AppButton(
                   label: '거래내역 없이 계속하기',
                   variant: AppButtonVariant.primary,
-                  onPressed: () => context.push(AppRoute.budget.path),
+                  onPressed: _goToBudget,
                 ),
                 const SizedBox(height: 4),
                 AppButton(
@@ -100,9 +107,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             )
           : PrimaryButton(
               label: '이 거래 내역으로 분석하기',
-              onPressed: summaryAsync.hasValue
-                  ? () => context.push(AppRoute.budget.path)
-                  : null,
+              onPressed: summaryAsync.hasValue ? _goToBudget : null,
             ),
     );
   }

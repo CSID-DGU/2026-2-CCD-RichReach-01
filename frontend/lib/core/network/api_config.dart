@@ -54,6 +54,8 @@ abstract final class ApiPaths {
   // 거래 (#167, #168)
   static const transactions = '/api/transactions';
   static const transactionSummary = '/api/transactions/summary';
+  // 소비 분석·예산 추천 (#192)
+  static const planAnalysis = '/api/plans/analysis';
 
   static String connectionSyncJob(String jobId) =>
       '/api/connections/sync/${Uri.encodeComponent(jobId)}';
