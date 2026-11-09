@@ -130,7 +130,7 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
   }
 }
 
-/// 이번 달 플랜이 이미 있을 때의 안내 (ONB-07B와 같은 아이콘·제목 모양).
+/// 이번 달 플랜이 이미 있을 때의 안내 (아이콘은 ONB-03B 크기, 제목은 ONB-07B 모양).
 class _AlreadyCreated extends StatelessWidget {
   const _AlreadyCreated();
 
@@ -143,8 +143,8 @@ class _AlreadyCreated extends StatelessWidget {
         Center(
           child: Image.asset(
             AppAssets.connectionCompleteCheck,
-            width: 101,
-            height: 90,
+            width: 171,
+            height: 153,
             excludeFromSemantics: true,
           ),
         ),
