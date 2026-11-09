@@ -117,7 +117,7 @@ class CodefApprovalProbeServiceTest {
     void responseHasOnlyCounts() {
         CodefOrgAccount usable = account(10L, false);
         when(orgAccounts.findActiveByUserId(1L)).thenReturn(List.of(usable));
-        CodefApproval one = new CodefApproval("1", TODAY, null, "비밀상점", 99_999, 0, 0, "");
+        CodefApproval one = new CodefApproval("1", TODAY, null, "비밀상점", 99_999, 0, 0, "", "", "", "", "", "");
         when(approvals.fetchApprovals(any(), any(), any(), any()))
             .thenReturn(new ApprovalListResult(true, 3, "CF-00000", List.of(one)));
 
@@ -128,6 +128,31 @@ class CodefApprovalProbeServiceTest {
         assertThat(response.approvalCount()).isEqualTo(3);
         assertThat(response.readCount()).isEqualTo(1);
         assertThat(response.toString()).doesNotContain("비밀상점").doesNotContain("99999");
+    }
+
+    @Test
+    @DisplayName("코드값별 건수와 취소 건수를 센다 (가맹점명, 금액, 카드번호는 통계에 들어가지 않는다)")
+    void countsCodesWithoutPersonalValues() {
+        CodefApproval normal = new CodefApproval("1", TODAY, null, "비밀상점A", 10_000, 0, 0, "음식점", "1234567890123456",
+            "0", "1", "1", "KRW");
+        CodefApproval full = new CodefApproval("2", TODAY, null, "비밀상점B", 20_000, 20_000, 0, "음식점", "1234567890123456",
+            "1", "1", "1", "KRW");
+        CodefApproval partial = new CodefApproval("3", TODAY, null, "비밀상점C", 30_000, 5_000, 0, "", "1234567890123456",
+            "2", "2", "1", "KRW");
+        CodefOrgAccount usable = account(10L, false);
+        when(orgAccounts.findActiveByUserId(1L)).thenReturn(List.of(usable));
+        when(approvals.fetchApprovals(any(), any(), any(), any()))
+            .thenReturn(new ApprovalListResult(true, 3, "CF-00000", List.of(normal, full, partial)));
+
+        ApprovalProbeResponse response = service.probe(1L, null, null, null);
+
+        assertThat(response.canceledCount()).isEqualTo(2);
+        assertThat(response.fullCanceledCount()).isEqualTo(1);
+        assertThat(response.codeStats().get("cancelStatus")).containsEntry("0", 1L).containsEntry("1", 1L)
+            .containsEntry("2", 1L);
+        assertThat(response.codeStats().get("merchantType")).containsEntry("음식점", 2L).containsEntry("(빈 값)", 1L);
+        assertThat(response.toString()).doesNotContain("비밀상점").doesNotContain("1234567890123456")
+            .doesNotContain("10000");
     }
 
 }

@@ -2,6 +2,7 @@ package com.richreach.codef.service;
 
 import com.richreach.codef.client.CodefApprovalClient;
 import com.richreach.codef.client.CodefApprovalClient.ApprovalListResult;
+import com.richreach.codef.client.CodefApprovalClient.CodefApproval;
 import com.richreach.codef.dto.ApprovalProbeResponse;
 import com.richreach.codef.entity.CodefOrgAccount;
 import com.richreach.codef.repository.CodefOrgAccountRepository;
@@ -10,7 +11,11 @@ import com.richreach.global.exception.ErrorCode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -62,8 +67,37 @@ public class CodefApprovalProbeService {
         // 값은 남기지 않고 건수와 결과 코드만 남긴다.
         log.info("승인내역 확인 호출: accountId={}, codefCode={}, 응답={}건, 읽은 거래={}건", target.accountId(),
             result.code(), result.approvalCount(), result.approvals().size());
+        List<CodefApproval> read = result.approvals();
         return new ApprovalProbeResponse(result.success(), result.code(), start, end, result.approvalCount(),
-            result.approvals().size());
+            read.size(), (int) read.stream().filter(a -> a.canceledAmount() > 0).count(),
+            (int) read.stream().filter(a -> a.canceledAmount() > 0 && a.canceledAmount() == a.amount()).count(),
+            codeStats(read));
+    }
+
+    /**
+     * 코드값이 무슨 뜻인지 알아내려고 종류가 적은 필드의 값별 건수를 센다. 가맹점명, 금액, 카드번호처럼 개인을 알아볼 수 있는 필드는
+     * 세지 않는다. 값은 길이를 자르고, 종류가 많으면 앞쪽만 담는다.
+     */
+    static Map<String, Map<String, Long>> codeStats(List<CodefApproval> approvals) {
+        Map<String, Function<CodefApproval, String>> fields = new LinkedHashMap<>();
+        fields.put("cancelStatus", CodefApproval::cancelStatus);
+        fields.put("paymentType", CodefApproval::paymentType);
+        fields.put("homeForeignType", CodefApproval::homeForeignType);
+        fields.put("currency", CodefApproval::currency);
+        fields.put("merchantType", CodefApproval::merchantType);
+        Map<String, Map<String, Long>> stats = new LinkedHashMap<>();
+        fields.forEach((name, getter) -> {
+            Map<String, Long> counts = new TreeMap<>();
+            for (CodefApproval approval : approvals) {
+                String value = getter.apply(approval);
+                String key = value.isEmpty() ? "(빈 값)" : value.length() > 20 ? value.substring(0, 20) : value;
+                if (counts.containsKey(key) || counts.size() < ApprovalProbeResponse.MAX_VALUES) {
+                    counts.merge(key, 1L, Long::sum);
+                }
+            }
+            stats.put(name, counts);
+        });
+        return stats;
     }
 
     private Target findTarget(long userId, Long accountId) {
