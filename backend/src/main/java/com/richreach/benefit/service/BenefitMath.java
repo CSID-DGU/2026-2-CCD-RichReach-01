@@ -24,7 +24,7 @@ import java.util.Set;
  *   <li>마일리지(MILE) 혜택은 원화 가치를 알 수 없어서 뺀다. 포인트(POINT)는 1점을 1원으로 본다.</li>
  *   <li>전월실적 조건은 하한(이상)과 상한(미만)만 본다.</li>
  *   <li>한도는 규칙별 월 한도와, 같은 한도 묶음(cap_group_id)의 공유 한도를 적용한다. 일 한도와 횟수 한도, 할인대상 결제금액
- *       한도는 적용하지 않는다.</li>
+ *       한도는 적용하지 않고, 그런 한도가 있는 규칙이 혜택을 냈으면 {@code notes}에 남긴다.</li>
  * </ul>
  * 한 혜택이 여러 업종에 걸치면 혜택을 그 업종들의 소비 비율대로 나눠서 업종별로 담는다. 업종별 금액은 원 단위로 내림한다.
  */
@@ -50,12 +50,17 @@ final class BenefitMath {
      * @param ruleMode          BASE, ADDITIONAL, REPLACES_BASE, PREFER_HIGHER, ANNUAL_BONUS. 없으면 null
      * @param previousMonthMin  전월실적 하한(이상). 없으면 null
      * @param previousMonthMaxExclusive 전월실적 상한(미만). 없으면 null
+     * @param unappliedLimits   규칙에 있지만 이 계산식이 적용하지 않는 한도의 이름. 있으면 결과가 실제보다 클 수 있어
+     *                          그 규칙이 혜택을 냈을 때 {@code notes}에 남긴다.
      */
     record RuleInput(String id, Set<SpendingCategory> categories, boolean allMerchants, boolean merchantSpecific,
                      BigDecimal ratePercent, String rewardUnit, Long monthlyLimit, String capGroupId,
                      Long sharedMonthlyLimit, String ruleMode, Long previousMonthMin,
-                     Long previousMonthMaxExclusive) {
+                     Long previousMonthMaxExclusive, List<String> unappliedLimits) {
 
+        RuleInput {
+            unappliedLimits = unappliedLimits == null ? List.of() : List.copyOf(unappliedLimits);
+        }
     }
 
     /** 규칙 한 개가 낸 혜택. 업종별 금액을 소수까지 가진다. */
@@ -72,8 +77,10 @@ final class BenefitMath {
             return byCategory.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         }
 
-        private void scale(BigDecimal factor) {
-            byCategory.replaceAll((category, value) -> value.multiply(factor));
+        /** 모든 업종의 혜택에 {@code numerator / denominator}를 곱한다. 곱셈을 먼저 하고 마지막에 한 번만 나눈다. */
+        private void scaleTo(BigDecimal numerator, BigDecimal denominator) {
+            byCategory.replaceAll((category, value) -> value.multiply(numerator)
+                .divide(denominator, SCALE, RoundingMode.HALF_UP));
         }
     }
 
@@ -107,6 +114,10 @@ final class BenefitMath {
                     .divide(BigDecimal.valueOf(targetSpend), SCALE, RoundingMode.HALF_UP));
             }
             contributions.add(contribution);
+            if (!rule.unappliedLimits().isEmpty()) {
+                notes.add("규칙에 있는 " + String.join(", ", rule.unappliedLimits())
+                    + "는 적용하지 않아 예상 혜택이 실제보다 클 수 있습니다.");
+            }
         }
 
         applySharedLimits(contributions);
@@ -145,8 +156,8 @@ final class BenefitMath {
             BigDecimal sum = group.stream().map(Contribution::total).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal cap = BigDecimal.valueOf(limit);
             if (sum.compareTo(cap) > 0) {
-                BigDecimal factor = cap.divide(sum, SCALE, RoundingMode.DOWN);
-                group.forEach(c -> c.scale(factor));
+                // 비율을 미리 잘라 두면 한도에 못 미치는 값이 나오므로(예: 10,000 / 30,000 = 0.333…), 곱한 뒤에 나눈다.
+                group.forEach(c -> c.scaleTo(cap, sum));
             }
         }
     }
