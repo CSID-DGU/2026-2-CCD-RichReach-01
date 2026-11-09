@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
@@ -77,23 +78,14 @@ final class SpendingAnalysisCalculator {
     }
 
     /**
-     * 소비가 가장 큰 업종. 기타(ETC)는 "어떤 업종인지" 알려주지 못해서 뺀다. 같으면 앞 업종이고, 소비가 있는 업종이 기타뿐이거나
-     * 소비가 없으면 null이다.
+     * 소비가 가장 큰 업종. {@link #ranks}로 계산한 순위가 가장 앞선 업종이라서, 금액이 같을 때의 건수·업종 순서 기준도 순위와
+     * 똑같다. 기타(ETC)는 "어떤 업종인지" 알려주지 못해서 뺀다. 소비가 있는 업종이 기타뿐이거나 소비가 없으면 null이다.
      */
-    static SpendingCategory topCategory(Map<SpendingCategory, Long> amounts) {
-        SpendingCategory top = null;
-        long max = 0;
-        for (SpendingCategory category : SpendingCategory.values()) {
-            if (category == SpendingCategory.ETC) {
-                continue;
-            }
-            long amount = amounts.getOrDefault(category, 0L);
-            if (amount > max) {
-                max = amount;
-                top = category;
-            }
-        }
-        return top;
+    static SpendingCategory topCategory(Map<SpendingCategory, Long> amounts, Map<SpendingCategory, Integer> ranks) {
+        return Arrays.stream(SpendingCategory.values())
+            .filter(category -> category != SpendingCategory.ETC && amounts.getOrDefault(category, 0L) > 0)
+            .min(Comparator.comparingInt(ranks::get))
+            .orElse(null);
     }
 
     /**

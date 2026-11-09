@@ -74,7 +74,7 @@ public class SpendingAnalysisService {
         List<CategoryAmount> byCategory = budget.entrySet().stream()
             .map(entry -> new CategoryAmount(entry.getKey(), entry.getValue())).toList();
 
-        return new PlanAnalysisResponse(months, monthlyAverage, SpendingAnalysisCalculator.topCategory(amounts), hasData,
+        return new PlanAnalysisResponse(months, monthlyAverage, SpendingAnalysisCalculator.topCategory(amounts, ranks), hasData,
             summary.partial(), categoryRatios, new SuggestedBudget(budgetTotal, byCategory));
     }
 
