@@ -56,6 +56,9 @@ abstract final class ApiPaths {
   static const transactionSummary = '/api/transactions/summary';
   // 소비 분석·예산 추천 (#192)
   static const planAnalysis = '/api/plans/analysis';
+  // 플랜 생성 (#204)
+  static const plans = '/api/plans';
+  static String planJob(String jobId) => '/api/plans/jobs/$jobId';
 
   static String connectionSyncJob(String jobId) =>
       '/api/connections/sync/${Uri.encodeComponent(jobId)}';

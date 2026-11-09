@@ -17,9 +17,11 @@ final budgetRepositoryProvider = Provider<BudgetRepository>(
       : ApiBudgetRepository(ref.watch(apiClientProvider)),
 );
 
-/// 플랜 생성 저장소. API 연동 전까지는 가짜 구현을 쓴다.
+/// 플랜 생성 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
 final planRepositoryProvider = Provider<PlanRepository>(
-  (ref) => const FakePlanRepository(),
+  (ref) => ApiConfig.useFakeApi
+      ? const FakePlanRepository()
+      : ApiPlanRepository(ref.watch(apiClientProvider)),
 );
 
 /// 분석에 쓸 카드. ONB-04에서 고른 카드가 없으면(화면을 바로 연 경우) 보유카드 전체를 쓴다.
