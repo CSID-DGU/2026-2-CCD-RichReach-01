@@ -59,7 +59,7 @@ class MerchantCategoryClassifierTest {
     // ---- 시드 ----
 
     @Test
-    @DisplayName("시드 규칙의 업종은 모두 6개 업종 중 하나이고, 문구는 정규화해도 비지 않는다")
+    @DisplayName("시드 규칙의 업종은 모두 11개 업종 중 하나이고, 문구는 정규화해도 비지 않는다")
     void seedRulesAreValid() {
         List<MerchantCategoryRule> all = rules.findAll();
 
@@ -81,7 +81,7 @@ class MerchantCategoryClassifierTest {
     }
 
     @Test
-    @DisplayName("ETC를 뺀 5개 업종은 모두 규칙이 있다")
+    @DisplayName("ETC를 뺀 10개 업종은 모두 규칙이 있다")
     void everyNonEtcCategoryHasRules() {
         Set<String> used = new HashSet<>();
         rules.findAll().forEach(rule -> used.add(rule.getUiCategory()));
@@ -116,18 +116,18 @@ class MerchantCategoryClassifierTest {
         "11번가 | SHOPPING",
         "G마켓 | SHOPPING",
         "무신사 | SHOPPING",
-        "올리브영 명동점 | SHOPPING",
-        "이마트 은평점 | SHOPPING",
-        "홈플러스 | SHOPPING",
+        "올리브영 명동점 | LIFE_HEALTH",
+        "이마트 은평점 | CONVENIENCE_STORE",
+        "홈플러스 | CONVENIENCE_STORE",
         "롯데백화점 본점 | SHOPPING",
-        "교보문고 | SHOPPING",
-        "행복마트 | SHOPPING",
+        "교보문고 | EDUCATION",
+        "행복마트 | CONVENIENCE_STORE",
         "티머니 | TRANSPORT",
         "서울교통공사 | TRANSPORT",
         "카카오T 택시 | TRANSPORT",
         "한국철도공사 | TRANSPORT",
-        "GS칼텍스 강남주유소 | TRANSPORT",
-        "S-OIL | TRANSPORT",
+        "GS칼텍스 강남주유소 | FUEL_VEHICLE",
+        "S-OIL | FUEL_VEHICLE",
         "한국도로공사 하이패스 | TRANSPORT",
         "GS25 역삼점 | CONVENIENCE_STORE",
         "(주)지에스리테일 | CONVENIENCE_STORE",
@@ -136,7 +136,19 @@ class MerchantCategoryClassifierTest {
         "이마트24 | CONVENIENCE_STORE",
         "미니스톱 | CONVENIENCE_STORE",
         "씨유 | CONVENIENCE_STORE",
-        "동네 편의점 | CONVENIENCE_STORE"})
+        "동네 편의점 | CONVENIENCE_STORE",
+        "서울내과의원 | LIFE_HEALTH",
+        "온누리약국 | LIFE_HEALTH",
+        "다비치안경 | LIFE_HEALTH",
+        "SKT 통신요금 | TELECOM_SUBSCRIPTION",
+        "넷플릭스 | TELECOM_SUBSCRIPTION",
+        "삼성화재 | TELECOM_SUBSCRIPTION",
+        "한국전력공사 | TELECOM_SUBSCRIPTION",
+        "CGV 용산 | CULTURE_TRAVEL",
+        "대한항공 | CULTURE_TRAVEL",
+        "야놀자 | CULTURE_TRAVEL",
+        "영어학원 | EDUCATION",
+        "예스24 | EDUCATION"})
     void representativeMerchants(String merchant, String expected) {
         assertThat(classifier.classify(merchant.strip())).isEqualTo(SpendingCategory.valueOf(expected.strip()));
     }
@@ -144,20 +156,20 @@ class MerchantCategoryClassifierTest {
     // ---- 경계 사례 ----
 
     @Test
-    @DisplayName("쿠팡이츠는 쿠팡(쇼핑)이 아니라 음식점이고, 이마트24는 이마트(쇼핑)가 아니라 편의점이다 (긴 문구 우선)")
+    @DisplayName("쿠팡이츠는 쿠팡(쇼핑)이 아니라 음식점이고, 이마트24는 이마트(마트)가 아니라 편의점이다 (긴 문구 우선)")
     void longerBrandWinsOverShorterBrand() {
         assertThat(classifier.classify("쿠팡이츠")).isEqualTo(SpendingCategory.DINING);
         assertThat(classifier.classify("쿠팡")).isEqualTo(SpendingCategory.SHOPPING);
         assertThat(classifier.classify("이마트24")).isEqualTo(SpendingCategory.CONVENIENCE_STORE);
-        assertThat(classifier.classify("이마트")).isEqualTo(SpendingCategory.SHOPPING);
+        assertThat(classifier.classify("이마트")).isEqualTo(SpendingCategory.CONVENIENCE_STORE);
     }
 
     @Test
-    @DisplayName("상호 규칙이 일반 단어 규칙보다 먼저 걸린다 (스타벅스 카페는 카페, 이마트 커피는 쇼핑)")
+    @DisplayName("상호 규칙이 일반 단어 규칙보다 먼저 걸린다 (스타벅스 카페는 카페, 이마트 커피는 마트)")
     void brandRulesWinOverGenericWords() {
         assertThat(classifier.classify("스타벅스 리저브 카페")).isEqualTo(SpendingCategory.CAFE);
-        assertThat(classifier.classify("이마트 커피")).isEqualTo(SpendingCategory.SHOPPING);
-        assertThat(classifier.classify("올리브영 카페")).isEqualTo(SpendingCategory.SHOPPING);
+        assertThat(classifier.classify("이마트 커피")).isEqualTo(SpendingCategory.CONVENIENCE_STORE);
+        assertThat(classifier.classify("올리브영 카페")).isEqualTo(SpendingCategory.LIFE_HEALTH);
     }
 
     @Test
@@ -170,12 +182,12 @@ class MerchantCategoryClassifierTest {
     }
 
     @Test
-    @DisplayName("스마트스터디처럼 마트가 섞인 말은 쇼핑이 아니고, 스마트스토어는 쇼핑이다 (예외 규칙)")
+    @DisplayName("스마트스터디처럼 마트가 섞인 말은 마트가 아니고, 스마트스토어는 쇼핑이다 (예외 규칙)")
     void smartExceptionRules() {
         assertThat(classifier.classify("스마트스터디")).isEqualTo(SpendingCategory.ETC);
         assertThat(classifier.classify("스마트폰 수리")).isEqualTo(SpendingCategory.ETC);
         assertThat(classifier.classify("네이버 스마트스토어")).isEqualTo(SpendingCategory.SHOPPING);
-        assertThat(classifier.classify("행복마트")).isEqualTo(SpendingCategory.SHOPPING);
+        assertThat(classifier.classify("행복마트")).isEqualTo(SpendingCategory.CONVENIENCE_STORE);
     }
 
     @Test
@@ -191,8 +203,6 @@ class MerchantCategoryClassifierTest {
     @DisplayName("규칙에 없는 가맹점이나 가맹점명이 없으면 ETC다")
     void unknownMerchantIsEtc() {
         assertThat(classifier.classify("알 수 없는 상점")).isEqualTo(SpendingCategory.ETC);
-        assertThat(classifier.classify("CGV 용산")).isEqualTo(SpendingCategory.ETC);
-        assertThat(classifier.classify("대한항공")).isEqualTo(SpendingCategory.ETC);
         assertThat(classifier.classify(null)).isEqualTo(SpendingCategory.ETC);
         assertThat(classifier.classify("   ")).isEqualTo(SpendingCategory.ETC);
     }

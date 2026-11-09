@@ -171,7 +171,7 @@ class DemoDataSeederTest {
     // ---- 거래, 분류, 요약 ----
 
     @Test
-    @DisplayName("거래를 만들고, 가맹점 분류 규칙이 6개 업종을 모두 채운다")
+    @DisplayName("거래를 만들고, 가맹점 분류 규칙이 11개 업종을 모두 채운다")
     void createsClassifiedTransactions() {
         insertProducts();
 

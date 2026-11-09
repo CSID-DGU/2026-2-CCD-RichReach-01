@@ -327,7 +327,7 @@ class TransactionApiTest {
     }
 
     @Test
-    @DisplayName("ETC는 분류 전(NULL)이거나 6개 업종이 아닌 값인 거래도 포함한다")
+    @DisplayName("ETC는 분류 전(NULL)이거나 11개 업종이 아닌 값인 거래도 포함한다")
     void etcFilterIncludesUnclassified() throws Exception {
         LocalDateTime at = today.minusDays(2).atTime(9, 0);
         save(at, "ETC 명시", 1_000, "ETC");
@@ -342,7 +342,7 @@ class TransactionApiTest {
     }
 
     @Test
-    @DisplayName("6개 업종이 아닌 값으로 거르면 400 COMMON-400이다")
+    @DisplayName("11개 업종이 아닌 값으로 거르면 400 COMMON-400이다")
     void invalidCategoryFilter() throws Exception {
         list("?category=FOOD").andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("COMMON-400"));
         list("?category=").andExpect(status().isBadRequest());
@@ -462,7 +462,7 @@ class TransactionApiTest {
     }
 
     @Test
-    @DisplayName("6개 업종이 아니거나 비어 있으면 400 COMMON-400이고 아무것도 바뀌지 않는다")
+    @DisplayName("11개 업종이 아니거나 비어 있으면 400 COMMON-400이고 아무것도 바뀌지 않는다")
     void invalidCategoryIsRejected() throws Exception {
         save(today.minusDays(2).atTime(9, 0), "그대로", 5_000, "CAFE");
         long id = idOf("그대로");

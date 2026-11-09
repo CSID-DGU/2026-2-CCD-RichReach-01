@@ -34,13 +34,15 @@ class SummaryAssemblerTest {
     // ---- 업종 ----
 
     @Test
-    @DisplayName("거래가 없어도 6개 업종을 항상 같은 순서로 0으로 내려준다")
-    void alwaysReturnsSixCategoriesInOrder() {
+    @DisplayName("거래가 없어도 11개 업종을 항상 같은 순서로 0으로 내려준다")
+    void alwaysReturnsElevenCategoriesInOrder() {
         TransactionSummaryResponse response = assemble(null);
 
         assertThat(response.categories()).extracting(CategorySummary::category).containsExactly(
-            SpendingCategory.DINING, SpendingCategory.CAFE, SpendingCategory.SHOPPING, SpendingCategory.TRANSPORT,
-            SpendingCategory.CONVENIENCE_STORE, SpendingCategory.ETC);
+            SpendingCategory.DINING, SpendingCategory.CAFE, SpendingCategory.CONVENIENCE_STORE, SpendingCategory.SHOPPING,
+            SpendingCategory.TRANSPORT, SpendingCategory.FUEL_VEHICLE, SpendingCategory.LIFE_HEALTH,
+            SpendingCategory.TELECOM_SUBSCRIPTION, SpendingCategory.CULTURE_TRAVEL, SpendingCategory.EDUCATION,
+            SpendingCategory.ETC);
         assertThat(response.categories()).allSatisfy(item -> {
             assertThat(item.amount()).isZero();
             assertThat(item.ratio()).isZero();
@@ -52,7 +54,7 @@ class SummaryAssemblerTest {
     }
 
     @Test
-    @DisplayName("분류 전(null)이거나 6개 업종이 아닌 값은 ETC로 모은다")
+    @DisplayName("분류 전(null)이거나 11개 업종이 아닌 값은 ETC로 모은다")
     void unknownCategoriesBecomeEtc() {
         TransactionSummaryResponse response = assemble(null,
             total(null, 1_000, 0, 1),
