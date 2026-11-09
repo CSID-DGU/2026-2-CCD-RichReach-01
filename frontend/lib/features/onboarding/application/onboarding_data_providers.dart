@@ -24,10 +24,7 @@ const _fakeNoTransactions = bool.fromEnvironment('FAKE_NO_TRANSACTIONS');
 final transactionRepositoryProvider = Provider<TransactionRepository>(
   (ref) => ApiConfig.useFakeApi
       ? FakeTransactionRepository(empty: _fakeNoTransactions)
-      : ApiTransactionRepository(
-          ref.watch(apiClientProvider),
-          ref.watch(cardRepositoryProvider),
-        ),
+      : ApiTransactionRepository(ref.watch(apiClientProvider)),
 );
 
 /// 연결에 성공한 카드사. 화면을 바로 열었을 때(debug 빌드)는 예시 카드사를 쓴다.
