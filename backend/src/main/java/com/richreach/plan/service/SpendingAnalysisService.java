@@ -48,8 +48,10 @@ public class SpendingAnalysisService {
         TransactionSummaryResponse summary = summaryService.summarize(userId, period, CardScope.SELECTED);
 
         Map<SpendingCategory, Long> amounts = new EnumMap<>(SpendingCategory.class);
+        Map<SpendingCategory, Long> counts = new EnumMap<>(SpendingCategory.class);
         for (CategorySummary category : summary.categories()) {
             amounts.put(category.category(), category.amount());
+            counts.put(category.category(), category.transactionCount());
         }
 
         boolean hasData = summary.totalAmount() > 0;
@@ -65,8 +67,10 @@ public class SpendingAnalysisService {
         Map<SpendingCategory, Integer> ratios = SpendingAnalysisCalculator.ratios(amounts);
         Map<SpendingCategory, Long> budget = SpendingAnalysisCalculator.budgetByCategory(budgetTotal, amounts);
 
+        Map<SpendingCategory, Integer> ranks = SpendingAnalysisCalculator.ranks(amounts, counts);
         List<CategoryRatio> categoryRatios = ratios.entrySet().stream()
-            .map(entry -> new CategoryRatio(entry.getKey(), entry.getValue())).toList();
+            .map(entry -> new CategoryRatio(entry.getKey(), entry.getValue(), amounts.getOrDefault(entry.getKey(), 0L),
+                counts.getOrDefault(entry.getKey(), 0L), ranks.get(entry.getKey()))).toList();
         List<CategoryAmount> byCategory = budget.entrySet().stream()
             .map(entry -> new CategoryAmount(entry.getKey(), entry.getValue())).toList();
 
