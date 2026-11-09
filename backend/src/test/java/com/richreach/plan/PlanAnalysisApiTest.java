@@ -206,12 +206,22 @@ class PlanAnalysisApiTest {
             .andExpect(jsonPath("$.data.categoryRatios", hasSize(11)))
             .andExpect(jsonPath("$.data.categoryRatios[0].category").value("DINING"))
             .andExpect(jsonPath("$.data.categoryRatios[0].ratio").value(50))
+            .andExpect(jsonPath("$.data.categoryRatios[0].amount").value(300_000))
+            .andExpect(jsonPath("$.data.categoryRatios[0].transactionCount").value(2))
+            .andExpect(jsonPath("$.data.categoryRatios[0].rank").value(1))
             .andExpect(jsonPath("$.data.categoryRatios[1].category").value("CAFE"))
             .andExpect(jsonPath("$.data.categoryRatios[1].ratio").value(17))
+            .andExpect(jsonPath("$.data.categoryRatios[1].amount").value(100_000))
+            .andExpect(jsonPath("$.data.categoryRatios[1].transactionCount").value(1))
+            .andExpect(jsonPath("$.data.categoryRatios[1].rank").value(3))
             .andExpect(jsonPath("$.data.categoryRatios[3].category").value("SHOPPING"))
             .andExpect(jsonPath("$.data.categoryRatios[3].ratio").value(33))
+            .andExpect(jsonPath("$.data.categoryRatios[3].rank").value(2))
             .andExpect(jsonPath("$.data.categoryRatios[10].category").value("ETC"))
             .andExpect(jsonPath("$.data.categoryRatios[10].ratio").value(0))
+            .andExpect(jsonPath("$.data.categoryRatios[10].amount").value(0))
+            .andExpect(jsonPath("$.data.categoryRatios[10].transactionCount").value(0))
+            .andExpect(jsonPath("$.data.categoryRatios[10].rank").value(11))
             .andExpect(jsonPath("$.data.suggestedBudget.total").value(200_000))
             .andExpect(jsonPath("$.data.suggestedBudget.byCategory", hasSize(11)))
             .andExpect(jsonPath("$.data.suggestedBudget.byCategory[0].amount").value(100_000))
@@ -262,6 +272,27 @@ class PlanAnalysisApiTest {
         analysis("1M").andExpect(jsonPath("$.data.monthlyAverage").value(20_000))
             .andExpect(jsonPath("$.data.topCategory").value("CAFE"))
             .andExpect(jsonPath("$.data.categoryRatios[3].ratio").value(0));
+    }
+
+    @Test
+    @DisplayName("기타(ETC)가 가장 커도 순위 1위는 ETC지만 topCategory는 ETC를 빼고 정한다")
+    void topCategoryExcludesEtc() throws Exception {
+        save(user, card, today.minusDays(5).atTime(9, 0), 90_000, 0, "ETC");
+        save(user, card, today.minusDays(4).atTime(9, 0), 10_000, 0, "CAFE");
+
+        analysis("1M").andExpect(jsonPath("$.data.topCategory").value("CAFE"))
+            .andExpect(jsonPath("$.data.categoryRatios[10].rank").value(1))
+            .andExpect(jsonPath("$.data.categoryRatios[1].rank").value(2));
+    }
+
+    @Test
+    @DisplayName("소비가 기타(ETC)뿐이면 topCategory는 null이다")
+    void topCategoryNullWhenOnlyEtc() throws Exception {
+        save(user, card, today.minusDays(5).atTime(9, 0), 50_000, 0, "ETC");
+
+        analysis("1M").andExpect(jsonPath("$.data.hasData").value(true))
+            .andExpect(jsonPath("$.data.topCategory").value(nullValue()))
+            .andExpect(jsonPath("$.data.categoryRatios[10].rank").value(1));
     }
 
     // ---- 거래가 없거나 부족할 때 ----

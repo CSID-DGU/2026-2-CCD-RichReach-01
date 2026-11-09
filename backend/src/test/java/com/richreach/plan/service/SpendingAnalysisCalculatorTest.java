@@ -178,6 +178,54 @@ class SpendingAnalysisCalculatorTest {
     }
 
     @Test
+    @DisplayName("topCategory는 기타(ETC)를 빼고, 소비가 있는 업종이 기타뿐이면 null이다")
+    void topCategoryExcludesEtc() {
+        assertThat(SpendingAnalysisCalculator.topCategory(amounts(
+            SpendingCategory.ETC, 900, SpendingCategory.CAFE, 100))).isEqualTo(SpendingCategory.CAFE);
+        assertThat(SpendingAnalysisCalculator.topCategory(amounts(SpendingCategory.ETC, 900))).isNull();
+    }
+
+    // ---- 순위 ----
+
+    @Test
+    @DisplayName("순위는 11개 업종에 1~11을 한 번씩 주고 금액이 큰 순서다 (기타도 포함)")
+    void ranksByAmountIncludingEtc() {
+        Map<SpendingCategory, Integer> ranks = SpendingAnalysisCalculator.ranks(amounts(
+            SpendingCategory.CAFE, 100, SpendingCategory.ETC, 500, SpendingCategory.DINING, 300), Map.of());
+
+        assertThat(ranks.values()).containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+        assertThat(ranks.get(SpendingCategory.ETC)).isEqualTo(1);
+        assertThat(ranks.get(SpendingCategory.DINING)).isEqualTo(2);
+        assertThat(ranks.get(SpendingCategory.CAFE)).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("금액이 같으면 건수가 많은 업종이, 건수도 같으면 업종 순서가 앞선 업종이 앞선다")
+    void ranksBreakTiesByCountThenOrder() {
+        Map<SpendingCategory, Integer> byCount = SpendingAnalysisCalculator.ranks(
+            amounts(SpendingCategory.CAFE, 100, SpendingCategory.SHOPPING, 100),
+            amounts(SpendingCategory.CAFE, 1, SpendingCategory.SHOPPING, 5));
+        assertThat(byCount.get(SpendingCategory.SHOPPING)).isEqualTo(1);
+        assertThat(byCount.get(SpendingCategory.CAFE)).isEqualTo(2);
+
+        Map<SpendingCategory, Integer> byOrder = SpendingAnalysisCalculator.ranks(
+            amounts(SpendingCategory.CAFE, 100, SpendingCategory.SHOPPING, 100),
+            amounts(SpendingCategory.CAFE, 2, SpendingCategory.SHOPPING, 2));
+        assertThat(byOrder.get(SpendingCategory.CAFE)).isEqualTo(1);
+        assertThat(byOrder.get(SpendingCategory.SHOPPING)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("소비가 없어도 순위는 업종 순서대로 1~11이다")
+    void ranksWithoutData() {
+        Map<SpendingCategory, Integer> ranks = SpendingAnalysisCalculator.ranks(Map.of(), Map.of());
+
+        for (SpendingCategory category : SpendingCategory.values()) {
+            assertThat(ranks.get(category)).isEqualTo(category.ordinal() + 1);
+        }
+    }
+
+    @Test
     @DisplayName("매우 큰 금액에서도 오버플로 없이 합이 맞게 나눈다 (총예산 1,000억 원 × 업종 소비 1,000억 원)")
     void handlesVeryLargeAmountsWithoutOverflow() {
         Map<SpendingCategory, Long> spend = amounts(
