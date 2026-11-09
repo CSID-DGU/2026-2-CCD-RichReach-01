@@ -12,6 +12,7 @@ import com.richreach.codef.repository.CodefConnectionRepository;
 import com.richreach.codef.repository.CodefOrgAccountRepository;
 import com.richreach.demo.DemoDataSeeder.DemoSeedResult;
 import com.richreach.global.category.SpendingCategory;
+import com.richreach.transaction.dto.CardScope;
 import com.richreach.transaction.dto.CollectedTransaction;
 import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionSummaryResponse;
@@ -192,12 +193,12 @@ class DemoDataSeederTest {
         seeder.seed(user.getEmail(), false);
 
         for (SummaryPeriod period : SummaryPeriod.values()) {
-            TransactionSummaryResponse summary = summaryService.summarize(user.getId(), period);
+            TransactionSummaryResponse summary = summaryService.summarize(user.getId(), period, CardScope.SELECTED);
 
             assertThat(summary.totalAmount()).as(period.code()).isPositive();
             assertThat(summary.partial()).as(period.code()).isFalse();
         }
-        TransactionSummaryResponse sixMonths = summaryService.summarize(user.getId(), SummaryPeriod.SIX_MONTHS);
+        TransactionSummaryResponse sixMonths = summaryService.summarize(user.getId(), SummaryPeriod.SIX_MONTHS, CardScope.SELECTED);
         assertThat(sixMonths.categories()).allSatisfy(item -> assertThat(item.amount()).isPositive());
         assertThat(sixMonths.canceledAmount()).isPositive();
     }

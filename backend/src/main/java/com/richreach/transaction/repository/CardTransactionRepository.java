@@ -40,13 +40,38 @@ public interface CardTransactionRepository extends JpaRepository<CardTransaction
             sum(case when t.status = com.richreach.transaction.entity.TransactionStatus.CANCELED then 0L else 1L end))
         from CardTransaction t
         where t.userId = :userId and t.approvedAt >= :from and t.approvedAt < :to
+          and (:allCards = true or t.userCardId in :cardIds)
         group by coalesce(t.categoryOverride, t.category)
         """)
     List<CategoryTotal> sumByCategory(@Param("userId") Long userId, @Param("from") LocalDateTime from,
-                                      @Param("to") LocalDateTime to);
+                                      @Param("to") LocalDateTime to, @Param("allCards") boolean allCards,
+                                      @Param("cardIds") Collection<Long> cardIds);
 
-    /** 사용자의 거래 중 가장 오래된 승인일시. 거래가 없으면 null. */
-    @Query("select min(t.approvedAt) from CardTransaction t where t.userId = :userId")
-    LocalDateTime findEarliestApprovedAt(@Param("userId") Long userId);
+    /**
+     * 사용자의 거래를 보유카드별로 모은 합계. 기간과 금액·건수 규칙은 {@link #sumByCategory}와 같다.
+     * 거래가 없는 카드는 결과에 없다.
+     */
+    @Query("""
+        select new com.richreach.transaction.repository.CardTotal(
+            t.userCardId,
+            sum(t.amount - t.canceledAmount),
+            sum(case when t.status = com.richreach.transaction.entity.TransactionStatus.CANCELED then 0L else 1L end))
+        from CardTransaction t
+        where t.userId = :userId and t.approvedAt >= :from and t.approvedAt < :to
+        group by t.userCardId
+        """)
+    List<CardTotal> sumByCard(@Param("userId") Long userId, @Param("from") LocalDateTime from,
+                              @Param("to") LocalDateTime to);
+
+    /**
+     * 사용자의 거래 중 가장 오래된 승인일시. 거래가 없으면 null.
+     * {@code allCards}가 false이면 {@code cardIds}에 든 카드의 거래만 본다. ({@code cardIds}는 비어 있으면 안 된다.)
+     */
+    @Query("""
+        select min(t.approvedAt) from CardTransaction t
+        where t.userId = :userId and (:allCards = true or t.userCardId in :cardIds)
+        """)
+    LocalDateTime findEarliestApprovedAt(@Param("userId") Long userId, @Param("allCards") boolean allCards,
+                                         @Param("cardIds") Collection<Long> cardIds);
 
 }

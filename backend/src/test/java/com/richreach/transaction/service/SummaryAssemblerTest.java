@@ -24,7 +24,7 @@ class SummaryAssemblerTest {
     }
 
     private static TransactionSummaryResponse assemble(LocalDateTime earliest, CategoryTotal... totals) {
-        return SummaryAssembler.assemble(SummaryPeriod.ONE_MONTH, FROM, TO, earliest, List.of(totals));
+        return SummaryAssembler.assemble(SummaryPeriod.ONE_MONTH, FROM, TO, earliest, List.of(totals), List.of());
     }
 
     private static CategorySummary of(TransactionSummaryResponse response, SpendingCategory category) {
@@ -147,7 +147,7 @@ class SummaryAssemblerTest {
     @DisplayName("기간 값과 시작·종료일을 그대로 담는다")
     void echoesPeriodAndRange() {
         TransactionSummaryResponse response = SummaryAssembler.assemble(SummaryPeriod.THREE_MONTHS,
-            LocalDate.of(2026, 8, 9), TO, null, List.of());
+            LocalDate.of(2026, 8, 9), TO, null, List.of(), List.of());
 
         assertThat(response.period()).isEqualTo("3M");
         assertThat(response.from()).isEqualTo(LocalDate.of(2026, 8, 9));

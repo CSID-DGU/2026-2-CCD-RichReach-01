@@ -126,6 +126,7 @@ class TransactionSummaryApiTest {
     void cleanUp() {
         jdbc.update("delete from card_transactions");
         jdbc.update("delete from user_cards");
+        SelectedCards.cleanUp(jdbc);
         orgAccounts.deleteAll();
         connections.deleteAll();
         refreshTokens.deleteAll();
@@ -145,7 +146,9 @@ class TransactionSummaryApiTest {
         CodefOrgAccount account = orgAccounts.save(CodefOrgAccount.connected(connection, "0301", now));
         ownedCardService.saveSynced(owner.getId(), account.getId(), CardCompany.KB,
             List.of(new CollectedCard(cardName, "1111", "check")));
-        return ownedCards.findByOrgAccountId(account.getId()).get(0).getId();
+        long cardId = ownedCards.findByOrgAccountId(account.getId()).get(0).getId();
+        SelectedCards.select(jdbc, cardId);
+        return cardId;
     }
 
     private final AtomicInteger approvals = new AtomicInteger();
@@ -394,7 +397,97 @@ class TransactionSummaryApiTest {
         CodefOrgAccount account = orgAccounts.save(CodefOrgAccount.connected(connection, "0306", now));
         ownedCardService.saveSynced(user.getId(), account.getId(), CardCompany.SHINHAN,
             List.of(new CollectedCard(cardName, "2222", "check")));
-        return ownedCards.findByOrgAccountId(account.getId()).get(0).getId();
+        long cardId = ownedCards.findByOrgAccountId(account.getId()).get(0).getId();
+        SelectedCards.select(jdbc, cardId);
+        return cardId;
+    }
+
+
+    // ---- 카드 범위, 카드별 소비 ----
+
+    @Test
+    @DisplayName("기본은 분석 대상 카드만 합치고, cardScope=ALL이면 선택하지 않은 카드의 거래도 합친다")
+    void cardScopeSelectedAndAll() throws Exception {
+        long unselected = newCardForSameUser("선택 안 한 카드");
+        jdbc.update("update user_cards set selected = false where id = ?", unselected);
+        save(user, card, today.minusDays(2).atTime(9, 0), 1_000, 0, "CAFE");
+        save(user, unselected, today.minusDays(40).atTime(9, 0), 5_000, 0, "SHOPPING");
+        save(user, unselected, today.minusDays(3).atTime(9, 0), 2_000, 0, "CAFE");
+
+        summary(accessToken, "?period=6M").andExpect(jsonPath("$.data.totalAmount").value(1_000))
+            .andExpect(jsonPath("$.data.transactionCount").value(1))
+            .andExpect(jsonPath("$.data.collectedFrom").value(today.minusDays(2).toString()));
+        summary(accessToken, "?period=6M&cardScope=SELECTED").andExpect(jsonPath("$.data.totalAmount").value(1_000));
+        summary(accessToken, "?period=6M&cardScope=all").andExpect(jsonPath("$.data.totalAmount").value(8_000))
+            .andExpect(jsonPath("$.data.transactionCount").value(3))
+            .andExpect(jsonPath("$.data.collectedFrom").value(today.minusDays(40).toString()));
+    }
+
+    @Test
+    @DisplayName("분석 대상 카드가 없으면 기본 범위의 합계는 0이고 오류가 아니다")
+    void noSelectedCards() throws Exception {
+        jdbc.update("update user_cards set selected = false where id = ?", card);
+        save(today.minusDays(2).atTime(9, 0), 1_000, "CAFE");
+
+        summary(accessToken, "?period=1M").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalAmount").value(0))
+            .andExpect(jsonPath("$.data.transactionCount").value(0))
+            .andExpect(jsonPath("$.data.collectedFrom").doesNotExist())
+            .andExpect(jsonPath("$.data.categories.length()").value(6));
+        summary(accessToken, "?period=1M&cardScope=ALL").andExpect(jsonPath("$.data.totalAmount").value(1_000));
+    }
+
+    @Test
+    @DisplayName("알 수 없는 cardScope는 400 COMMON-400이다")
+    void invalidCardScope() throws Exception {
+        for (String query : new String[] {"&cardScope=", "&cardScope=MINE", "&cardScope=1"}) {
+            summary(accessToken, "?period=1M" + query).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"));
+        }
+    }
+
+    @Test
+    @DisplayName("cards는 범위와 상관없이 활성 카드 전체의 기간 건수·금액을 내려주고, 취소는 뺀다")
+    void cardsAreListedRegardlessOfScope() throws Exception {
+        long second = newCardForSameUser("테스트 카드B");
+        long idle = newCardForSameUser("거래 없는 카드");
+        jdbc.update("update user_cards set selected = false where id = ?", second);
+        save(user, card, today.minusDays(2).atTime(9, 0), 1_000, 0, "CAFE");
+        save(user, card, today.minusDays(3).atTime(9, 0), 4_000, 1_000, "DINING");
+        save(user, card, today.minusDays(4).atTime(9, 0), 7_000, 7_000, "DINING");
+        save(user, second, today.minusDays(5).atTime(9, 0), 2_000, 0, "CAFE");
+        save(user, second, today.minusDays(200).atTime(9, 0), 9_000, 0, "CAFE");
+
+        for (String query : new String[] {"?period=1M", "?period=1M&cardScope=ALL"}) {
+            summary(accessToken, query).andExpect(jsonPath("$.data.cards.length()").value(3))
+                .andExpect(jsonPath("$.data.cards[0].cardId").value(card))
+                .andExpect(jsonPath("$.data.cards[0].cardName").value("테스트 카드A"))
+                .andExpect(jsonPath("$.data.cards[0].cardCompany").value("KB"))
+                .andExpect(jsonPath("$.data.cards[0].maskedNumber").value("1111"))
+                .andExpect(jsonPath("$.data.cards[0].selected").value(true))
+                .andExpect(jsonPath("$.data.cards[0].amount").value(4_000))
+                .andExpect(jsonPath("$.data.cards[0].transactionCount").value(2))
+                .andExpect(jsonPath("$.data.cards[1].cardId").value(second))
+                .andExpect(jsonPath("$.data.cards[1].selected").value(false))
+                .andExpect(jsonPath("$.data.cards[1].amount").value(2_000))
+                .andExpect(jsonPath("$.data.cards[1].transactionCount").value(1))
+                .andExpect(jsonPath("$.data.cards[2].cardId").value(idle))
+                .andExpect(jsonPath("$.data.cards[2].amount").value(0))
+                .andExpect(jsonPath("$.data.cards[2].transactionCount").value(0));
+        }
+    }
+
+    @Test
+    @DisplayName("cards에는 다른 사용자의 카드와 거래가 섞이지 않는다")
+    void cardsAreIsolatedFromOtherUsers() throws Exception {
+        User other = newUser();
+        long otherCard = newCard(other, "남의 카드");
+        save(other, otherCard, today.minusDays(2).atTime(9, 0), 99_000, 0, "SHOPPING");
+        save(today.minusDays(2).atTime(9, 0), 1_000, "CAFE");
+
+        summary("1M").andExpect(jsonPath("$.data.cards.length()").value(1))
+            .andExpect(jsonPath("$.data.cards[0].cardId").value(card))
+            .andExpect(jsonPath("$.data.cards[0].amount").value(1_000));
     }
 
 }
