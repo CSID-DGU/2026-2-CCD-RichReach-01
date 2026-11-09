@@ -11,12 +11,14 @@ import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/step_header.dart';
 import '../application/card_connection_providers.dart';
 import '../domain/card_company.dart';
+import '../domain/card_connection.dart';
 import 'connection_widgets.dart';
 
 /// ONB-03D 전체 연결 실패 화면.
 ///
 /// "다시 연결하기"는 같은 카드사의 카드 정보를 다시 불러오고(인증은 다시 하지 않는다),
 /// "연결할 카드사 다시 선택"은 카드사 선택 화면으로 돌아간다.
+/// 카드사 계정이 일시 제한된 카드사는 다시 불러오지 않고, 모두 제한됐으면 "다시 연결하기"를 막고 사유를 보여준다.
 class ConnectFailureScreen extends ConsumerWidget {
   const ConnectFailureScreen({super.key});
 
@@ -30,11 +32,13 @@ class ConnectFailureScreen extends ConsumerWidget {
   static const _checklist = ['카드사 아이디·비밀번호', '카드사 서비스 점검 여부', '네트워크 연결 상태'];
 
   void _retry(BuildContext context, WidgetRef ref) {
-    var companies = [
-      for (final r in ref.read(cardConnectionResultsProvider))
-        if (!r.isSuccess) r.company,
-    ];
-    if (companies.isEmpty) companies = _devSampleCompanies;
+    final results = ref.read(cardConnectionResultsProvider);
+    final companies = results.isEmpty
+        ? _devSampleCompanies
+        : [
+            for (final r in results)
+              if (r.canRetry) r.company,
+          ];
 
     ref.read(connectingCompaniesProvider.notifier).set(companies);
     context.pushReplacement(AppRoute.connecting.path);
@@ -53,6 +57,16 @@ class ConnectFailureScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final failed = ref
+        .watch(cardConnectionResultsProvider)
+        .where((r) => !r.isSuccess)
+        .toList();
+    // 실패한 카드사가 모두 다시 불러올 수 없으면(계정 일시 제한) 그 사유를 안내한다.
+    final blocked = failed.isNotEmpty && failed.every((r) => !r.retryable);
+    final description = blocked
+        ? failed.first.failureReason ?? CardConnectionResult.restrictedReason
+        : '입력한 계정 정보와 카드사 점검 시간을 확인한 후\n다시 시도해 주세요.';
+
     return OnboardingScaffold(
       header: StepHeader(step: 2, onBack: () => _reselect(context, ref)),
       body: Column(
@@ -68,9 +82,9 @@ class ConnectFailureScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const CenteredTitle(
+          CenteredTitle(
             title: '카드를 연결하지 못했어요',
-            description: '입력한 계정 정보와 카드사 점검 시간을 확인한 후\n다시 시도해 주세요.',
+            description: description,
             titleSize: 23,
             descriptionSize: 13,
             descriptionGap: 8,
@@ -101,7 +115,7 @@ class ConnectFailureScreen extends ConsumerWidget {
           AppButton(
             label: '다시 연결하기',
             variant: AppButtonVariant.primary,
-            onPressed: () => _retry(context, ref),
+            onPressed: blocked ? null : () => _retry(context, ref),
           ),
           const SizedBox(height: 4),
           AppButton(

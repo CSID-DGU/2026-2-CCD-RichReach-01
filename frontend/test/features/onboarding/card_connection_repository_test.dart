@@ -66,12 +66,13 @@ Map<String, Object?> _result(
   String status, {
   int cardCount = 0,
   String? failureReason,
+  String failureCode = 'SYNC_FAILED',
 }) => {
   'connectionId': company == 'KB' ? 1 : 2,
   'cardCompany': company,
   'status': status,
   'cardCount': cardCount,
-  'failureCode': failureReason == null ? null : 'SYNC_FAILED',
+  'failureCode': failureReason == null ? null : failureCode,
   'failureReason': failureReason,
 };
 
@@ -194,6 +195,71 @@ void main() {
       expect(results[0].cardCount, 2);
       expect(results[1].status, ConnectionStatus.failed);
       expect(results[1].failureReason, failReason);
+    });
+
+    test('계정이 일시 제한된 카드사는 다시 불러올 수 없는 실패로 본다', () async {
+      const restricted = '반복 로그인으로 카드사 계정이 일시 제한되었어요. 최대 1시간 뒤에 다시 시도해 주세요.';
+      final server = _FakeServer(
+        200,
+        const {},
+        respond: (options) => options.path == ApiPaths.connectionSync
+            ? (200, _ok({'jobId': 'job-1'}))
+            : (
+                200,
+                _syncStatus('PARTIAL_SUCCESS', 2, [
+                  _result(
+                    'KB',
+                    'FAILED',
+                    failureReason: restricted,
+                    failureCode: 'ACCOUNT_RESTRICTED',
+                  ),
+                  _result('WOORI', 'FAILED', failureReason: failReason),
+                ]),
+              ),
+      );
+
+      final progress = await repository(server)
+          .connect(
+            [CardCompany.kb, CardCompany.woori],
+            connectionIds: {CardCompany.kb: 1, CardCompany.woori: 2},
+          )
+          .toList();
+
+      final results = progress.last.results!;
+      expect(results[0].failureReason, restricted);
+      expect(results[0].canRetry, isFalse);
+      expect(results[1].canRetry, isTrue);
+    });
+
+    test('제한 중이라 건너뛴 카드사(결과에 없음)는 계정 제한 실패로 채운다', () async {
+      final server = _FakeServer(
+        200,
+        const {},
+        respond: (options) => options.path == ApiPaths.connectionSync
+            ? (200, _ok({'jobId': 'job-1'}))
+            : (
+                200,
+                _syncStatus('SUCCESS', 1, [
+                  _result('KB', 'SUCCESS', cardCount: 1),
+                ]),
+              ),
+      );
+
+      final progress = await repository(server)
+          .connect(
+            [CardCompany.kb, CardCompany.woori],
+            connectionIds: {CardCompany.kb: 1, CardCompany.woori: 2},
+          )
+          .toList();
+
+      final results = progress.last.results!;
+      expect(results.map((r) => r.company), [
+        CardCompany.kb,
+        CardCompany.woori,
+      ]);
+      expect(results[1].isSuccess, isFalse);
+      expect(results[1].canRetry, isFalse);
+      expect(results[1].failureReason, CardConnectionResult.restrictedReason);
     });
 
     test('연결 ID를 모르는 카드사가 있으면 연결한 카드사 전체를 불러온다', () async {

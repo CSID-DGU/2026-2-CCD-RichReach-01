@@ -30,6 +30,12 @@ class CardCompanyAuthException implements Exception {
   const CardCompanyAuthException();
 }
 
+/// 카드사 계정이 일시 제한돼 지금은 연결·동기화할 수 없음 (서버 오류 코드).
+const connectionRetryBlockedCode = 'CONN-008';
+
+/// 추가 인증이 필요한 카드사 계정이라 연결할 수 없음 (서버 오류 코드).
+const additionalAuthRequiredCode = 'CONN-009';
+
 /// 백엔드 카드 연결 API.
 /// - 인증: `POST /api/connections` (카드사마다)
 /// - 동기화: `POST /api/connections/sync`로 시작하고 `GET /api/connections/sync/{jobId}`를
@@ -90,11 +96,20 @@ class ApiCardConnectionRepository implements CardConnectionRepository {
         parse: _SyncStatus.fromJson,
       );
       if (!status.inProgress) {
+        // 서버는 계정이 일시 제한된 카드사를 동기화에서 건너뛰어 결과에 넣지 않는다.
+        // 요청한 카드사가 결과에 없으면 제한된 것으로 보여준다.
+        final returned = {for (final r in status.results) r.company};
         yield ConnectionProgress(
           completedSteps: ConnectionStep.values.length,
           completedCount: status.completedCount,
           totalCount: status.totalCount,
-          results: status.results,
+          results: [
+            ...status.results,
+            if (ids.length == companies.length)
+              for (final company in companies)
+                if (!returned.contains(company))
+                  CardConnectionResult.restricted(company),
+          ],
         );
         return;
       }
@@ -142,6 +157,7 @@ class _SyncStatus {
                   : ConnectionStatus.failed,
               cardCount: item['cardCount'] as int,
               failureReason: item['failureReason'] as String?,
+              retryable: item['failureCode'] != 'ACCOUNT_RESTRICTED',
             ),
       ],
     );
@@ -149,22 +165,31 @@ class _SyncStatus {
 }
 
 /// API를 쓰지 않을 때(`USE_FAKE_API=true`)의 가짜 구현. 단계마다 [stepDelay]만큼 기다린 뒤
-/// [failingCompanies]에 있는 카드사는 실패, 나머지는 카드 1장 연결 성공으로 돌려준다.
-/// 인증은 비밀번호가 [wrongPassword]일 때만 실패한다.
+/// [failingCompanies]에 있는 카드사는 실패, [restrictedCompanies]에 있는 카드사는 계정 일시 제한으로 실패,
+/// 나머지는 카드 1장 연결 성공으로 돌려준다.
+/// 인증은 비밀번호가 [wrongPassword], [restrictedPassword], [additionalAuthPassword]일 때만 실패한다.
 class FakeCardConnectionRepository implements CardConnectionRepository {
   const FakeCardConnectionRepository({
     this.stepDelay = const Duration(milliseconds: 800),
     this.failingCompanies = const {},
+    this.restrictedCompanies = const {},
   });
 
   final Duration stepDelay;
   final Set<CardCompany> failingCompanies;
+  final Set<CardCompany> restrictedCompanies;
 
   /// 서버의 동기화 실패 문구(`SYNC_FAILED`)와 같다.
   static const failureReason = '카드 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.';
 
   /// 인증 오류(ONB-02B-E)를 확인할 때 넣는 비밀번호
   static const wrongPassword = 'wrong1234';
+
+  /// 계정 일시 제한(`CONN-008`)을 확인할 때 넣는 비밀번호
+  static const restrictedPassword = 'locked1234';
+
+  /// 추가 인증 필요(`CONN-009`)를 확인할 때 넣는 비밀번호
+  static const additionalAuthPassword = 'otp1234';
 
   /// 연결 ID는 카드사 순서 + 1로 정한다.
   @override
@@ -175,6 +200,20 @@ class FakeCardConnectionRepository implements CardConnectionRepository {
   }) async {
     await Future<void>.delayed(stepDelay);
     if (password == wrongPassword) throw const CardCompanyAuthException();
+    if (password == restrictedPassword) {
+      throw const ApiException(
+        ApiErrorKind.server,
+        code: connectionRetryBlockedCode,
+        message: '계정이 잠길 위험이 있어 지금은 다시 연결할 수 없습니다. 카드사 홈페이지에서 계정 상태를 확인한 뒤 다시 시도해 주세요.',
+      );
+    }
+    if (password == additionalAuthPassword) {
+      throw const ApiException(
+        ApiErrorKind.server,
+        code: additionalAuthRequiredCode,
+        message: '추가 인증이 필요한 카드사 계정은 아직 연결할 수 없습니다.',
+      );
+    }
     return company.index + 1;
   }
 
@@ -192,7 +231,9 @@ class FakeCardConnectionRepository implements CardConnectionRepository {
       completedSteps: stepCount,
       results: [
         for (final company in companies)
-          failingCompanies.contains(company)
+          restrictedCompanies.contains(company)
+              ? CardConnectionResult.restricted(company)
+              : failingCompanies.contains(company)
               ? CardConnectionResult(
                   company: company,
                   status: ConnectionStatus.failed,
