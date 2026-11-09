@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_config.dart';
+import '../../../core/network/api_providers.dart';
 import '../data/budget_repository.dart';
 import '../data/plan_repository.dart';
 import '../domain/budget.dart';
@@ -8,9 +10,11 @@ import '../domain/plan.dart';
 import '../domain/transaction.dart';
 import 'onboarding_data_providers.dart';
 
-/// 소비 분석·예산 저장소. API 연동 전까지는 가짜 구현을 쓴다.
+/// 소비 분석·예산 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
 final budgetRepositoryProvider = Provider<BudgetRepository>(
-  (ref) => FakeBudgetRepository(),
+  (ref) => ApiConfig.useFakeApi
+      ? FakeBudgetRepository(empty: fakeNoTransactions)
+      : ApiBudgetRepository(ref.watch(apiClientProvider)),
 );
 
 /// 플랜 생성 저장소. API 연동 전까지는 가짜 구현을 쓴다.
@@ -25,10 +29,22 @@ final planCardsProvider = FutureProvider<List<OwnedCard>>((ref) async {
   return ref.watch(ownedCardsProvider.future);
 });
 
-/// 최근 소비내역 분석 결과.
-final spendingAnalysisProvider = FutureProvider<SpendingAnalysis>((ref) async {
-  final cards = await ref.watch(planCardsProvider.future);
-  return ref.watch(budgetRepositoryProvider).fetchAnalysis(cards);
+/// 소비 분석 기간. ONB-05에서 고른 기간이고, 화면을 바로 열면 3개월이다.
+final analysisPeriodProvider =
+    NotifierProvider<AnalysisPeriod, TransactionPeriod>(AnalysisPeriod.new);
+
+class AnalysisPeriod extends Notifier<TransactionPeriod> {
+  @override
+  TransactionPeriod build() => TransactionPeriod.threeMonths;
+
+  void set(TransactionPeriod period) => state = period;
+}
+
+/// 최근 소비내역 분석 결과 (분석 대상 카드, [analysisPeriodProvider] 기간).
+final spendingAnalysisProvider = FutureProvider<SpendingAnalysis>((ref) {
+  return ref
+      .watch(budgetRepositoryProvider)
+      .fetchAnalysis(ref.watch(analysisPeriodProvider));
 });
 
 /// 사용자가 확정해 가는 이번 달 예산. 분석 결과의 추천 예산으로 시작한다.

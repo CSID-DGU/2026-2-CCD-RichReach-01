@@ -18,12 +18,12 @@ final cardRepositoryProvider = Provider<CardRepository>(
       : ApiCardRepository(ref.watch(apiClientProvider)),
 );
 
-const _fakeNoTransactions = bool.fromEnvironment('FAKE_NO_TRANSACTIONS');
+const fakeNoTransactions = bool.fromEnvironment('FAKE_NO_TRANSACTIONS');
 
 /// 거래내역 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
 final transactionRepositoryProvider = Provider<TransactionRepository>(
   (ref) => ApiConfig.useFakeApi
-      ? FakeTransactionRepository(empty: _fakeNoTransactions)
+      ? FakeTransactionRepository(empty: fakeNoTransactions)
       : ApiTransactionRepository(ref.watch(apiClientProvider)),
 );
 

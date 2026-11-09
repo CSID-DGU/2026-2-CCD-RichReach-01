@@ -317,6 +317,21 @@ void main() {
 
       expect(find.byType(BudgetScreen), findsOneWidget);
     });
+
+    testWidgets('고른 기간으로 소비를 분석한다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.transactions,
+        transactions: _transactions(),
+      );
+
+      await tester.tap(findText('1개월'));
+      await tester.pumpAndSettle();
+      await tester.tap(findText('이 거래 내역으로 분석하기'));
+      await tester.pumpAndSettle();
+
+      expect(findText('최근 1개월의 소비내역을 분석했어요.'), findsOneWidget);
+    });
   });
 
   group('ONB-05A 거래내역 없음', () {
