@@ -8,10 +8,11 @@ import org.junit.jupiter.api.Test;
 class SpendingCategoryTest {
 
     @Test
-    @DisplayName("화면용 업종은 6개다")
-    void hasSixCategories() {
+    @DisplayName("화면용 업종은 11개다")
+    void hasElevenCategories() {
         assertThat(SpendingCategory.values()).extracting(Enum::name)
-            .containsExactly("DINING", "CAFE", "SHOPPING", "TRANSPORT", "CONVENIENCE_STORE", "ETC");
+            .containsExactly("DINING", "CAFE", "CONVENIENCE_STORE", "SHOPPING", "TRANSPORT", "FUEL_VEHICLE",
+                "LIFE_HEALTH", "TELECOM_SUBSCRIPTION", "CULTURE_TRAVEL", "EDUCATION", "ETC");
     }
 
     @Test

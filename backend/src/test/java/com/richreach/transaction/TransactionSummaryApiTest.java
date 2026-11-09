@@ -241,8 +241,8 @@ class TransactionSummaryApiTest {
             .andExpect(jsonPath("$.data.categories[0].category").value("DINING"))
             .andExpect(jsonPath("$.data.categories[0].amount").value(0))
             .andExpect(jsonPath("$.data.categories[0].transactionCount").value(0))
-            .andExpect(jsonPath("$.data.categories[2].category").value("SHOPPING"))
-            .andExpect(jsonPath("$.data.categories[2].amount").value(5_000));
+            .andExpect(jsonPath("$.data.categories[3].category").value("SHOPPING"))
+            .andExpect(jsonPath("$.data.categories[3].amount").value(5_000));
     }
 
     @Test
@@ -272,23 +272,28 @@ class TransactionSummaryApiTest {
     // ---- 업종 ----
 
     @Test
-    @DisplayName("6개 업종을 항상 같은 순서로 모두 내려주고, 비율은 합계에서 차지하는 비중이다")
-    void categoriesAreAlwaysSixInOrder() throws Exception {
+    @DisplayName("11개 업종을 항상 같은 순서로 모두 내려주고, 비율은 합계에서 차지하는 비중이다")
+    void categoriesAreAlwaysElevenInOrder() throws Exception {
         LocalDateTime at = today.minusDays(2).atTime(9, 0);
         save(at, 3_000, "DINING");
         save(at, 1_000, "CAFE");
 
-        summary("1M").andExpect(jsonPath("$.data.categories", hasSize(6)))
+        summary("1M").andExpect(jsonPath("$.data.categories", hasSize(11)))
             .andExpect(jsonPath("$.data.categories[0].category").value("DINING"))
             .andExpect(jsonPath("$.data.categories[0].amount").value(3_000))
             .andExpect(jsonPath("$.data.categories[0].ratio").value(0.75))
             .andExpect(jsonPath("$.data.categories[1].category").value("CAFE"))
             .andExpect(jsonPath("$.data.categories[1].ratio").value(0.25))
-            .andExpect(jsonPath("$.data.categories[2].category").value("SHOPPING"))
-            .andExpect(jsonPath("$.data.categories[3].category").value("TRANSPORT"))
-            .andExpect(jsonPath("$.data.categories[4].category").value("CONVENIENCE_STORE"))
-            .andExpect(jsonPath("$.data.categories[5].category").value("ETC"))
-            .andExpect(jsonPath("$.data.categories[5].amount").value(0));
+            .andExpect(jsonPath("$.data.categories[2].category").value("CONVENIENCE_STORE"))
+            .andExpect(jsonPath("$.data.categories[3].category").value("SHOPPING"))
+            .andExpect(jsonPath("$.data.categories[4].category").value("TRANSPORT"))
+            .andExpect(jsonPath("$.data.categories[5].category").value("FUEL_VEHICLE"))
+            .andExpect(jsonPath("$.data.categories[6].category").value("LIFE_HEALTH"))
+            .andExpect(jsonPath("$.data.categories[7].category").value("TELECOM_SUBSCRIPTION"))
+            .andExpect(jsonPath("$.data.categories[8].category").value("CULTURE_TRAVEL"))
+            .andExpect(jsonPath("$.data.categories[9].category").value("EDUCATION"))
+            .andExpect(jsonPath("$.data.categories[10].category").value("ETC"))
+            .andExpect(jsonPath("$.data.categories[10].amount").value(0));
     }
 
     @Test
@@ -305,15 +310,15 @@ class TransactionSummaryApiTest {
     }
 
     @Test
-    @DisplayName("분류 전(NULL)이거나 6개 업종이 아닌 값은 ETC로 모은다")
+    @DisplayName("분류 전(NULL)이거나 11개 업종이 아닌 값은 ETC로 모은다")
     void unclassifiedGoesToEtc() throws Exception {
         LocalDateTime at = today.minusDays(2).atTime(9, 0);
         save(at, 1_000, null);
         save(at, 2_000, "TEST_UNKNOWN");
 
-        summary("1M").andExpect(jsonPath("$.data.categories[5].category").value("ETC"))
-            .andExpect(jsonPath("$.data.categories[5].amount").value(3_000))
-            .andExpect(jsonPath("$.data.categories[5].transactionCount").value(2));
+        summary("1M").andExpect(jsonPath("$.data.categories[10].category").value("ETC"))
+            .andExpect(jsonPath("$.data.categories[10].amount").value(3_000))
+            .andExpect(jsonPath("$.data.categories[10].transactionCount").value(2));
     }
 
     // ---- 부분 데이터 ----
@@ -351,7 +356,7 @@ class TransactionSummaryApiTest {
     // ---- 거래가 없는 경우, 격리 ----
 
     @Test
-    @DisplayName("거래가 없으면 합계와 6개 업종이 모두 0이고 부분 데이터도 수집 시작일도 없다")
+    @DisplayName("거래가 없으면 합계와 11개 업종이 모두 0이고 부분 데이터도 수집 시작일도 없다")
     void noTransactions() throws Exception {
         summary("1M").andExpect(status().isOk())
             .andExpect(jsonPath("$.data.totalAmount").value(0))
@@ -359,7 +364,7 @@ class TransactionSummaryApiTest {
             .andExpect(jsonPath("$.data.transactionCount").value(0))
             .andExpect(jsonPath("$.data.partial").value(false))
             .andExpect(jsonPath("$.data.collectedFrom").value(nullValue()))
-            .andExpect(jsonPath("$.data.categories", hasSize(6)))
+            .andExpect(jsonPath("$.data.categories", hasSize(11)))
             .andExpect(jsonPath("$.data.categories[0].amount").value(0))
             .andExpect(jsonPath("$.data.categories[0].ratio").value(0.0));
     }
@@ -433,7 +438,7 @@ class TransactionSummaryApiTest {
             .andExpect(jsonPath("$.data.totalAmount").value(0))
             .andExpect(jsonPath("$.data.transactionCount").value(0))
             .andExpect(jsonPath("$.data.collectedFrom").doesNotExist())
-            .andExpect(jsonPath("$.data.categories.length()").value(6));
+            .andExpect(jsonPath("$.data.categories.length()").value(11));
         summary(accessToken, "?period=1M&cardScope=ALL").andExpect(jsonPath("$.data.totalAmount").value(1_000));
     }
 

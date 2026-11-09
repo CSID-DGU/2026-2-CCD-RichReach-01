@@ -59,7 +59,7 @@ class TransactionResponseTest {
     }
 
     @Test
-    @DisplayName("분류 전(null)이거나 6개 업종이 아닌 값은 ETC로 보인다")
+    @DisplayName("분류 전(null)이거나 11개 업종이 아닌 값은 ETC로 보인다")
     void unknownCategoryIsEtc() {
         assertThat(TransactionResponse.from(transaction(1_000, 0, null)).category()).isEqualTo(SpendingCategory.ETC);
         assertThat(TransactionResponse.from(transaction(1_000, 0, "TEST_UNKNOWN")).category())

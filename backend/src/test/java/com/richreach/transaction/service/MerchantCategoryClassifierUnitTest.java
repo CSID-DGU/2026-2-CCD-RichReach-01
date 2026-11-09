@@ -48,7 +48,7 @@ class MerchantCategoryClassifierUnitTest {
     }
 
     @Test
-    @DisplayName("잘못된 규칙(6개 업종이 아닌 값, 정규화하면 비는 문구)은 그 규칙만 건너뛰고 나머지는 쓴다")
+    @DisplayName("잘못된 규칙(11개 업종이 아닌 값, 정규화하면 비는 문구)은 그 규칙만 건너뛰고 나머지는 쓴다")
     void skipsInvalidRules() {
         MerchantCategoryRule good = rule(1, "스타벅스", MatchType.CONTAINS, "CAFE");
         MerchantCategoryRule badCategory = rule(2, "잘못된업종", MatchType.CONTAINS, "NOT_A_CATEGORY");

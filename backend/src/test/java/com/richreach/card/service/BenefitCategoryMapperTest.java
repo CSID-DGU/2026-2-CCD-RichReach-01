@@ -23,7 +23,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 /**
- * 혜택 업종 코드 → 화면용 6개 업종 대응표를 실제 MySQL(마이그레이션 시드)로 확인한다.
+ * 혜택 업종 코드 → 화면용 11개 업종 대응표를 실제 MySQL(마이그레이션 시드)로 확인한다.
  * 시드 내용, 복수 업종, 업종이 아닌 코드, 대응표에 없는 코드, 대응표를 데이터로 바꿀 수 있는지를 본다.
  */
 @ActiveProfiles("test")
@@ -56,7 +56,7 @@ class BenefitCategoryMapperTest {
     /** 대응표를 바꾸는 테스트가 다른 테스트에 영향을 주지 않게 시드 값으로 되돌린다. */
     @AfterEach
     void restoreSeed() {
-        jdbc.update("update benefit_category_mappings set ui_category = 'ETC' where category_code = 'MOVIE'");
+        jdbc.update("update benefit_category_mappings set ui_category = 'CULTURE_TRAVEL' where category_code = 'MOVIE'");
         jdbc.update("delete from benefit_category_mappings where category_code = 'TEST_NEW_CODE'");
         mapper.refresh();
     }
@@ -83,7 +83,7 @@ class BenefitCategoryMapperTest {
     }
 
     @Test
-    @DisplayName("대응표의 화면용 업종은 모두 6개 업종 중 하나이거나 NULL(업종이 아닌 코드)이다")
+    @DisplayName("대응표의 화면용 업종은 모두 11개 업종 중 하나이거나 NULL(업종이 아닌 코드)이다")
     void everyUiCategoryIsValid() {
         for (BenefitCategoryMapping mapping : mappings.findAll()) {
             assertThat(mapping.spendingCategory()).as(mapping.getCategoryCode()).isNotNull();
@@ -91,7 +91,7 @@ class BenefitCategoryMapperTest {
     }
 
     @Test
-    @DisplayName("6개 업종 모두 대응표에서 한 번 이상 쓰인다")
+    @DisplayName("11개 업종 모두 대응표에서 한 번 이상 쓰인다")
     void everySpendingCategoryIsUsed() {
         Set<SpendingCategory> used = mappings.findAll().stream()
             .flatMap(mapping -> mapping.spendingCategory().stream()).collect(java.util.stream.Collectors.toSet());
@@ -110,10 +110,18 @@ class BenefitCategoryMapperTest {
         assertThat(mapper.map("BAKERY")).isEqualTo(only(SpendingCategory.CAFE));
         assertThat(mapper.map("CONVENIENCE")).isEqualTo(only(SpendingCategory.CONVENIENCE_STORE));
         assertThat(mapper.map("ONLINE_SHOPPING")).isEqualTo(only(SpendingCategory.SHOPPING));
-        assertThat(mapper.map("GROCERY")).isEqualTo(only(SpendingCategory.SHOPPING));
+        assertThat(mapper.map("GROCERY")).isEqualTo(only(SpendingCategory.CONVENIENCE_STORE));
         assertThat(mapper.map("PUBLIC_TRANSIT")).isEqualTo(only(SpendingCategory.TRANSPORT));
-        assertThat(mapper.map("FUEL")).isEqualTo(only(SpendingCategory.TRANSPORT));
-        assertThat(mapper.map("MOVIE")).isEqualTo(only(SpendingCategory.ETC));
+        assertThat(mapper.map("FUEL")).isEqualTo(only(SpendingCategory.FUEL_VEHICLE));
+        assertThat(mapper.map("EV_CHARGING")).isEqualTo(only(SpendingCategory.FUEL_VEHICLE));
+        assertThat(mapper.map("HEALTH")).isEqualTo(only(SpendingCategory.LIFE_HEALTH));
+        assertThat(mapper.map("BEAUTY")).isEqualTo(only(SpendingCategory.LIFE_HEALTH));
+        assertThat(mapper.map("TELECOM")).isEqualTo(only(SpendingCategory.TELECOM_SUBSCRIPTION));
+        assertThat(mapper.map("INSURANCE")).isEqualTo(only(SpendingCategory.TELECOM_SUBSCRIPTION));
+        assertThat(mapper.map("TRAVEL")).isEqualTo(only(SpendingCategory.CULTURE_TRAVEL));
+        assertThat(mapper.map("EDUCATION")).isEqualTo(only(SpendingCategory.EDUCATION));
+        assertThat(mapper.map("BOOKS")).isEqualTo(only(SpendingCategory.EDUCATION));
+        assertThat(mapper.map("MOVIE")).isEqualTo(only(SpendingCategory.CULTURE_TRAVEL));
         assertThat(mapper.map("OTHER")).isEqualTo(only(SpendingCategory.ETC));
     }
 
@@ -131,7 +139,8 @@ class BenefitCategoryMapperTest {
         assertThat(mapper.map("CAFE|BAKERY")).isEqualTo(only(SpendingCategory.CAFE));
         assertThat(mapper.map("PUBLIC_TRANSIT|TAXI|INTERCITY")).isEqualTo(only(SpendingCategory.TRANSPORT));
         assertThat(mapper.map("DINING|CAFE|CONVENIENCE|TELECOM|MOVIE")).isEqualTo(only(SpendingCategory.DINING,
-            SpendingCategory.CAFE, SpendingCategory.CONVENIENCE_STORE, SpendingCategory.ETC));
+            SpendingCategory.CAFE, SpendingCategory.CONVENIENCE_STORE, SpendingCategory.TELECOM_SUBSCRIPTION,
+            SpendingCategory.CULTURE_TRAVEL));
         assertThat(mapper.map(" CAFE | CONVENIENCE ||")).isEqualTo(only(SpendingCategory.CAFE,
             SpendingCategory.CONVENIENCE_STORE));
     }
@@ -186,7 +195,7 @@ class BenefitCategoryMapperTest {
     @Test
     @DisplayName("대응표 행을 바꾸고 다시 읽으면 코드 수정 없이 결과가 바뀐다")
     void tableChangeIsPickedUpAfterRefresh() {
-        assertThat(mapper.map("MOVIE")).isEqualTo(only(SpendingCategory.ETC));
+        assertThat(mapper.map("MOVIE")).isEqualTo(only(SpendingCategory.CULTURE_TRAVEL));
 
         jdbc.update("update benefit_category_mappings set ui_category = 'DINING' where category_code = 'MOVIE'");
         mapper.refresh();
@@ -204,7 +213,7 @@ class BenefitCategoryMapperTest {
     }
 
     @Test
-    @DisplayName("대응표에 6개 업종이 아닌 값이 들어 있으면 조용히 넘기지 않고 오류로 알린다")
+    @DisplayName("대응표에 11개 업종이 아닌 값이 들어 있으면 조용히 넘기지 않고 오류로 알린다")
     void invalidUiCategoryFailsLoudly() {
         jdbc.update("update benefit_category_mappings set ui_category = 'NOT_A_CATEGORY' where category_code = 'MOVIE'");
         mapper.refresh();
