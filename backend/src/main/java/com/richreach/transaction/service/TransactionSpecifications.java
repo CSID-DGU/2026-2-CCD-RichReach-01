@@ -8,6 +8,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -30,11 +31,13 @@ final class TransactionSpecifications {
      * @param from            이 일시 이상. 없으면 제한 없음
      * @param to              이 일시 미만. 없으면 제한 없음
      * @param cardId          이 보유카드의 거래만. 없으면 모든 카드
+     * @param cardIds         이 보유카드들의 거래만. 없으면(null) 제한 없음. 비어 있으면 어떤 거래도 맞지 않는다.
      * @param category        이 업종으로 보이는 거래만. 없으면 모든 업종
      * @param includeCanceled false이면 전액 취소된 거래를 뺀다.
      */
     static Specification<CardTransaction> filter(long userId, LocalDateTime from, LocalDateTime to, Long cardId,
-                                                 SpendingCategory category, boolean includeCanceled) {
+                                                 Collection<Long> cardIds, SpendingCategory category,
+                                                 boolean includeCanceled) {
         return (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(builder.equal(root.get("userId"), userId));
@@ -46,6 +49,9 @@ final class TransactionSpecifications {
             }
             if (cardId != null) {
                 predicates.add(builder.equal(root.get("userCardId"), cardId));
+            }
+            if (cardIds != null) {
+                predicates.add(cardIds.isEmpty() ? builder.disjunction() : root.get("userCardId").in(cardIds));
             }
             if (category != null) {
                 Expression<String> shown = builder.coalesce(root.<String>get("categoryOverride"),

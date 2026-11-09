@@ -3,6 +3,7 @@ package com.richreach.transaction.service;
 import com.richreach.global.category.SpendingCategory;
 import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionSummaryResponse;
+import com.richreach.transaction.dto.TransactionSummaryResponse.CardSummary;
 import com.richreach.transaction.dto.TransactionSummaryResponse.CategorySummary;
 import com.richreach.transaction.repository.CategoryTotal;
 import java.math.BigDecimal;
@@ -41,7 +42,8 @@ final class SummaryAssembler {
     }
 
     static TransactionSummaryResponse assemble(SummaryPeriod period, LocalDate from, LocalDate to,
-                                               LocalDateTime earliestApprovedAt, List<CategoryTotal> totals) {
+                                               LocalDateTime earliestApprovedAt, List<CategoryTotal> totals,
+                                               List<CardSummary> cards) {
         Map<SpendingCategory, Accumulator> byCategory = new EnumMap<>(SpendingCategory.class);
         for (SpendingCategory category : SpendingCategory.values()) {
             byCategory.put(category, new Accumulator());
@@ -67,7 +69,7 @@ final class SummaryAssembler {
         LocalDate collectedFrom = earliestApprovedAt == null ? null : earliestApprovedAt.toLocalDate();
         boolean partial = collectedFrom != null && collectedFrom.isAfter(from);
         return new TransactionSummaryResponse(period.code(), from, to, collectedFrom, partial, totalAmount,
-            canceledAmount, transactionCount, List.copyOf(categories));
+            canceledAmount, transactionCount, List.copyOf(categories), List.copyOf(cards));
     }
 
     private static double ratio(long amount, long total) {
