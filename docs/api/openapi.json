@@ -1,0 +1,2600 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "RichReach API",
+    "description": "RichReach 백엔드 API 명세",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/cards/selection": {
+      "put": {
+        "tags": [
+          "owned-card-controller"
+        ],
+        "operationId": "select",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectCardsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListOwnedCardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans": {
+      "get": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "monthly",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanJobStartResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/connections": {
+      "get": {
+        "tags": [
+          "connection-controller"
+        ],
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListConnectionSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "connection-controller"
+        ],
+        "operationId": "create_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseConnectionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/connections/{accountId}/retry": {
+      "post": {
+        "tags": [
+          "connection-controller"
+        ],
+        "operationId": "retry",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionRetryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseConnectionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/connections/sync": {
+      "post": {
+        "tags": [
+          "connection-controller"
+        ],
+        "operationId": "startSync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionSyncRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseConnectionSyncStartResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/connections/agreements": {
+      "post": {
+        "tags": [
+          "connection-controller"
+        ],
+        "operationId": "agree",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionAgreementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseConnectionAgreementResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/signup": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "signup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTokenPair"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/reissue": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "reissue",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTokenPair"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/password/verify": {
+      "post": {
+        "tags": [
+          "account-recovery-controller"
+        ],
+        "operationId": "verifyCode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePasswordVerifyResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/password/code": {
+      "post": {
+        "tags": [
+          "account-recovery-controller"
+        ],
+        "operationId": "sendCode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePasswordCodeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "logout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTokenPair"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/find-email": {
+      "post": {
+        "tags": [
+          "account-recovery-controller"
+        ],
+        "operationId": "findEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFindEmailResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/auth/check-id": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "checkId",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckIdRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCheckIdResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/transactions/{transactionId}/category": {
+      "delete": {
+        "tags": [
+          "transaction-controller"
+        ],
+        "operationId": "resetCategory",
+        "parameters": [
+          {
+            "name": "transactionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "transaction-controller"
+        ],
+        "operationId": "changeCategory",
+        "parameters": [
+          {
+            "name": "transactionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password": {
+      "patch": {
+        "tags": [
+          "account-recovery-controller"
+        ],
+        "operationId": "resetPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/transactions": {
+      "get": {
+        "tags": [
+          "transaction-controller"
+        ],
+        "operationId": "list_1",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cardId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cardScope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeCanceled",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transactions/{transactionId}": {
+      "get": {
+        "tags": [
+          "transaction-controller"
+        ],
+        "operationId": "detail",
+        "parameters": [
+          {
+            "name": "transactionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transactions/summary": {
+      "get": {
+        "tags": [
+          "transaction-controller"
+        ],
+        "operationId": "summary",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cardScope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransactionSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{planId}/categories": {
+      "get": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "categories",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanCategoriesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/jobs/{jobId}": {
+      "get": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "status",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanJobStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/analysis": {
+      "get": {
+        "tags": [
+          "plan-analysis-controller"
+        ],
+        "operationId": "analysis",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanAnalysisResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/connections/sync/{jobId}": {
+      "get": {
+        "tags": [
+          "connection-controller"
+        ],
+        "operationId": "syncStatus",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseConnectionSyncStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cards": {
+      "get": {
+        "tags": [
+          "owned-card-controller"
+        ],
+        "operationId": "list_2",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListOwnedCardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cards/{cardId}/benefits": {
+      "get": {
+        "tags": [
+          "card-benefit-controller"
+        ],
+        "operationId": "benefits",
+        "parameters": [
+          {
+            "name": "cardId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCardBenefitsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/card-companies": {
+      "get": {
+        "tags": [
+          "card-company-controller"
+        ],
+        "operationId": "list_3",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCardCompanyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SelectCardsRequest": {
+        "type": "object",
+        "properties": {
+          "cardIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "cardIds"
+        ]
+      },
+      "ApiResponseListOwnedCardResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnedCardResponse"
+            }
+          }
+        }
+      },
+      "OwnedCardResponse": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardProductId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardCompany": {
+            "type": "string",
+            "enum": [
+              "KB",
+              "HYUNDAI",
+              "NH",
+              "CITI",
+              "WOORI",
+              "BC",
+              "SHINHAN"
+            ]
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "maskedNumber": {
+            "type": "string"
+          },
+          "cardType": {
+            "type": "string",
+            "enum": [
+              "CREDIT",
+              "CHECK",
+              "UNKNOWN"
+            ]
+          },
+          "analysisStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "UNAVAILABLE"
+            ]
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "imageUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "Budget": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "byCategory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryBudget"
+            }
+          }
+        }
+      },
+      "CategoryBudget": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PlanCreateRequest": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/Budget"
+          }
+        }
+      },
+      "ApiResponsePlanJobStartResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlanJobStartResponse"
+          }
+        }
+      },
+      "PlanJobStartResponse": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          }
+        }
+      },
+      "ConnectionCreateRequest": {
+        "type": "object",
+        "properties": {
+          "cardCompany": {
+            "type": "string",
+            "enum": [
+              "KB",
+              "HYUNDAI",
+              "NH",
+              "CITI",
+              "WOORI",
+              "BC",
+              "SHINHAN"
+            ]
+          },
+          "loginId": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "cardCompany",
+          "loginId",
+          "password"
+        ]
+      },
+      "ApiResponseConnectionResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ConnectionResponse"
+          }
+        }
+      },
+      "ConnectionResponse": {
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardCompany": {
+            "type": "string",
+            "enum": [
+              "KB",
+              "HYUNDAI",
+              "NH",
+              "CITI",
+              "WOORI",
+              "BC",
+              "SHINHAN"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ConnectionRetryRequest": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "loginId",
+          "password"
+        ]
+      },
+      "ConnectionSyncRequest": {
+        "type": "object",
+        "properties": {
+          "connectionIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "maxItems": 20,
+            "minItems": 0
+          }
+        }
+      },
+      "ApiResponseConnectionSyncStartResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ConnectionSyncStartResponse"
+          }
+        }
+      },
+      "ConnectionSyncStartResponse": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          }
+        }
+      },
+      "ConnectionAgreementRequest": {
+        "type": "object",
+        "properties": {
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "SERVICE_AND_PRIVACY",
+                "CARD_INFO",
+                "TRANSACTION",
+                "PRIVACY"
+              ]
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "types"
+        ]
+      },
+      "ApiResponseConnectionAgreementResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ConnectionAgreementResponse"
+          }
+        }
+      },
+      "ConnectionAgreementResponse": {
+        "type": "object",
+        "properties": {
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "SERVICE_AND_PRIVACY",
+                "CARD_INFO",
+                "TRANSACTION",
+                "PRIVACY"
+              ]
+            }
+          },
+          "termsVersion": {
+            "type": "string"
+          },
+          "agreedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SignupRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "phoneNumber": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^01[016789][- ]?\\d{3,4}[- ]?\\d{4}$"
+          },
+          "loginId": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0,
+            "pattern": "^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)+$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*[A-Za-z])(?=.*\\d)[\\x21-\\x7E]{8,64}$"
+          },
+          "termsAgreed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "loginId",
+          "name",
+          "password",
+          "phoneNumber"
+        ]
+      },
+      "ApiResponseTokenPair": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TokenPair"
+          }
+        }
+      },
+      "TokenPair": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "accessTokenExpiresIn": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "PasswordVerifyRequest": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0,
+            "pattern": "^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)+$"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\d{6}$"
+          }
+        },
+        "required": [
+          "code",
+          "loginId"
+        ]
+      },
+      "ApiResponsePasswordVerifyResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PasswordVerifyResponse"
+          }
+        }
+      },
+      "PasswordVerifyResponse": {
+        "type": "object",
+        "properties": {
+          "resetToken": {
+            "type": "string"
+          }
+        }
+      },
+      "PasswordCodeRequest": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0,
+            "pattern": "^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)+$"
+          }
+        },
+        "required": [
+          "loginId"
+        ]
+      },
+      "ApiResponsePasswordCodeResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PasswordCodeResponse"
+          }
+        }
+      },
+      "PasswordCodeResponse": {
+        "type": "object",
+        "properties": {
+          "expiresIn": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resendIn": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "devCode": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {}
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "loginId",
+          "password"
+        ]
+      },
+      "FindEmailRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "phoneNumber": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^01[016789][- ]?\\d{3,4}[- ]?\\d{4}$"
+          }
+        },
+        "required": [
+          "name",
+          "phoneNumber"
+        ]
+      },
+      "ApiResponseFindEmailResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/FindEmailResponse"
+          }
+        }
+      },
+      "FindEmailResponse": {
+        "type": "object",
+        "properties": {
+          "maskedEmail": {
+            "type": "string"
+          }
+        }
+      },
+      "CheckIdRequest": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0,
+            "pattern": "^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)+$"
+          }
+        },
+        "required": [
+          "loginId"
+        ]
+      },
+      "ApiResponseCheckIdResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CheckIdResponse"
+          }
+        }
+      },
+      "CheckIdResponse": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ChangeCategoryRequest": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "category"
+        ]
+      },
+      "ApiResponseTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TransactionResponse"
+          }
+        }
+      },
+      "TransactionResponse": {
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "merchantName": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "canceledAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "netAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "PARTIALLY_CANCELED",
+              "CANCELED"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "autoCategory": {
+            "type": "string",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "categoryEdited": {
+            "type": "boolean"
+          },
+          "installmentMonths": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overseas": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PasswordResetRequest": {
+        "type": "object",
+        "properties": {
+          "resetToken": {
+            "type": "string",
+            "minLength": 1
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*[A-Za-z])(?=.*\\d)[\\x21-\\x7E]{8,64}$"
+          }
+        },
+        "required": [
+          "newPassword",
+          "resetToken"
+        ]
+      },
+      "ApiResponsePageResponseTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PageResponseTransactionResponse"
+          }
+        }
+      },
+      "PageResponseTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseTransactionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TransactionSummaryResponse"
+          }
+        }
+      },
+      "CardSummary": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardCompany": {
+            "type": "string",
+            "enum": [
+              "KB",
+              "HYUNDAI",
+              "NH",
+              "CITI",
+              "WOORI",
+              "BC",
+              "SHINHAN"
+            ]
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "maskedNumber": {
+            "type": "string"
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "transactionCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CategorySummary": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ratio": {
+            "type": "number",
+            "format": "double"
+          },
+          "transactionCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "TransactionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "collectedFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "canceledAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "transactionCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategorySummary"
+            }
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardSummary"
+            }
+          }
+        }
+      },
+      "ApiResponsePlanResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlanResponse"
+          }
+        }
+      },
+      "CardTarget": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "targetAmount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PlanResponse": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "month": {
+            "type": "string"
+          },
+          "expectedBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "baselineBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "additionalBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardTargets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardTarget"
+            }
+          }
+        }
+      },
+      "ApiResponsePlanCategoriesResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlanCategoriesResponse"
+          }
+        }
+      },
+      "CardAmount": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "targetAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedBenefit": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CategoryPlan": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "targetAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardAmount"
+            }
+          }
+        }
+      },
+      "PlanCategoriesResponse": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "month": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryPlan"
+            }
+          }
+        }
+      },
+      "ApiResponsePlanJobStatusResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlanJobStatusResponse"
+          }
+        }
+      },
+      "PlanJobStatusResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "planId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failureCode": {
+            "type": "string"
+          },
+          "failureReason": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponsePlanAnalysisResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlanAnalysisResponse"
+          }
+        }
+      },
+      "CategoryAmount": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CategoryRatio": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "ratio": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "transactionCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PlanAnalysisResponse": {
+        "type": "object",
+        "properties": {
+          "analyzedMonths": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "monthlyAverage": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "topCategory": {
+            "type": "string",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "hasData": {
+            "type": "boolean"
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "categoryRatios": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryRatio"
+            }
+          },
+          "suggestedBudget": {
+            "$ref": "#/components/schemas/SuggestedBudget"
+          }
+        }
+      },
+      "SuggestedBudget": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "byCategory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryAmount"
+            }
+          }
+        }
+      },
+      "ApiResponseListConnectionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionSummaryResponse"
+            }
+          }
+        }
+      },
+      "ConnectionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardCompany": {
+            "type": "string",
+            "enum": [
+              "KB",
+              "HYUNDAI",
+              "NH",
+              "CITI",
+              "WOORI",
+              "BC",
+              "SHINHAN"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "cardCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failureCode": {
+            "type": "string"
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "lastSyncedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseConnectionSyncStatusResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ConnectionSyncStatusResponse"
+          }
+        }
+      },
+      "ConnectionSyncStatusResponse": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Result"
+            }
+          }
+        }
+      },
+      "Result": {
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardCompany": {
+            "type": "string",
+            "enum": [
+              "KB",
+              "HYUNDAI",
+              "NH",
+              "CITI",
+              "WOORI",
+              "BC",
+              "SHINHAN"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "cardCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failureCode": {
+            "type": "string"
+          },
+          "failureReason": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseCardBenefitsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CardBenefitsResponse"
+          }
+        }
+      },
+      "Benefit": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "benefitType": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "merchants": {
+            "type": "string"
+          },
+          "targetsNormalized": {
+            "type": "string"
+          },
+          "paymentMethods": {
+            "type": "string"
+          },
+          "ratePercent": {
+            "type": "number"
+          },
+          "rateMinPercent": {
+            "type": "number"
+          },
+          "rateMaxPercent": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rewardUnit": {
+            "type": "string"
+          },
+          "amountBasis": {
+            "type": "string"
+          },
+          "monthlyLimit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "monthlyLimitUnit": {
+            "type": "string"
+          },
+          "monthlyLimitStatus": {
+            "type": "string"
+          },
+          "dailyLimit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sharedMonthlyLimit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "capGroupId": {
+            "type": "string"
+          },
+          "eligibleSpendMonthlyLimitKrw": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dailyCountLimit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "monthlyCountLimit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "annualCountLimit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ruleMode": {
+            "type": "string"
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "includedInCalculation": {
+            "type": "boolean"
+          },
+          "performance": {
+            "$ref": "#/components/schemas/PerformanceCondition"
+          }
+        }
+      },
+      "CardBenefitsResponse": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "issuerCode": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "cardType": {
+            "type": "string"
+          },
+          "cardStatus": {
+            "type": "string"
+          },
+          "recommendable": {
+            "type": "boolean"
+          },
+          "sourceSnapshotDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "benefits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Benefit"
+            }
+          },
+          "exclusions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Exclusion"
+            }
+          }
+        }
+      },
+      "Exclusion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "appliesTo": {
+            "type": "string"
+          },
+          "conditionType": {
+            "type": "string"
+          },
+          "conditionText": {
+            "type": "string"
+          }
+        }
+      },
+      "PerformanceCondition": {
+        "type": "object",
+        "properties": {
+          "previousMonthMinKrw": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "previousMonthMaxExclusiveKrw": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "previousMonthRequirementStatus": {
+            "type": "string"
+          },
+          "annualSpendMinKrw": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseListCardCompanyResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardCompanyResponse"
+            }
+          }
+        }
+      },
+      "CardCompanyResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "supported": {
+            "type": "boolean"
+          },
+          "connected": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "description": "로그인(POST /api/auth/login)으로 받은 accessToken을 입력한다. 'Bearer '는 붙이지 않는다. 만료되면(AUTH-004) 재발급(POST /api/auth/reissue)으로 새 토큰을 받는다.",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
