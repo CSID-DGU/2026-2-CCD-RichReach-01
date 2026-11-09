@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/core/formatters/amount_input_formatter.dart';
+import 'package:frontend/features/onboarding/domain/plan.dart';
+import 'package:frontend/features/onboarding/domain/owned_card.dart';
+import 'package:frontend/core/network/api_exception.dart';
 import 'package:frontend/features/onboarding/data/budget_repository.dart';
 import 'package:frontend/features/onboarding/data/card_repository.dart';
 import 'package:frontend/features/onboarding/data/plan_repository.dart';
@@ -25,6 +28,20 @@ MonthlyBudget _sampleBudget() =>
     FakeBudgetRepository.sampleBudget(DateTime(2026, 10, 11));
 
 const _companies = [CardCompany.kb, CardCompany.woori, CardCompany.shinhan];
+
+/// 항상 [error]로 실패하는 플랜 생성. 몇 번 불렸는지 센다.
+class _FailingPlan implements PlanRepository {
+  _FailingPlan(this.error);
+
+  final Object error;
+  int calls = 0;
+
+  @override
+  Stream<PlanProgress> generate(MonthlyBudget budget, List<OwnedCard> cards) {
+    calls++;
+    return Stream.error(error);
+  }
+}
 
 void main() {
   group('예산 총액 변경', () {
@@ -299,6 +316,67 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
     expect(find.byType(PlanReadyScreen), findsOneWidget);
+  });
+
+  group('ONB-07A 플랜 생성 실패', () {
+    testWidgets('작업이 실패하면 이유를 보여주고 다시 시도할 수 있다', (tester) async {
+      final plan = _FailingPlan(
+        const PlanGenerationFailure(
+          code: 'NO_STRATEGY_RESULT',
+          message: '플랜을 계산하지 못했어요.',
+        ),
+      );
+      await pumpAppAt(
+        tester,
+        AppRoute.planGenerating,
+        budget: _budget(),
+        plan: plan,
+      );
+      await tester.pumpAndSettle();
+
+      expect(findText('플랜을 계산하지 못했어요.'), findsOneWidget);
+      await tester.tap(findText('다시 시도'));
+      await tester.pumpAndSettle();
+      expect(plan.calls, 2);
+    });
+
+    testWidgets('이번 달 플랜이 이미 있으면 월간 플랜으로 갈 수 있다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.planGenerating,
+        budget: _budget(),
+        plan: _FailingPlan(
+          const ApiException(
+            ApiErrorKind.server,
+            code: ApiPlanRepository.alreadyExistsCode,
+            message: '해당 월의 플랜이 이미 있습니다.',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(findText('이번 달 플랜이 이미 있어요.'), findsOneWidget);
+      await tester.tap(findText('월간 플랜 보기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MonthlyPlanScreen), findsOneWidget);
+    });
+
+    testWidgets('분석 대상 카드가 없으면 카드를 고르라고 안내한다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.planGenerating,
+        budget: _budget(),
+        plan: _FailingPlan(
+          const ApiException(
+            ApiErrorKind.server,
+            code: ApiPlanRepository.noAnalysisCardCode,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(findText('분석할 카드를 선택해야 플랜을 만들 수 있어요.'), findsOneWidget);
+    });
   });
 
   group('ONB-07B 플랜 생성 완료', () {

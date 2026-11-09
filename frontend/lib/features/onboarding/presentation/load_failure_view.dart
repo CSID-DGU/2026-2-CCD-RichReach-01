@@ -9,10 +9,14 @@ class LoadFailureView extends StatelessWidget {
     super.key,
     required this.message,
     required this.onRetry,
+    this.retryLabel = '다시 시도',
   });
 
   final String message;
   final VoidCallback onRetry;
+
+  /// 버튼 문구
+  final String retryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +28,7 @@ class LoadFailureView extends StatelessWidget {
           const SizedBox(height: 16),
           SizedBox(
             width: 160,
-            child: AppButton(label: '다시 시도', onPressed: onRetry),
+            child: AppButton(label: retryLabel, onPressed: onRetry),
           ),
         ],
       ),

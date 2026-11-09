@@ -40,22 +40,23 @@ class Plan {
   int get additionalBenefit => expectedBenefit - baselineBenefit;
 }
 
-/// 플랜 생성 진행 단계.
-enum PlanStep {
-  spendingPattern('소비패턴 분석'),
-  benefitConditions('카드 혜택조건 확인'),
-  cardAmounts('카드별 사용금액 계산'),
-  benefitComparison('예상 혜택 비교');
-
-  const PlanStep(this.label);
-
-  final String label;
-}
-
 /// 플랜 생성 진행 상황. [plan]이 있으면 생성이 끝난 것이다.
 class PlanProgress {
-  const PlanProgress({required this.completedSteps, this.plan});
+  const PlanProgress({required this.ratio, this.plan});
 
-  final int completedSteps;
+  /// 진행률 (0~1)
+  final double ratio;
   final Plan? plan;
+}
+
+/// 플랜 생성 작업이 실패로 끝남. [message]는 화면에 그대로 보여준다.
+class PlanGenerationFailure implements Exception {
+  const PlanGenerationFailure({required this.code, required this.message});
+
+  /// 실패 구분 코드 (예: `NO_STRATEGY_RESULT`, `TIMEOUT`)
+  final String code;
+  final String message;
+
+  @override
+  String toString() => 'PlanGenerationFailure($code)';
 }

@@ -10,7 +10,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/step_header.dart';
+import '../../../core/network/api_exception.dart';
 import '../application/budget_plan_providers.dart';
+import '../data/plan_repository.dart';
 import '../domain/plan.dart';
 import 'load_failure_view.dart';
 
@@ -25,7 +27,9 @@ class PlanGeneratingScreen extends ConsumerStatefulWidget {
 
 class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
   StreamSubscription<PlanProgress>? _subscription;
-  int _completedSteps = 0;
+
+  /// 서버가 알려 준 진행률 (0~1)
+  double _ratio = 0;
   Object? _error;
 
   @override
@@ -61,7 +65,7 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
 
   void _onProgress(PlanProgress progress) {
     if (!mounted) return;
-    setState(() => _completedSteps = progress.completedSteps);
+    setState(() => _ratio = progress.ratio);
 
     final plan = progress.plan;
     if (plan == null) return;
@@ -71,8 +75,9 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 단계마다 한 칸씩 채우고, 플랜이 나오면 가득 채운다.
-    final progress = (_completedSteps + 1) / (PlanStep.values.length + 1);
+    // 시작하자마자 조금 채워 두고, 나머지는 진행률대로 채운다.
+    final progress = 0.1 + 0.9 * _ratio;
+    final error = _error;
 
     return PopScope(
       canPop: false,
@@ -87,15 +92,21 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
               height: 209,
               excludeFromSemantics: true,
             ),
-            if (_error != null)
-              LoadFailureView(
-                message: '플랜을 만들지 못했어요.',
-                onRetry: () {
-                  _subscription?.cancel();
-                  setState(() => _completedSteps = 0);
-                  _start();
-                },
-              )
+            if (error != null)
+              _isAlreadyCreated(error)
+                  ? LoadFailureView(
+                      message: '이번 달 플랜이 이미 있어요.',
+                      retryLabel: '월간 플랜 보기',
+                      onRetry: () => context.go(AppRoute.monthlyPlan.path),
+                    )
+                  : LoadFailureView(
+                      message: _errorMessage(error),
+                      onRetry: () {
+                        _subscription?.cancel();
+                        setState(() => _ratio = 0);
+                        _start();
+                      },
+                    )
             else ...[
               _ProgressBar(value: progress),
               const SizedBox(height: 33),
@@ -111,6 +122,20 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
     );
   }
 }
+
+bool _isAlreadyCreated(Object error) =>
+    error is ApiException && error.code == ApiPlanRepository.alreadyExistsCode;
+
+/// 플랜을 만들지 못했을 때 보여줄 문구.
+String _errorMessage(Object error) => switch (error) {
+  PlanGenerationFailure(:final message) => message,
+  ApiException(code: ApiPlanRepository.alreadyRunningCode) =>
+    '이미 플랜을 만들고 있어요. 잠시 후 다시 시도해 주세요.',
+  ApiException(code: ApiPlanRepository.noAnalysisCardCode) =>
+    '분석할 카드를 선택해야 플랜을 만들 수 있어요.',
+  ApiException(:final userMessage) => userMessage,
+  _ => '플랜을 만들지 못했어요.',
+};
 
 /// 연보라 바탕 위에 보라로 채워지는 진행 막대 (222×9).
 class _ProgressBar extends StatelessWidget {
