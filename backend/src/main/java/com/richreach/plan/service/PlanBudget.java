@@ -86,7 +86,7 @@ record PlanBudget(YearMonth month, long total, Map<SpendingCategory, Long> byCat
     }
 
 
-    private static YearMonth parseMonth(String month) {
+    static YearMonth parseMonth(String month) {
         if (month == null || month.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "월은 yyyy-MM 형식이어야 합니다.");
         }
