@@ -7,9 +7,7 @@ import com.richreach.benefit.config.BenefitProperties;
 import com.richreach.benefit.config.BenefitProperties.RuleSelection;
 import com.richreach.benefit.dto.BenefitQuery;
 import com.richreach.benefit.dto.BenefitResult;
-import com.richreach.card.repository.BenefitRuleRepository;
-import com.richreach.card.repository.PerformanceTierRepository;
-import com.richreach.card.service.BenefitCategoryMapper;
+import com.richreach.card.service.BenefitRuleQueryService;
 import com.richreach.global.category.SpendingCategory;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -42,11 +40,7 @@ class SimpleBenefitCalculatorTest {
     private static final String PREFIX = "test-benefit-";
 
     @Autowired
-    private BenefitRuleRepository rules;
-    @Autowired
-    private PerformanceTierRepository tiers;
-    @Autowired
-    private BenefitCategoryMapper mapper;
+    private BenefitRuleQueryService ruleQuery;
     @Autowired
     private JdbcTemplate jdbc;
 
@@ -85,7 +79,7 @@ class SimpleBenefitCalculatorTest {
     }
 
     private SimpleBenefitCalculator calculator(RuleSelection selection) {
-        return new SimpleBenefitCalculator(rules, tiers, mapper, new BenefitProperties("simple", selection));
+        return new SimpleBenefitCalculator(ruleQuery, new BenefitProperties("simple", selection));
     }
 
     private BenefitQuery query(long previousMonthSpend) {
@@ -151,6 +145,18 @@ class SimpleBenefitCalculatorTest {
         assertThat(empty.notes()).isNotEmpty();
         assertThat(missing.totalBenefit()).isZero();
         assertThat(missing.confirmedOnly()).isFalse();
+    }
+
+    @Test
+    @DisplayName("일 한도나 횟수 한도가 있는 규칙이 혜택을 내면 적용하지 않았다는 안내를 남긴다")
+    void notesUnappliedLimits() {
+        long ruleId = insertRule("limited", "DINING", null, 5.0, null, true);
+        jdbc.update("update benefit_rules set daily_limit = 5000, monthly_count_limit = 3 where id = ?", ruleId);
+
+        BenefitResult result = calculator(RuleSelection.READY_ONLY).calculate(query(0));
+
+        assertThat(result.totalBenefit()).isEqualTo(15_000);
+        assertThat(result.notes()).singleElement().asString().contains("일 한도", "횟수 한도");
     }
 
 }

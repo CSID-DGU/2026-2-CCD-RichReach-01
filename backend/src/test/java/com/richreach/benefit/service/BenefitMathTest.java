@@ -21,13 +21,13 @@ class BenefitMathTest {
 
     private static RuleInput rule(Set<SpendingCategory> categories, String ratePercent, Long monthlyLimit) {
         return new RuleInput("r", categories, false, false, ratePercent == null ? null : new BigDecimal(ratePercent),
-            "KRW", monthlyLimit, null, null, "BASE", null, null);
+            "KRW", monthlyLimit, null, null, "BASE", null, null, List.of());
     }
 
     private static RuleInput with(RuleInput base, String capGroup, Long shared, String mode, Long prevMin, Long prevMax,
                                   boolean merchantSpecific, String unit, boolean allMerchants) {
         return new RuleInput(base.id(), base.categories(), allMerchants, merchantSpecific, base.ratePercent(), unit,
-            base.monthlyLimit(), capGroup, shared, mode, prevMin, prevMax);
+            base.monthlyLimit(), capGroup, shared, mode, prevMin, prevMax, List.of());
     }
 
     private static BenefitResult compute(long previous, RuleInput... rules) {
@@ -167,6 +167,36 @@ class BenefitMathTest {
     void keepsConfirmedFlag() {
         assertThat(BenefitMath.compute(List.of(), SPEND, 0, false).confirmedOnly()).isFalse();
         assertThat(BenefitMath.compute(List.of(), SPEND, 0, true).confirmedOnly()).isTrue();
+    }
+
+    @Test
+    @DisplayName("공유 한도로 줄일 때 비율을 미리 자르지 않는다 (30,000원 혜택에 한도 10,000원이면 정확히 10,000원)")
+    void sharedLimitKeepsPrecision() {
+        RuleInput shopping = with(rule(EnumSet.of(SpendingCategory.SHOPPING), "15", null), "G", 10_000L, "BASE", null,
+            null, false, "KRW", false);
+
+        BenefitResult result = compute(0, shopping);
+
+        // 쇼핑 200,000원의 15%는 30,000원이고 공유 한도는 10,000원이다.
+        assertThat(result.totalBenefit()).isEqualTo(10_000);
+        assertThat(result.benefitByCategory()).containsOnly(Map.entry(SpendingCategory.SHOPPING, 10_000L));
+    }
+
+    @Test
+    @DisplayName("적용하지 않는 한도(일 한도, 횟수 한도 등)가 있는 규칙이 혜택을 내면 안내를 남기고, 혜택이 없으면 남기지 않는다")
+    void notesUnappliedLimits() {
+        RuleInput base = rule(EnumSet.of(SpendingCategory.DINING), "5", null);
+        RuleInput limited = new RuleInput(base.id(), base.categories(), false, false, base.ratePercent(), "KRW", null,
+            null, null, "BASE", null, null, List.of("일 한도", "횟수 한도"));
+        RuleInput noSpend = new RuleInput("x", EnumSet.of(SpendingCategory.TRANSPORT), false, false, base.ratePercent(),
+            "KRW", null, null, null, "BASE", null, null, List.of("할인대상 결제금액 한도"));
+
+        BenefitResult applied = compute(0, limited);
+        BenefitResult notApplied = compute(0, noSpend);
+
+        assertThat(applied.totalBenefit()).isEqualTo(15_000);
+        assertThat(applied.notes()).singleElement().asString().contains("일 한도", "횟수 한도", "실제보다 클 수");
+        assertThat(notApplied.notes()).isEmpty();
     }
 
 }
