@@ -9,6 +9,8 @@ import com.richreach.plan.entity.SolverStatus;
 import com.richreach.plan.optimizer.PlanStrategyInput.CardInput;
 import com.richreach.plan.optimizer.PlanStrategyResult.Allocation;
 import com.richreach.plan.optimizer.cpsat.CpSatPlanStrategyRunner;
+import com.richreach.benefit.config.BenefitProperties;
+import com.richreach.card.service.BenefitRuleQueryService;
 import java.time.Duration;
 import java.time.YearMonth;
 import java.util.List;
@@ -167,19 +169,17 @@ class PlanStrategyContractTest {
             .isInstanceOf(IllegalStateException.class);
     }
 
-    // ---- CP-SAT 빈 틀 ----
+    // ---- CP-SAT 전략 등록 ----
 
     @Test
-    @DisplayName("CP-SAT 빈 틀은 CP_SAT 전략으로 등록되고, 구현 전에는 예외 없이 실패 결과를 돌려준다")
-    void cpSatStubIsRegisteredAndFailsGracefully() {
-        CpSatPlanStrategyRunner stub = new CpSatPlanStrategyRunner();
-        PlanStrategyRegistry registry = new PlanStrategyRegistry(List.of(stub));
+    @DisplayName("CP-SAT 실행기가 CP_SAT 전략으로 등록된다")
+    void cpSatRunnerIsRegistered() {
+        CpSatPlanStrategyRunner runner = new CpSatPlanStrategyRunner(new BenefitRuleQueryService(null, null, null),
+            query -> null,
+            new BenefitProperties("simple", BenefitProperties.RuleSelection.READY_ONLY));
+        PlanStrategyRegistry registry = new PlanStrategyRegistry(List.of(runner));
 
-        PlanStrategyResult result = registry.find(PlanStrategy.CP_SAT).orElseThrow().run(input());
-
-        assertThat(result.success()).isFalse();
-        assertThat(result.failureReason()).contains("구현");
-        assertThat(result.violations(input())).isEmpty();
+        assertThat(registry.find(PlanStrategy.CP_SAT)).containsSame(runner);
     }
 
 }
