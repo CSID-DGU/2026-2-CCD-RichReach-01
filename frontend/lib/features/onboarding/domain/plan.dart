@@ -33,11 +33,15 @@ class Plan {
   /// 원 단위 예상 혜택
   final int expectedBenefit;
 
-  /// 지금처럼 쓸 때 예상 혜택 ("기존 예상 혜택")
-  final int baselineBenefit;
+  /// 지금처럼 쓸 때 예상 혜택 ("기존 예상 혜택"). 비교할 기준 플랜(HABIT)이 없으면 null
+  final int? baselineBenefit;
   final List<CardTarget> cardTargets;
 
-  int get additionalBenefit => expectedBenefit - baselineBenefit;
+  /// 기존 예상보다 더 받는 혜택. 기존 예상이 없으면 null
+  int? get additionalBenefit => switch (baselineBenefit) {
+    final baseline? => expectedBenefit - baseline,
+    null => null,
+  };
 }
 
 /// 플랜 생성 진행 상황. [plan]이 있으면 생성이 끝난 것이다.

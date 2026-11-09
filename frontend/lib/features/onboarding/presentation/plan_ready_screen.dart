@@ -142,26 +142,34 @@ class _BenefitSummary extends StatelessWidget {
               color: AppColors.onPrimary,
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Text('기존 예상', style: label.copyWith(fontSize: 11)),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Text(
-                  formatWon(plan.baselineBenefit),
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    fontSize: 13,
-                    color: AppColors.onPrimary,
+          // 비교할 기존 예상이 없으면(서버에 기준 플랜이 없음) 기존 예상과 추가 혜택을 숨긴다.
+          if ((plan.baselineBenefit, plan.additionalBenefit) case (
+            final baseline?,
+            final additional?,
+          )) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Text('기존 예상', style: label.copyWith(fontSize: 11)),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Text(
+                    formatWon(baseline),
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      fontSize: 13,
+                      color: AppColors.onPrimary,
+                    ),
                   ),
                 ),
-              ),
-              SummaryPill(
-                label: '＋${formatWon(plan.additionalBenefit)}',
-                minWidth: 108,
-              ),
-            ],
-          ),
+                SummaryPill(
+                  label: additional >= 0
+                      ? '＋${formatWon(additional)}'
+                      : '－${formatWon(-additional)}',
+                  minWidth: 108,
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

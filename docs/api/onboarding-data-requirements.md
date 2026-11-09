@@ -323,23 +323,35 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
   "analyzedMonths": 3,
   "monthlyAverage": 820000,
   "topCategory": "DINING",
+  "hasData": true,
+  "partial": false,
   "categoryRatios": [
-    { "category": "DINING", "ratio": 28, "amount": 688800, "transactionCount": 41, "rank": 1 },
+    { "category": "DINING", "ratio": 26, "amount": 639600, "transactionCount": 41, "rank": 1 },
     { "category": "CAFE", "ratio": 8, "amount": 196800, "transactionCount": 30, "rank": 5 },
-    { "category": "SHOPPING", "ratio": 22, "amount": 541200, "transactionCount": 18, "rank": 2 },
-    { "category": "TRANSPORT", "ratio": 15, "amount": 369000, "transactionCount": 52, "rank": 3 },
-    { "category": "CONVENIENCE_STORE", "ratio": 12, "amount": 295200, "transactionCount": 37, "rank": 4 },
-    { "category": "ETC", "ratio": 15, "amount": 369000, "transactionCount": 24, "rank": 6 }
+    { "category": "CONVENIENCE_STORE", "ratio": 10, "amount": 246000, "transactionCount": 37, "rank": 4 },
+    { "category": "SHOPPING", "ratio": 20, "amount": 492000, "transactionCount": 18, "rank": 2 },
+    { "category": "TRANSPORT", "ratio": 12, "amount": 295200, "transactionCount": 52, "rank": 3 },
+    { "category": "FUEL_VEHICLE", "ratio": 5, "amount": 123000, "transactionCount": 4, "rank": 9 },
+    { "category": "LIFE_HEALTH", "ratio": 7, "amount": 172200, "transactionCount": 9, "rank": 6 },
+    { "category": "TELECOM_SUBSCRIPTION", "ratio": 6, "amount": 147600, "transactionCount": 6, "rank": 8 },
+    { "category": "CULTURE_TRAVEL", "ratio": 0, "amount": 0, "transactionCount": 0, "rank": 10 },
+    { "category": "EDUCATION", "ratio": 0, "amount": 0, "transactionCount": 0, "rank": 11 },
+    { "category": "ETC", "ratio": 6, "amount": 147600, "transactionCount": 12, "rank": 7 }
   ],
   "suggestedBudget": {
     "total": 820000,
     "byCategory": [
-      { "category": "DINING", "amount": 230000 },
-      { "category": "CAFE", "amount": 60000 },
-      { "category": "SHOPPING", "amount": 180000 },
-      { "category": "TRANSPORT", "amount": 120000 },
-      { "category": "CONVENIENCE_STORE", "amount": 100000 },
-      { "category": "ETC", "amount": 130000 }
+      { "category": "DINING", "amount": 213200 },
+      { "category": "CAFE", "amount": 65600 },
+      { "category": "CONVENIENCE_STORE", "amount": 82000 },
+      { "category": "SHOPPING", "amount": 164000 },
+      { "category": "TRANSPORT", "amount": 98400 },
+      { "category": "FUEL_VEHICLE", "amount": 41000 },
+      { "category": "LIFE_HEALTH", "amount": 57400 },
+      { "category": "TELECOM_SUBSCRIPTION", "amount": 49200 },
+      { "category": "CULTURE_TRAVEL", "amount": 0 },
+      { "category": "EDUCATION", "amount": 0 },
+      { "category": "ETC", "amount": 49200 }
     ]
   }
 }
@@ -350,9 +362,9 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
   - `rank`는 11개 업종 모두에 1~11을 한 번씩 줍니다. **기타(ETC)도 순위에 포함**하고, 소비가 없는 업종은 뒤쪽 순위를 받습니다.
   - `amount`는 분석 기간의 취소·환불을 뺀 금액(원), `transactionCount`는 전액 취소를 뺀 거래 건수입니다.
   - `topCategory`는 **기타(ETC)를 뺀** 1위 업종입니다. 그래서 `rank`가 1인 업종과 다를 수 있습니다. (기타가 1위면 `topCategory`는 그다음 업종)
-  - 배열은 지금처럼 업종 고정 순서이고, 위 예시는 줄여서 보여 준 것입니다. (실제로는 11개 업종이 모두 옵니다.)
+  - 배열은 업종 고정 순서이고 11개 업종이 모두 옵니다. (위 예시에서 TELECOM_SUBSCRIPTION과 ETC는 금액이 같아 건수가 많은 ETC가 앞 순위)
 - 화면의 업종별 소비패턴은 `rank` 순으로 **5개까지만** 보여 주고 나머지는 숨깁니다. "기타"와 비율이 0인 업종은 보여 주지 않습니다.
-  - `amount`·`transactionCount`·`rank`가 아직 오지 않으면 프론트는 비율이 큰 순, 같으면 업종 순서로 대신 정렬합니다.
+  - 소비가 기타에만 있어 보여 줄 업종이 없으면 소비패턴 영역을 숨깁니다.
 - 기간(`period`)은 ONB-05에서 고른 기간을 보냅니다. (기본 3개월)
 - 백엔드 #192에서 `hasData`, `partial`이 추가됐습니다.
   - `hasData=false`(분석할 소비 없음)이면 안내를 보여 주고, 업종별 예산을 직접 입력해 총액이 0보다 커야 플랜을 만들 수 있습니다.
@@ -417,6 +429,7 @@ Q2 답변에 따라 **작업 시작 → 상태 조회(폴링)** 방식으로 진
   - 우선순위는 CP_SAT → GREEDY → EVEN_SPLIT → HABIT이고, 같은 전략은 가장 최신 version을 씁니다.
 - `baselineBenefit`: 지금처럼 쓸 때 예상 혜택 (화면의 "기존 예상"). HABIT 플랜의 예상 혜택입니다.
   - **HABIT 플랜이 없으면 `baselineBenefit`과 `additionalBenefit`이 모두 `null`입니다.** (0이 아닙니다. 0으로 보면 "추가 혜택 전부"처럼 보이기 때문입니다.)
+  - 프론트는 이때 "기존 예상"과 "+추가 혜택"을 숨기고, 추가 혜택이 음수면 "－"로 표시합니다.
   - `null`이면 "기존 예상"과 "추가 혜택" 표시는 숨기고 `expectedBenefit`만 보여 주세요.
   - `additionalBenefit`은 `expectedBenefit - baselineBenefit`이고, 기존 예상보다 작으면 음수가 올 수 있습니다.
 - `cardTargets`는 목표 금액이 큰 카드부터 내려옵니다. 카드 번호는 담지 않고, 카드가 삭제되어 이름을 찾을 수 없으면 `cardName`이 `null`입니다.

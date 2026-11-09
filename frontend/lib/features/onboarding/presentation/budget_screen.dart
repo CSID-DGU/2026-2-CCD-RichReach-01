@@ -127,15 +127,18 @@ class _BudgetContent extends StatelessWidget {
         const SizedBox(height: 25),
         if (analysis.hasData) ...[
           _AnalysisSummary(analysis: analysis),
-          const SizedBox(height: 30),
-          const Text('업종별 소비패턴', style: AppTextStyles.sectionTitle),
-          const SizedBox(height: 14),
-          for (final ratio in ratios)
-            _RatioBar(
-              ratio: ratio,
-              maxRatio: maxRatio,
-              highlighted: ratio == ratios.first,
-            ),
+          // 소비가 기타에만 있으면 보여줄 업종이 없어 소비패턴을 숨긴다.
+          if (ratios.isNotEmpty) ...[
+            const SizedBox(height: 30),
+            const Text('업종별 소비패턴', style: AppTextStyles.sectionTitle),
+            const SizedBox(height: 14),
+            for (final ratio in ratios)
+              _RatioBar(
+                ratio: ratio,
+                maxRatio: maxRatio,
+                highlighted: ratio == ratios.first,
+              ),
+          ],
         ] else
           const _NoDataNotice(),
         const SizedBox(height: 26),

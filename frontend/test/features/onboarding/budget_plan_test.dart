@@ -29,6 +29,70 @@ MonthlyBudget _sampleBudget() =>
 
 const _companies = [CardCompany.kb, CardCompany.woori, CardCompany.shinhan];
 
+/// 소비가 기타(ETC)에만 있는 분석 결과. 서버는 이때 `topCategory`를 주지 않는다.
+class _EtcOnlyBudget implements BudgetRepository {
+  @override
+  Future<SpendingAnalysis> fetchAnalysis(TransactionPeriod period) async {
+    final now = DateTime(2026, 10, 11);
+    return SpendingAnalysis(
+      analyzedMonths: 3,
+      monthlyAverage: 812345,
+      topCategory: null,
+      hasData: true,
+      categoryRatios: [
+        for (final (i, c) in SpendingCategory.values.indexed)
+          CategoryRatio(
+            category: c,
+            ratio: c == SpendingCategory.etc ? 100 : 0,
+            amount: c == SpendingCategory.etc ? 2460000 : 0,
+            transactionCount: c == SpendingCategory.etc ? 30 : 0,
+            rank: c == SpendingCategory.etc ? 1 : i + 2,
+          ),
+      ],
+      suggestedBudget: MonthlyBudget(
+        month: DateTime(now.year, now.month),
+        total: 820000,
+        byCategory: {
+          for (final c in SpendingCategory.values) c: 0,
+          SpendingCategory.etc: 820000,
+        },
+      ),
+    );
+  }
+
+  @override
+  Future<void> saveBudget(MonthlyBudget budget) async {}
+}
+
+/// 기존 예상(기준 플랜)이 없는 플랜을 바로 만들어 주는 플랜 생성.
+class _NoBaselinePlan implements PlanRepository {
+  const _NoBaselinePlan();
+
+  @override
+  Stream<PlanProgress> generate(
+    MonthlyBudget budget,
+    List<OwnedCard> cards,
+  ) async* {
+    yield PlanProgress(
+      ratio: 1,
+      plan: Plan(
+        month: budget.month,
+        expectedBenefit: 32000,
+        baselineBenefit: null,
+        cardTargets: [
+          for (final card in cards)
+            CardTarget(
+              cardId: card.id,
+              cardName: card.name,
+              targetAmount: 100000,
+              progressRatio: 1,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 항상 [error]로 실패하는 플랜 생성. 몇 번 불렸는지 센다.
 class _FailingPlan implements PlanRepository {
   _FailingPlan(this.error);
@@ -251,6 +315,15 @@ void main() {
       expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
     });
 
+    testWidgets('소비가 기타에만 있으면 소비패턴과 비중 1위를 숨긴다', (tester) async {
+      await pumpAppAt(tester, AppRoute.budget, budget: _EtcOnlyBudget());
+
+      expect(findText('812,345원'), findsOneWidget); // 월평균 소비
+      expect(findText('업종별 소비패턴'), findsNothing);
+      expect(find.textContaining('비중 1위'), findsNothing);
+      expect(findText('분석할 소비내역이 없어요'), findsNothing);
+    });
+
     testWidgets('소비예산을 수정하면 업종별 예산이 비율대로 바뀐다', (tester) async {
       await pumpAppAt(tester, AppRoute.budget, budget: _budget());
 
@@ -383,6 +456,21 @@ void main() {
   });
 
   group('ONB-07B 플랜 생성 완료', () {
+    testWidgets('기존 예상이 없으면 기존 예상과 추가 혜택을 숨긴다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.planGenerating,
+        budget: _budget(),
+        plan: const _NoBaselinePlan(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PlanReadyScreen), findsOneWidget);
+      expect(findText('32,000원'), findsOneWidget);
+      expect(findText('기존 예상'), findsNothing);
+      expect(find.textContaining('＋'), findsNothing);
+    });
+
     testWidgets('예상 혜택과 카드별 목표 사용금액을 보여준다', (tester) async {
       await pumpAppAt(tester, AppRoute.planGenerating, budget: _budget());
 

@@ -15,8 +15,7 @@ abstract interface class PlanRepository {
 /// 백엔드 API로 플랜을 만든다.
 /// - 시작: `POST /api/plans` (월, 확정 예산) → `jobId`
 /// - 진행: `GET /api/plans/jobs/{jobId}`를 [pollInterval]마다 조회해 `progress`(0~100)를 내보낸다.
-///
-/// 플랜 조회 API(#194)가 아직 없어, 완료되면 ONB-07B에 보여줄 플랜은 가짜 계산([FakePlanRepository.buildPlan])으로 만든다.
+/// - 완료: `GET /api/plans?month=`로 만든 플랜을 불러와 ONB-07B에 넘긴다.
 class ApiPlanRepository implements PlanRepository {
   const ApiPlanRepository(
     this._api, {
@@ -58,11 +57,12 @@ class ApiPlanRepository implements PlanRepository {
       final job = await _api.get(ApiPaths.planJob(jobId), parse: _Job.fromJson);
       switch (job.status) {
         case 'COMPLETED':
-          // TODO(#194): 플랜 조회 API가 생기면 job.planId로 실제 플랜을 불러온다.
-          yield PlanProgress(
-            ratio: 1,
-            plan: FakePlanRepository.buildPlan(budget, cards),
+          final plan = await _api.get(
+            ApiPaths.plans,
+            query: {'month': _monthCode(budget.month)},
+            parse: (data) => _parsePlan(data, cards),
           );
+          yield PlanProgress(ratio: 1, plan: plan);
           return;
         case 'FAILED':
           throw PlanGenerationFailure(
@@ -82,10 +82,48 @@ class ApiPlanRepository implements PlanRepository {
     }
   }
 
+  /// 카드 이름을 알 수 없을 때 보여줄 이름
+  static const unknownCardName = '카드 정보 없음';
+
+  static String _monthCode(DateTime month) =>
+      '${month.year}-${month.month.toString().padLeft(2, '0')}';
+
+  /// `GET /api/plans` 응답. 막대 비율은 목표 금액이 가장 큰 카드를 1로 둔다.
+  /// 카드가 삭제되어 서버가 이름을 주지 않으면 보유카드 이름, 그것도 없으면 [unknownCardName]을 쓴다.
+  static Plan _parsePlan(Object? data, List<OwnedCard> cards) {
+    final json = data as Map;
+    final namesById = {for (final card in cards) card.id: card.name};
+    final targets = [
+      for (final item in json['cardTargets'] as List)
+        (
+          id: '${(item as Map)['cardId']}',
+          name: item['cardName'] as String?,
+          amount: item['targetAmount'] as int,
+        ),
+    ];
+    final maxAmount = targets.fold(
+      0,
+      (max, t) => t.amount > max ? t.amount : max,
+    );
+    return Plan(
+      month: DateTime.parse('${json['month']}-01'),
+      expectedBenefit: json['expectedBenefit'] as int,
+      baselineBenefit: json['baselineBenefit'] as int?,
+      cardTargets: [
+        for (final t in targets)
+          CardTarget(
+            cardId: t.id,
+            cardName: t.name ?? namesById[t.id] ?? unknownCardName,
+            targetAmount: t.amount,
+            progressRatio: maxAmount == 0 ? 0 : t.amount / maxAmount,
+          ),
+      ],
+    );
+  }
+
   /// `POST /api/plans` 본문. 업종별 예산은 11개 업종을 모두 보낸다.
   static Map<String, Object?> requestBody(MonthlyBudget budget) => {
-    'month':
-        '${budget.month.year}-${budget.month.month.toString().padLeft(2, '0')}',
+    'month': _monthCode(budget.month),
     'budget': {
       'total': budget.total,
       'byCategory': [
