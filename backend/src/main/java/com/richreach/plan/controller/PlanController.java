@@ -2,10 +2,13 @@ package com.richreach.plan.controller;
 
 import com.richreach.global.response.ApiResponse;
 import com.richreach.global.security.AuthenticatedUser;
+import com.richreach.plan.dto.PlanCategoriesResponse;
 import com.richreach.plan.dto.PlanCreateRequest;
 import com.richreach.plan.dto.PlanJobStartResponse;
 import com.richreach.plan.dto.PlanJobStatusResponse;
+import com.richreach.plan.dto.PlanResponse;
 import com.richreach.plan.service.PlanGenerationService;
+import com.richreach.plan.service.PlanQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,15 +16,17 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 월간 플랜 생성 API. 로그인이 필요하다. */
+/** 월간 플랜 생성·조회 API. 로그인이 필요하다. */
 @RestController
 @RequestMapping("/api/plans")
 @RequiredArgsConstructor
 public class PlanController {
 
     private final PlanGenerationService generationService;
+    private final PlanQueryService queryService;
 
     /**
      * 월간 플랜 생성을 시작한다. 계산은 오래 걸릴 수 있어서 작업을 시작하고 바로 {@code jobId}를 돌려주며, 진행 상태는
@@ -39,6 +44,26 @@ public class PlanController {
     public ApiResponse<PlanJobStartResponse> create(@AuthenticationPrincipal AuthenticatedUser user,
                                                     @RequestBody PlanCreateRequest request) {
         return ApiResponse.ok(generationService.start(user.userId(), request));
+    }
+
+    /**
+     * 그 달에 사용자에게 보여줄 플랜 한 개. 읽기 전용이다.
+     * <ul>
+     *   <li>400 {@code COMMON-400}: 월이 없거나 {@code yyyy-MM} 형식이 아님</li>
+     *   <li>404 {@code PLAN-001}: 그 달의 플랜이 없음</li>
+     * </ul>
+     */
+    @GetMapping
+    public ApiResponse<PlanResponse> monthly(@AuthenticationPrincipal AuthenticatedUser user,
+                                             @RequestParam(required = false) String month) {
+        return ApiResponse.ok(queryService.getMonthlyPlan(user.userId(), month));
+    }
+
+    /** 플랜의 업종별 사용계획. 없거나 다른 사용자의 플랜이면 404({@code PLAN-001})이다. */
+    @GetMapping("/{planId}/categories")
+    public ApiResponse<PlanCategoriesResponse> categories(@AuthenticationPrincipal AuthenticatedUser user,
+                                                          @PathVariable long planId) {
+        return ApiResponse.ok(queryService.getCategories(user.userId(), planId));
     }
 
     /**
