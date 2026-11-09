@@ -97,6 +97,8 @@ flutter run --dart-define=USE_FAKE_API=false
 - **앱에는 서버 주소만 넣습니다.** 공용 DB 접속 정보, 암호화 키, CODEF 키 등은 백엔드 실행용 `.env`/`.env.shared`에만 두고 git에 올리지 않습니다.
 - API가 아직 없는 기능은 `USE_FAKE_API=false`여도 가짜 데이터로 동작합니다. 연동한 기능은 저장소 provider에서 실제 구현으로 바꿉니다.
 - 지금 연동된 기능: 회원가입(AUTH-01, `POST /api/auth/signup`), 로그인(`POST /api/auth/login`), 토큰 재발급(`POST /api/auth/reissue`), 이메일 찾기·비밀번호 재설정(`/api/auth/find-email`, `/api/auth/password/...`). 휴대폰 인증은 SMS API가 없어 번호 형식만 확인합니다. 로컬 백엔드(`local` 프로파일)가 돌려주는 개발용 인증번호는 debug 빌드의 인증번호 화면에 표시됩니다. 가짜 회원가입에서는 `taken@example.com`이 이미 가입된 이메일, `010-1111-1111`이 이미 가입된 전화번호입니다.
+- 온보딩 연동: 카드사 목록·동의·연결·동기화(`/api/card-companies`, `/api/connections/...`), 보유카드와 분석 대상 선택(`/api/cards`), 거래내역 요약 ONB-05(`/api/transactions/summary`, `/api/transactions`).
+- 거래가 있는 상태를 로컬에서 확인하려면 백엔드의 시연용 시드(`DEMO_SEED_ON_STARTUP=true`, `DEMO_SEED_USER_EMAIL=가입한 이메일`)로 보유카드와 거래를 만든 뒤, 그 계정으로 로그인합니다. 시드는 로컬 DB에서만 동작합니다.
 - 로그인 토큰은 기기의 안전한 저장소에 두고, 만료되면 재발급 후 다시 요청합니다. 재발급도 실패하면 세션 만료 화면(AUTH-04)으로 갑니다.
 
 ## 로그인 실패 흉내 내기 (개발용)

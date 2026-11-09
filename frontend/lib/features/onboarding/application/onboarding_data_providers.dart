@@ -20,9 +20,14 @@ final cardRepositoryProvider = Provider<CardRepository>(
 
 const _fakeNoTransactions = bool.fromEnvironment('FAKE_NO_TRANSACTIONS');
 
-/// 거래내역 저장소. API 연동 전까지는 가짜 구현을 쓴다.
+/// 거래내역 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
 final transactionRepositoryProvider = Provider<TransactionRepository>(
-  (ref) => FakeTransactionRepository(empty: _fakeNoTransactions),
+  (ref) => ApiConfig.useFakeApi
+      ? FakeTransactionRepository(empty: _fakeNoTransactions)
+      : ApiTransactionRepository(
+          ref.watch(apiClientProvider),
+          ref.watch(cardRepositoryProvider),
+        ),
 );
 
 /// 연결에 성공한 카드사. 화면을 바로 열었을 때(debug 빌드)는 예시 카드사를 쓴다.
@@ -57,9 +62,13 @@ class AnalysisCards extends Notifier<List<OwnedCard>> {
 }
 
 /// 조회 기간별 거래내역 요약.
+///
+/// 실패하면 자동으로 다시 시도하지 않고 바로 실패 안내를 보여준다. (화면의 "다시 불러오기"로 다시 시도한다)
 final transactionSummaryProvider = FutureProvider.autoDispose
     .family<TransactionSummary, TransactionPeriod>((ref, period) {
       return ref
           .watch(transactionRepositoryProvider)
           .fetchSummary(period, ref.watch(connectedCompaniesProvider));
-    });
+    }, retry: _noRetry);
+
+Duration? _noRetry(int retryCount, Object error) => null;

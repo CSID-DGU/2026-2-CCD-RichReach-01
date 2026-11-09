@@ -67,7 +67,6 @@ class TransactionSummary {
     required this.totalCount,
     required this.totalAmount,
     required this.connectedCardCount,
-    required this.categorizedRate,
     required this.byCompany,
     required this.recentTransactions,
   });
@@ -80,8 +79,6 @@ class TransactionSummary {
   final int totalAmount;
   final int connectedCardCount;
 
-  /// 업종 분류에 성공한 거래 비율 (0~100)
-  final int categorizedRate;
   final List<CompanyTransactionCount> byCompany;
   final List<Transaction> recentTransactions;
 
