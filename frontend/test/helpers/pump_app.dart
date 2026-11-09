@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
+import 'package:frontend/app/provider_retry.dart';
 import 'package:frontend/app/router.dart';
 import 'package:frontend/core/theme/app_theme.dart';
 import 'package:frontend/features/auth/application/auth_providers.dart';
@@ -58,6 +59,7 @@ Future<void> pumpAppAt(
 
   await tester.pumpWidget(
     ProviderScope(
+      retry: noProviderRetry,
       overrides: [
         authRepositoryProvider.overrideWithValue(auth),
         signupRepositoryProvider.overrideWithValue(
