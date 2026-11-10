@@ -64,6 +64,10 @@ def main():
     parser.add_argument("--scenario", default="BC_AUG_300000")
     parser.add_argument("--as-of", default="2026-10-01T00:00")
     parser.add_argument(
+        "--merchants",
+        help="최근 거래의 가맹점명. 최근 거래부터 쉼표로 구분 (없으면 업종 이름)",
+    )
+    parser.add_argument(
         "--out", type=Path,
         default=Path(__file__).resolve().parents[2] / "assets" / "demo" / "demo_fixture.json",
     )
@@ -141,15 +145,19 @@ def main():
         if e["월"] == source_month
         and e.get("bc_8월_실적_가정_원", 0) == (300000 if args.scenario.endswith("300000") else 0)
     ] or [e for e in experiment["timelineExamples"] if e["월"] == source_month]
+    examples = sorted(examples, key=lambda e: e["시연_결제시각"], reverse=True)
+    merchants = [m.strip() for m in args.merchants.split(",")] if args.merchants else []
+    if merchants and len(merchants) != len(examples):
+        raise SystemExit(f"가맹점명 {len(merchants)}개, 최근 거래 {len(examples)}건: 개수가 같아야 함")
     transactions = [
         {
             "cardId": card_ids[e["기존사용카드"]],
-            "merchantName": CATEGORY_LABELS[e["업종코드"]],
+            "merchantName": merchants[i] if merchants else CATEGORY_LABELS[e["업종코드"]],
             "category": e["업종코드"],
             "netAmount": e["금액_원"],
             "approvedAt": e["시연_결제시각"],
         }
-        for e in sorted(examples, key=lambda e: e["시연_결제시각"], reverse=True)
+        for i, e in enumerate(examples)
     ]
 
     plan = {**snapshot["planResponse"], "planId": PLAN_ID}
