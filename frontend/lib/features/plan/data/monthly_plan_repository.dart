@@ -1,3 +1,4 @@
+import '../../../core/demo/app_clock.dart';
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_config.dart';
@@ -43,7 +44,7 @@ abstract interface class MonthlyPlanRepository {
 /// - 카드별·업종별 상세(PLAN-02·03)의 실적·한도·혜택: 가짜 기본값을 쓴다.
 class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
   ApiMonthlyPlanRepository(this._api, this._cards, {DateTime Function()? now})
-    : _now = now ?? DateTime.now;
+    : _now = now ?? appNow;
 
   final ApiClient _api;
   final CardRepository _cards;

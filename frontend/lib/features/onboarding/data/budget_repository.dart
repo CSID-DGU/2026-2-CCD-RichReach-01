@@ -1,3 +1,4 @@
+import '../../../core/demo/app_clock.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_config.dart';
 import '../domain/budget.dart';
@@ -19,7 +20,7 @@ abstract interface class BudgetRepository {
 /// 비율이 큰 순, 같으면 업종 순서로 우선순위를 대신 매긴다.
 class ApiBudgetRepository implements BudgetRepository {
   ApiBudgetRepository(this._api, {DateTime Function()? now})
-    : _now = now ?? DateTime.now;
+    : _now = now ?? appNow;
 
   final ApiClient _api;
   final DateTime Function() _now;
