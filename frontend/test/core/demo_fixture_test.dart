@@ -20,6 +20,9 @@ import 'package:frontend/features/plan/data/monthly_plan_repository.dart';
 class _Server implements HttpClientAdapter {
   final paths = <String>[];
 
+  /// 응답의 `data`. 기본은 'server'
+  Object? data = 'server';
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -32,7 +35,7 @@ class _Server implements HttpClientAdapter {
         'success': true,
         'code': 'SUCCESS',
         'message': '',
-        'data': 'server',
+        'data': data,
       }),
       200,
       headers: {
@@ -261,5 +264,33 @@ void main() {
 
     expect(data, 'server');
     expect(server.paths, [ApiPaths.cardCompanies]);
+  });
+
+  test('카드 연결 결과의 카드사별 카드 수를 시연 자료에 맞춘다', () async {
+    server.data = {
+      'jobId': 'sync-1',
+      'status': 'COMPLETED',
+      'completedCount': 3,
+      'totalCount': 4,
+      'results': [
+        {'cardCompany': 'NH', 'status': 'SUCCESS', 'cardCount': 3},
+        {'cardCompany': 'BC', 'status': 'SUCCESS', 'cardCount': 3},
+        {'cardCompany': 'SHINHAN', 'status': 'SUCCESS', 'cardCount': 2},
+        {'cardCompany': 'KB', 'status': 'FAILED', 'cardCount': 0},
+      ],
+    };
+
+    final data = await api.get(
+      ApiPaths.connectionSyncJob('sync-1'),
+      parse: (d) => d as Map,
+    );
+
+    // 실제 서버에 묻고, 시연 자료에 있는 카드사(NH·BC 각 1장)만 바꾼다.
+    expect(server.paths, [ApiPaths.connectionSyncJob('sync-1')]);
+    expect(
+      [for (final r in data['results'] as List) r['cardCount']],
+      [1, 1, 2, 0],
+    );
+    expect(data['completedCount'], 3);
   });
 }
