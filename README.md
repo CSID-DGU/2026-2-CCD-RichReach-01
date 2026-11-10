@@ -17,6 +17,7 @@
 
 - [브랜치 규칙](docs/convention/branch.md)
 - [커밋 메시지 규칙](docs/convention/commit.md)
+- [이슈·PR 제목 규칙](docs/convention/issue-pr.md)
 
 ## 브랜치 전략
 
