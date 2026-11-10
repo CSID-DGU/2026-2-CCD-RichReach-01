@@ -7,8 +7,11 @@ import com.richreach.plan.dto.PlanCreateRequest;
 import com.richreach.plan.dto.PlanJobStartResponse;
 import com.richreach.plan.dto.PlanJobStatusResponse;
 import com.richreach.plan.dto.PlanResponse;
+import com.richreach.plan.dto.TransactionPlanPreviewRequest;
+import com.richreach.plan.optimizer.MonthlyTransactionPlanEngine;
 import com.richreach.plan.service.PlanGenerationService;
 import com.richreach.plan.service.PlanQueryService;
+import com.richreach.plan.service.TransactionPlanPreviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +30,14 @@ public class PlanController {
 
     private final PlanGenerationService generationService;
     private final PlanQueryService queryService;
+    private final TransactionPlanPreviewService transactionPreviewService;
+
+    /** 거래내역과 확인된 카드 혜택 규칙을 읽어 월간 소비·혜택 계획을 미리 계산한다. DB는 변경하지 않는다. */
+    @PostMapping("/preview")
+    public ApiResponse<MonthlyTransactionPlanEngine.Result> preview(
+        @AuthenticationPrincipal AuthenticatedUser user, @RequestBody TransactionPlanPreviewRequest request) {
+        return ApiResponse.ok(transactionPreviewService.preview(user.userId(), request));
+    }
 
     /**
      * 월간 플랜 생성을 시작한다. 계산은 오래 걸릴 수 있어서 작업을 시작하고 바로 {@code jobId}를 돌려주며, 진행 상태는
