@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/demo/app_clock.dart';
 import '../../../core/network/api_config.dart';
 import '../../../core/network/api_providers.dart';
 import '../../onboarding/application/onboarding_data_providers.dart';
@@ -8,9 +9,9 @@ import '../data/monthly_plan_repository.dart';
 import '../domain/monthly_plan.dart';
 import '../domain/plan_details.dart';
 
-/// 이번 달 (일은 1일).
+/// 이번 달 (일은 1일). 시연 모드면 시연 자료의 달이다.
 final currentMonthProvider = Provider<DateTime>((ref) {
-  final now = DateTime.now();
+  final now = appNow();
   return DateTime(now.year, now.month);
 });
 

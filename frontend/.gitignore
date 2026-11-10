@@ -1,3 +1,7 @@
+# 시연 모드 자료 (실제 소비에서 나온 숫자라 올리지 않는다. tool/demo_fixture/README.md)
+/assets/demo/*
+!/assets/demo/.gitkeep
+
 # Miscellaneous
 *.class
 *.log
