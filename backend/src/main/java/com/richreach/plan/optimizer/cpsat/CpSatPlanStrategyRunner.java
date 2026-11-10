@@ -49,6 +49,14 @@ public class CpSatPlanStrategyRunner implements PlanStrategyRunner {
     private final BenefitCalculator benefitCalculator;
     private final BenefitProperties benefitProperties;
 
+    public com.richreach.plan.optimizer.TransactionCardOptimizer.Choice runTransactions(
+        com.richreach.benefit.dto.BenefitTransaction current,
+        List<com.richreach.benefit.dto.BenefitTransaction> forecast,
+        List<com.richreach.plan.optimizer.TransactionCardOptimizer.Card> cards,boolean allowUnverified,double seconds) {
+        return new com.richreach.plan.optimizer.TransactionCardOptimizer(new com.richreach.benefit.service.TransactionBenefitCalculator())
+            .cpSat(current,forecast,cards,allowUnverified,seconds);
+    }
+
     @Override
     public PlanStrategy strategy() {
         return PlanStrategy.CP_SAT;
