@@ -59,6 +59,7 @@ abstract final class ApiPaths {
   // 플랜 생성 (#204)
   static const plans = '/api/plans';
   static String planJob(String jobId) => '/api/plans/jobs/$jobId';
+  static String planCategories(int planId) => '/api/plans/$planId/categories';
 
   static String connectionSyncJob(String jobId) =>
       '/api/connections/sync/${Uri.encodeComponent(jobId)}';

@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_config.dart';
+import '../../../core/network/api_providers.dart';
+import '../../onboarding/application/onboarding_data_providers.dart';
 import '../../onboarding/domain/transaction.dart';
 import '../data/monthly_plan_repository.dart';
 import '../domain/monthly_plan.dart';
@@ -11,10 +14,14 @@ final currentMonthProvider = Provider<DateTime>((ref) {
   return DateTime(now.year, now.month);
 });
 
-/// 월간 플랜 저장소. API 연동 전까지는 가짜 구현을 쓴다.
+/// 월간 플랜 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
 final monthlyPlanRepositoryProvider = Provider<MonthlyPlanRepository>(
-  (ref) =>
-      FakeMonthlyPlanRepository(currentMonth: ref.watch(currentMonthProvider)),
+  (ref) => ApiConfig.useFakeApi
+      ? FakeMonthlyPlanRepository(currentMonth: ref.watch(currentMonthProvider))
+      : ApiMonthlyPlanRepository(
+          ref.watch(apiClientProvider),
+          ref.watch(cardRepositoryProvider),
+        ),
 );
 
 /// 월간 플랜 화면에서 보고 있는 달. 이번 달에서 시작하고, 이번 달 뒤로는 넘어가지 않는다.

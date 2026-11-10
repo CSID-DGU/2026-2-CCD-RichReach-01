@@ -1,4 +1,7 @@
 import '../../../core/formatters/money_formatter.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/network/api_config.dart';
+import '../../../core/network/api_exception.dart';
 import '../../onboarding/data/card_repository.dart';
 import '../../onboarding/domain/card_company.dart';
 import '../../onboarding/domain/owned_card.dart';
@@ -6,7 +9,7 @@ import '../../onboarding/domain/transaction.dart';
 import '../domain/monthly_plan.dart';
 import '../domain/plan_details.dart';
 
-/// 월간 플랜 조회·변경. API 연동 시 실제 구현을 만들어 바꿔 끼운다.
+/// 월간 플랜 조회·변경.
 abstract interface class MonthlyPlanRepository {
   /// [month]의 플랜. 그 달에 만든 플랜이 없으면 null.
   Future<MonthlyPlan?> fetchPlan(DateTime month);
@@ -28,6 +31,178 @@ abstract interface class MonthlyPlanRepository {
   );
 }
 
+/// 백엔드 API로 월간 플랜을 불러온다. (PLAN-01)
+/// - 플랜: `GET /api/plans?month=` → 예상 혜택, 카드별 목표 금액. 소비예산은 목표 금액의 합이다.
+/// - 업종별 권장 카드: `GET /api/plans/{planId}/categories`
+/// - 카드 이미지·종류·번호: `GET /api/cards`에서 `cardId`로 찾는다.
+///
+/// 아직 API가 없는 부분은 화면을 그대로 두고 아래처럼 채운다.
+/// - 이번 달 사용 금액: 0원 (거래 요약의 월 조회가 생기면 채운다)
+/// - 플랜 변경 안내: 서버에 변경 내역이 없어 보여줄 변경이 없다.
+/// - 소비예산 수정: 서버에 저장하지 않고 이 객체 안에서만 비율대로 다시 나눈다. ([FakeMonthlyPlanRepository.rescale])
+/// - 카드별·업종별 상세(PLAN-02·03)의 실적·한도·혜택: 가짜 기본값을 쓴다.
+class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
+  ApiMonthlyPlanRepository(this._api, this._cards, {DateTime Function()? now})
+    : _now = now ?? DateTime.now;
+
+  final ApiClient _api;
+  final CardRepository _cards;
+  final DateTime Function() _now;
+
+  /// 그 달의 플랜이 없음 (404)
+  static const planNotFoundCode = 'PLAN-001';
+
+  /// 예산을 다시 나눈 결과처럼 서버에 저장하지 않은 플랜. 달별로 기억한다.
+  final _localPlans = <DateTime, MonthlyPlan>{};
+
+  static DateTime _key(DateTime month) => DateTime(month.year, month.month);
+
+  static String _monthCode(DateTime month) =>
+      '${month.year}-${month.month.toString().padLeft(2, '0')}';
+
+  @override
+  Future<MonthlyPlan?> fetchPlan(DateTime month) async {
+    if (_localPlans[_key(month)] case final local?) return local;
+
+    final _PlanJson plan;
+    try {
+      plan = await _api.get(
+        ApiPaths.plans,
+        query: {'month': _monthCode(month)},
+        parse: _PlanJson.fromJson,
+      );
+    } on ApiException catch (error) {
+      if (error.code == planNotFoundCode) return null;
+      rethrow;
+    }
+    final (categories, cards) = await (
+      _api.get(
+        ApiPaths.planCategories(plan.planId),
+        parse: _CategoryJson.listFromJson,
+      ),
+      _cards.fetchCards(const []),
+    ).wait;
+
+    // 보유카드 목록에 없는 카드(삭제된 카드 등)는 이미지·카드사를 알 수 없어 화면에서 뺀다.
+    final cardsById = {for (final card in cards) card.id: card};
+    return MonthlyPlan(
+      month: _key(month),
+      budget: plan.targets.fold(0, (sum, t) => sum + t.amount),
+      // TODO(Q15): 거래 요약의 월 조회가 생기면 이번 달 사용 금액을 채운다.
+      spentAmount: 0,
+      expectedBenefit: plan.expectedBenefit,
+      cardPlans: [
+        for (final target in plan.targets)
+          if (cardsById[target.cardId] case final card?)
+            CardPlan(card: card, targetAmount: target.amount, usedAmount: 0),
+      ],
+      categoryPlans: {
+        for (final category in categories)
+          category.category: [
+            for (final target in category.cards)
+              if (cardsById[target.cardId] case final card?)
+                CategoryCardAmount(card: card, amount: target.amount),
+          ],
+      },
+    );
+  }
+
+  @override
+  Future<MonthlyPlan> recalculate(DateTime month, {required int budget}) async {
+    final current = await fetchPlan(month);
+    if (current == null) throw StateError('플랜이 없는 달은 다시 계산할 수 없어요.');
+    // TODO: 예산을 바꿔 플랜을 다시 만드는 API가 생기면 서버에 요청한다.
+    return _localPlans[_key(month)] = FakeMonthlyPlanRepository.rescale(
+      current,
+      budget: budget,
+      updatedAt: _now(),
+    );
+  }
+
+  @override
+  Future<void> confirmChange(DateTime month) async {
+    final plan = _localPlans[_key(month)];
+    if (plan != null) _localPlans[_key(month)] = plan.withoutChange();
+  }
+
+  @override
+  Future<CardPlanDetail?> fetchCardPlan(DateTime month, String cardId) async {
+    final plan = await fetchPlan(month);
+    return plan == null
+        ? null
+        : FakeMonthlyPlanRepository.cardPlanDetail(plan, cardId);
+  }
+
+  @override
+  Future<CategoryPlanDetail?> fetchCategoryPlan(
+    DateTime month,
+    SpendingCategory category,
+  ) async {
+    final plan = await fetchPlan(month);
+    return plan == null
+        ? null
+        : FakeMonthlyPlanRepository.categoryPlanDetail(plan, category);
+  }
+}
+
+/// 카드 한 장의 목표 금액 (`cardTargets` 항목, 업종별 `cards` 항목).
+typedef _CardAmountJson = ({String cardId, int amount});
+
+_CardAmountJson _cardAmount(Object? item) {
+  final json = item as Map;
+  return (cardId: '${json['cardId']}', amount: json['targetAmount'] as int);
+}
+
+/// `GET /api/plans` 응답.
+class _PlanJson {
+  const _PlanJson({
+    required this.planId,
+    required this.expectedBenefit,
+    required this.targets,
+  });
+
+  final int planId;
+  final int expectedBenefit;
+
+  /// 목표 금액이 큰 카드부터
+  final List<_CardAmountJson> targets;
+
+  static _PlanJson fromJson(Object? data) {
+    final json = data as Map;
+    return _PlanJson(
+      planId: json['planId'] as int,
+      expectedBenefit: json['expectedBenefit'] as int,
+      targets: [
+        for (final item in json['cardTargets'] as List) _cardAmount(item),
+      ],
+    );
+  }
+}
+
+/// `GET /api/plans/{planId}/categories`의 업종 하나.
+class _CategoryJson {
+  const _CategoryJson({required this.category, required this.cards});
+
+  final SpendingCategory category;
+
+  /// 금액이 큰 카드부터
+  final List<_CardAmountJson> cards;
+
+  static final _categories = {
+    for (final c in SpendingCategory.values) c.code: c,
+  };
+
+  /// 앱이 모르는 업종은 건너뛴다.
+  static List<_CategoryJson> listFromJson(Object? data) => [
+    for (final item in (data as Map)['categories'] as List)
+      if (_categories[(item as Map)['category']] case final category?)
+        _CategoryJson(
+          category: category,
+          cards: [for (final card in item['cards'] as List) _cardAmount(card)],
+        ),
+  ];
+}
+
 /// 가짜 카드 조건: 실적 기준, 혜택 한도, 혜택 내용.
 class _CardTerms {
   const _CardTerms({
@@ -47,7 +222,7 @@ class _CardTerms {
   final Map<SpendingCategory, String> benefits;
 }
 
-/// API가 나오기 전까지 쓰는 가짜 구현.
+/// 가짜 구현.
 /// [currentMonth]에만 플랜이 있고, 처음 숫자는 Figma PLAN-01·01A 디자인과 같다.
 /// 재계산·확인 결과는 이 객체 안에만 기억한다.
 class FakeMonthlyPlanRepository implements MonthlyPlanRepository {
