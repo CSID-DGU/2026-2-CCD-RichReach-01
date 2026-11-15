@@ -407,8 +407,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // AUTH-04와 같은 구성: 경고 아이콘, 제목, 이유, 하단 다시 시도 버튼
+      expect(findText('플랜을 만들지 못했어요'), findsOneWidget);
       expect(findText('플랜을 계산하지 못했어요.'), findsOneWidget);
-      await tester.tap(findText('다시 시도'));
+      expect(find.bySemanticsLabel('플랜 생성 진행률'), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, '다시 시도'));
       await tester.pumpAndSettle();
       expect(plan.calls, 2);
     });

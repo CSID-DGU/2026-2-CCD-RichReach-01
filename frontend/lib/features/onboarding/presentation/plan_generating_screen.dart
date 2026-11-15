@@ -11,12 +11,12 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
+import '../../../core/widgets/word_wrap_text.dart';
 import '../../../core/network/api_exception.dart';
 import '../application/budget_plan_providers.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan.dart';
 import 'connection_widgets.dart';
-import 'load_failure_view.dart';
 
 /// ONB-07A 최초 플랜 생성 중 화면. 생성 중에는 뒤로가기를 막고, 끝나면 생성 완료(ONB-07B)로 이동한다.
 class PlanGeneratingScreen extends ConsumerStatefulWidget {
@@ -88,6 +88,8 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
         header: const StepHeader(step: 5, showBack: false),
         body: alreadyCreated
             ? const _AlreadyCreated()
+            : error != null
+            ? _GenerationFailure(message: _errorMessage(error))
             : Column(
                 children: [
                   const SizedBox(height: 168),
@@ -97,32 +99,30 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
                     height: 209,
                     excludeFromSemantics: true,
                   ),
-                  if (error != null)
-                    LoadFailureView(
-                      message: _errorMessage(error),
-                      onRetry: () {
-                        _subscription?.cancel();
-                        setState(() => _ratio = 0);
-                        _start();
-                      },
-                    )
-                  else ...[
-                    _ProgressBar(value: progress),
-                    const SizedBox(height: 33),
-                    Text(
-                      '가장 유리한 카드 사용계획을\n만들고 있어요',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.body.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                  _ProgressBar(value: progress),
+                  const SizedBox(height: 33),
+                  Text(
+                    '가장 유리한 카드 사용계획을\n만들고 있어요',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w500,
                     ),
-                  ],
+                  ),
                 ],
               ),
         bottom: alreadyCreated
             ? PrimaryButton(
                 label: '월간 플랜 보기',
                 onPressed: () => context.go(AppRoute.monthlyPlan.path),
+              )
+            : error != null
+            ? PrimaryButton(
+                label: '다시 시도',
+                onPressed: () {
+                  _subscription?.cancel();
+                  setState(() => _ratio = 0);
+                  _start();
+                },
               )
             : null,
       ),
@@ -155,6 +155,46 @@ class _AlreadyCreated extends StatelessWidget {
   }
 }
 
+/// 플랜을 만들지 못했을 때의 안내. 아이콘·글자 크기·버튼 구성은 AUTH-04(세션 만료)와 같다.
+class _GenerationFailure extends StatelessWidget {
+  const _GenerationFailure({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 168),
+        Center(
+          child: Image.asset(
+            AppAssets.connectionWarningExclamation,
+            width: 171,
+            height: 153,
+            excludeFromSemantics: true,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Semantics(
+          header: true,
+          child: Text(
+            '플랜을 만들지 못했어요',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.title.copyWith(fontSize: 20),
+          ),
+        ),
+        const SizedBox(height: 15),
+        WordWrapText(
+          message,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.caption.copyWith(fontSize: 13),
+        ),
+      ],
+    );
+  }
+}
+
 bool _isAlreadyCreated(Object error) =>
     error is ApiException && error.code == ApiPlanRepository.alreadyExistsCode;
 
@@ -166,7 +206,7 @@ String _errorMessage(Object error) => switch (error) {
   ApiException(code: ApiPlanRepository.noAnalysisCardCode) =>
     '분석할 카드를 선택해야 플랜을 만들 수 있어요.',
   ApiException(:final userMessage) => userMessage,
-  _ => '플랜을 만들지 못했어요.',
+  _ => '잠시 후 다시 시도해 주세요.',
 };
 
 /// 연보라 바탕 위에 보라로 채워지는 진행 막대 (222×9).
