@@ -733,6 +733,15 @@
             }
           },
           {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "description": "월 조회(yyyy-MM). 있으면 period보다 우선하고 그달 1일~말일(이번 달은 오늘까지)을 집계한다. 형식 오류와 아직 오지 않은 월은 400 COMMON-400",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "cardScope",
             "in": "query",
             "required": false,
@@ -1851,6 +1860,10 @@
         "properties": {
           "period": {
             "type": "string"
+          },
+          "month": {
+            "type": "string",
+            "description": "월 조회의 월(yyyy-MM). 기간 조회면 null"
           },
           "from": {
             "type": "string",

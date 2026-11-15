@@ -41,9 +41,15 @@ final class SummaryAssembler {
 
     }
 
+    /** 기간 조회용. 기간 조회의 {@link SummaryRange}를 만들어서 넘긴다. */
     static TransactionSummaryResponse assemble(SummaryPeriod period, LocalDate from, LocalDate to,
                                                LocalDateTime earliestApprovedAt, List<CategoryTotal> totals,
                                                List<CardSummary> cards) {
+        return assemble(new SummaryRange(period.code(), null, from, to), earliestApprovedAt, totals, cards);
+    }
+
+    static TransactionSummaryResponse assemble(SummaryRange range, LocalDateTime earliestApprovedAt,
+                                               List<CategoryTotal> totals, List<CardSummary> cards) {
         Map<SpendingCategory, Accumulator> byCategory = new EnumMap<>(SpendingCategory.class);
         for (SpendingCategory category : SpendingCategory.values()) {
             byCategory.put(category, new Accumulator());
@@ -67,9 +73,9 @@ final class SummaryAssembler {
         }
 
         LocalDate collectedFrom = earliestApprovedAt == null ? null : earliestApprovedAt.toLocalDate();
-        boolean partial = collectedFrom != null && collectedFrom.isAfter(from);
-        return new TransactionSummaryResponse(period.code(), from, to, collectedFrom, partial, totalAmount,
-            canceledAmount, transactionCount, List.copyOf(categories), List.copyOf(cards));
+        boolean partial = collectedFrom != null && collectedFrom.isAfter(range.from());
+        return new TransactionSummaryResponse(range.period(), range.month(), range.from(), range.to(), collectedFrom,
+            partial, totalAmount, canceledAmount, transactionCount, List.copyOf(categories), List.copyOf(cards));
     }
 
     private static double ratio(long amount, long total) {
