@@ -437,19 +437,25 @@ class CardPlanRow extends StatelessWidget {
                   children: [
                     Text(
                       plan.card.name,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodyStrong.copyWith(fontSize: 13),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      plan.overAmount > 0
-                          ? '${formatWon(plan.overAmount)} 초과'
-                          : '${formatWon(plan.remainingAmount)} 남음',
-                      style: AppTextStyles.caption.copyWith(
-                        fontWeight: FontWeight.w500,
-                        height: 1.35,
-                        color: plan.overAmount > 0 ? AppColors.error : null,
+                    // 칸이 좁으면 줄을 바꾸지 않고 글자를 줄여 한 줄에 맞춘다.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        plan.overAmount > 0
+                            ? '${formatWon(plan.overAmount)} 초과'
+                            : '${formatWon(plan.remainingAmount)} 남음',
+                        maxLines: 1,
+                        style: AppTextStyles.caption.copyWith(
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                          color: plan.overAmount > 0 ? AppColors.error : null,
+                        ),
                       ),
                     ),
                   ],

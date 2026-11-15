@@ -63,14 +63,20 @@ void main() {
     expect(findText('0원 남음'), findsNothing);
   });
 
-  testWidgets('긴 카드 이름은 두 줄까지 보여준다', (tester) async {
+  testWidgets('긴 카드 이름은 한 줄로 줄이고, 남은 금액은 글자를 줄여 한 줄에 맞춘다', (tester) async {
     await _pump(
       tester,
-      _plan(target: 221000, used: 0, name: '전남청년 문화복지카드(체크) 아주 긴 이름'),
+      _plan(target: 2210000, used: 0, name: '전남청년 문화복지카드(체크) 아주 긴 이름'),
     );
 
     final name = tester.widget<Text>(findText('전남청년 문화복지카드(체크) 아주 긴 이름'));
-    expect(name.maxLines, 2);
+    expect((name.maxLines, name.overflow), (1, TextOverflow.ellipsis));
+    final remaining = findText('2,210,000원 남음');
+    expect(tester.widget<Text>(remaining).maxLines, 1);
+    expect(
+      find.ancestor(of: remaining, matching: find.byType(FittedBox)),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }
