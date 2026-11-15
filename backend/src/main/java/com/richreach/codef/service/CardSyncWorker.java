@@ -25,7 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * CODEF를 부르는 동안에는 DB 트랜잭션을 열어 두지 않고, 결과를 기록할 때만 짧게 연다.
  * 작업을 읽는 단계부터 어떤 오류가 나도 작업이 진행 중으로 남지 않도록 실패로 기록한다.
  *
- * <p>카드 목록을 성공적으로 읽으면 작업 결과를 기록하는 같은 트랜잭션에서 보유카드로 저장한다.
+ * <p>카드 목록을 성공적으로 읽으면 보유카드로 먼저 저장하고, 이어서 승인내역을 수집한 뒤에 작업 결과를 기록한다.
  * 다음 경우에는 <b>보유카드를 건드리지 않는다.</b>
  * <ul>
  *   <li>응답에 있는 카드 수와 읽어낸 카드 수가 다르면 응답 형식이 예상과 다른 것이다. 저장하면 카드가 잘못 사라질 수
@@ -41,9 +41,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 @RequiredArgsConstructor
 public class CardSyncWorker {
 
+    /** 제한 시간 직전까지 수집하다 결과를 기록하지 못하는 일이 없도록 남겨 두는 여유. */
+    private static final java.time.Duration COLLECT_MARGIN = java.time.Duration.ofSeconds(15);
+
     private final CodefSyncJobRepository jobs;
     private final CodefCardClient cards;
     private final OwnedCardService ownedCards;
+    private final ApprovalCollector collector;
     private final TransactionTemplate transaction;
     private final CodefSyncProperties properties;
     private final Clock clock;
@@ -52,6 +56,7 @@ public class CardSyncWorker {
         Consumer<CodefSyncJob> update;
         boolean synced = false;
         CardsToSave toSave = null;
+        CollectTarget target = null;
         try {
             // 작업을 읽는 일과 connectedId 복호화도 try 안에서 한다. 여기서 실패해도 작업이 진행 중으로 남지 않게 하려는 것이다.
             CodefSyncJob job = jobs.findWithAccountById(jobId).orElse(null);
@@ -75,6 +80,8 @@ public class CardSyncWorker {
                 update = j -> j.markFetched(result.cardCount(), result.code(), now());
                 synced = true;
                 if (!result.cards().isEmpty()) {
+                    target = new CollectTarget(CardCompany.fromOrganizationCode(account.getOrganization()), connectedId,
+                        account.getOrganization(), job.getStartedAt().plus(properties.timeout()).minus(COLLECT_MARGIN));
                     toSave = new CardsToSave(account.getConnection().getUser().getId(), account.getId(),
                         CardCompany.fromOrganizationCode(account.getOrganization()), result.cards().stream()
                             .map(card -> new CollectedCard(card.name(), card.number(), card.type())).toList());
@@ -90,7 +97,16 @@ public class CardSyncWorker {
         }
 
         try {
-            record(jobId, update, synced, toSave);
+            ApprovalCollector.Result collection = null;
+            if (toSave != null) {
+                // 카드를 먼저 저장해야 승인내역을 카드에 짝지을 수 있다. 작업은 수집이 끝날 때까지 진행 중으로 둔다.
+                if (!saveCards(jobId, toSave)) {
+                    return;
+                }
+                collection = collector.collect(toSave.userId(), target.company(), target.connectedId(),
+                    target.organization(), target.deadline());
+            }
+            record(jobId, update, synced, collection);
         } catch (RuntimeException e) {
             // 보유카드를 저장하다 실패하면 같은 트랜잭션의 작업 결과도 함께 되돌려진다. 진행 중으로 남지 않게 실패로 다시 기록한다.
             log.error("카드 동기화 결과를 저장하지 못했습니다: jobId={}, type={}", jobId, e.getClass().getSimpleName());
@@ -103,7 +119,21 @@ public class CardSyncWorker {
         record(jobId, job -> job.markFailed(SyncFailure.RESULT_ERROR, true, now()), false, null);
     }
 
-    private void record(long jobId, Consumer<CodefSyncJob> update, boolean synced, CardsToSave toSave) {
+    /** 보유카드를 저장한다. 이미 끝났거나 제한 시간이 지난 작업이면 저장하지 않고 false를 돌려준다. */
+    private boolean saveCards(long jobId, CardsToSave toSave) {
+        Boolean saved = transaction.execute(status -> jobs.findWithAccountById(jobId).map(job -> {
+            if (!job.isInProgress() || job.isTimedOut(properties.timeout(), now())) {
+                log.warn("이미 끝났거나 제한 시간이 지난 작업이라 결과를 반영하지 않습니다: jobId={}", jobId);
+                return false;
+            }
+            ownedCards.saveSynced(toSave.userId(), toSave.orgAccountId(), toSave.company(), toSave.cards());
+            return true;
+        }).orElse(false));
+        return Boolean.TRUE.equals(saved);
+    }
+
+    private void record(long jobId, Consumer<CodefSyncJob> update, boolean synced,
+                        ApprovalCollector.Result collection) {
         // 카드사 계정을 한 번에 읽는 조회를 써서, 결과를 기록할 때 계정을 따로 읽는 쿼리가 더 나가지 않게 한다.
         transaction.executeWithoutResult(status -> jobs.findWithAccountById(jobId).ifPresent(job -> {
             if (!job.isInProgress() || job.isTimedOut(properties.timeout(), now())) {
@@ -111,20 +141,32 @@ public class CardSyncWorker {
                 return;
             }
             update.accept(job);
+            if (collection != null) {
+                job.recordTransactions(collection.status(), collection.saved(), collection.unmatched(),
+                    collection.from(), collection.to());
+            }
             CodefOrgAccount account = job.getOrgAccount();
             if (synced) {
                 account.markSynced(now());
             } else {
                 account.recordSyncError(job.getResultCode());
             }
-            if (toSave != null) {
-                ownedCards.saveSynced(toSave.userId(), toSave.orgAccountId(), toSave.company(), toSave.cards());
-            }
         }));
     }
 
     private LocalDateTime now() {
         return Times.nowSeconds(clock);
+    }
+
+    /** 승인내역을 수집할 대상. connectedId가 들어 있어서 로그에 남기지 않는다. */
+    private record CollectTarget(CardCompany company, String connectedId, String organization,
+                                 LocalDateTime deadline) {
+
+        @Override
+        public String toString() {
+            return "CollectTarget[company=" + company + "]";
+        }
+
     }
 
     /** 성공한 동기화의 카드 목록. 작업 결과를 기록하는 트랜잭션에서 보유카드로 저장한다. */
