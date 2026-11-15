@@ -1,9 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
+import 'package:frontend/features/home/data/spending_repository.dart';
+import 'package:frontend/features/home/domain/spending_transaction.dart';
 
 import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
+
+/// 가짜 데이터에서 혜택만 뺀 저장소 (서버가 혜택을 주지 않을 때, 연동 문서 Q16).
+class _NoBenefitSpending implements SpendingRepository {
+  const _NoBenefitSpending();
+
+  @override
+  Future<SpendingHistory> fetchHistory(DateTime month) async {
+    final history = await const FakeSpendingRepository(delay: Duration.zero)
+        .fetchHistory(month);
+    return SpendingHistory(
+      month: history.month,
+      totalAmount: history.totalAmount,
+      count: history.count,
+      totalBenefit: null,
+      synced: history.synced,
+      transactions: [
+        for (final t in history.transactions)
+          SpendingTransaction(
+            card: t.card,
+            merchantName: t.merchantName,
+            category: t.category,
+            amount: t.amount,
+            benefit: 0,
+            approvedAt: t.approvedAt,
+          ),
+      ],
+    );
+  }
+}
 
 Future<void> _tapChip(WidgetTester tester, String label) async {
   await tester.tap(findText(label));
@@ -29,6 +60,19 @@ void main() {
     for (final name in ['GS25', '스타벅스', '카카오T', '아웃백', '올리브영']) {
       expect(findText(name), findsOneWidget, reason: name);
     }
+  });
+
+  testWidgets('혜택 정보가 없으면 받은 혜택과 거래별 혜택을 빼고 보여준다', (tester) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.transactionHistory,
+      spending: const _NoBenefitSpending(),
+    );
+
+    expect(findText('486,000원'), findsOneWidget);
+    expect(find.textContaining('받은 혜택'), findsNothing);
+    expect(find.textContaining('+420원'), findsNothing);
+    expect(findText('GS25'), findsOneWidget);
   });
 
   testWidgets('HOME-04 카드별은 가장 최근 결제한 카드의 거래만 보여주고, 카드를 바꿀 수 있다', (

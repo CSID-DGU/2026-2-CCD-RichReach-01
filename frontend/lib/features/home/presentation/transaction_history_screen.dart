@@ -186,14 +186,15 @@ class _SummaryCard extends StatelessWidget {
                   style: small.copyWith(fontSize: 11),
                 ),
               ),
-              Text(
-                '받은 혜택 +${formatWon(history.totalBenefit)}',
-                style: small.copyWith(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFFCBC2FF),
+              if (history.totalBenefit case final benefit?)
+                Text(
+                  '받은 혜택 +${formatWon(benefit)}',
+                  style: small.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFCBC2FF),
+                  ),
                 ),
-              ),
             ],
           ),
         ],

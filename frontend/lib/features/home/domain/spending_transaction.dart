@@ -42,8 +42,8 @@ class SpendingHistory {
   final int totalAmount;
   final int count;
 
-  /// 원 단위로 받은 혜택 합계
-  final int totalBenefit;
+  /// 원 단위로 받은 혜택 합계. 서버가 아직 주지 않으면 null이고 화면에서 뺀다 (연동 문서 Q16).
+  final int? totalBenefit;
 
   /// 카드사 데이터 동기화를 마쳤는지 ("동기화 완료")
   final bool synced;
