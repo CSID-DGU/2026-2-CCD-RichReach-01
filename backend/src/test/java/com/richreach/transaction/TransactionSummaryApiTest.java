@@ -568,6 +568,17 @@ class TransactionSummaryApiTest {
     }
 
     @Test
+    @DisplayName("오류 확인 순서는 기간 값(month 또는 period)이 먼저이고 cardScope가 그다음이다")
+    void periodErrorComesBeforeScopeError() throws Exception {
+        summary(accessToken, "?period=abc&cardScope=MINE").andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("TRANS-002"));
+        summary(accessToken, "?cardScope=MINE").andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("TRANS-002"));
+        summary(accessToken, "?month=" + thisMonth() + "&cardScope=MINE").andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COMMON-400"));
+    }
+
+    @Test
     @DisplayName("기간 조회 응답은 month가 null이다")
     void periodResponseHasNoMonth() throws Exception {
         summary("1M").andExpect(status().isOk())
