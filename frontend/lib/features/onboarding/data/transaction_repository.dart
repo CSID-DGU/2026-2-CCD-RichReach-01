@@ -1,6 +1,7 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_config.dart';
 import '../domain/card_company.dart';
+import '../domain/owned_card.dart';
 import '../domain/transaction.dart';
 import 'card_repository.dart';
 
@@ -139,7 +140,7 @@ class _SummaryCard {
   static _SummaryCard fromJson(Map json) => _SummaryCard(
     id: '${json['cardId']}',
     company: _companies[json['cardCompany']],
-    name: json['cardName'] as String? ?? '',
+    name: cardDisplayName(json['cardName'] as String? ?? ''),
     selected: json['selected'] as bool? ?? false,
     transactionCount: json['transactionCount'] as int,
   );

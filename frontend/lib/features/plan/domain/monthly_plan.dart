@@ -21,6 +21,10 @@ class CardPlan {
   int get remainingAmount =>
       usedAmount >= targetAmount ? 0 : targetAmount - usedAmount;
 
+  /// 목표보다 넘게 쓴 금액 (넘지 않았으면 0)
+  int get overAmount =>
+      usedAmount > targetAmount ? usedAmount - targetAmount : 0;
+
   /// 목표 금액 대비 사용률 (0 이상, 넘게 썼으면 1보다 크다)
   double get usageRatio => targetAmount == 0 ? 0 : usedAmount / targetAmount;
 }
