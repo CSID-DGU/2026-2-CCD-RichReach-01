@@ -36,9 +36,11 @@ abstract interface class MonthlyPlanRepository {
 /// - 플랜: `GET /api/plans?month=` → 예상 혜택, 카드별 목표 금액. 소비예산은 목표 금액의 합이다.
 /// - 업종별 권장 카드: `GET /api/plans/{planId}/categories`
 /// - 카드 이미지·종류·번호: `GET /api/cards`에서 `cardId`로 찾는다.
+/// - 사용 금액: `GET /api/transactions/summary?month=` (그달 1일~말일, 이번 달은 오늘까지)
+///   카드별 금액(`cards[].amount`)을 `cardId`로 맞추고, 합계는 플랜에 든 카드의 금액 합이다.
+///   (`totalAmount`는 지금 분석 대상으로 고른 카드만 세서, 선택을 바꾸면 플랜 카드와 어긋날 수 있다.)
 ///
 /// 아직 API가 없는 부분은 화면을 그대로 두고 아래처럼 채운다.
-/// - 이번 달 사용 금액: 0원 (거래 요약의 월 조회가 생기면 채운다)
 /// - 플랜 변경 안내: 서버에 변경 내역이 없어 보여줄 변경이 없다.
 /// - 소비예산 수정: 서버에 저장하지 않고 이 객체 안에서만 비율대로 다시 나눈다. ([FakeMonthlyPlanRepository.rescale])
 /// - 카드별·업종별 상세(PLAN-02·03)의 실적·한도·혜택: 가짜 기본값을 쓴다.
@@ -76,12 +78,17 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
       if (error.code == planNotFoundCode) return null;
       rethrow;
     }
-    final (categories, cards) = await (
+    final (categories, cards, spent) = await (
       _api.get(
         ApiPaths.planCategories(plan.planId),
         parse: _CategoryJson.listFromJson,
       ),
       _cards.fetchCards(const []),
+      _api.get(
+        ApiPaths.transactionSummary,
+        query: {'month': _monthCode(month)},
+        parse: _SpentJson.fromJson,
+      ),
     ).wait;
 
     // 보유카드 목록에 없는 카드(삭제된 카드 등)는 이미지·카드사를 알 수 없어 화면에서 뺀다.
@@ -89,13 +96,19 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
     return MonthlyPlan(
       month: _key(month),
       budget: plan.targets.fold(0, (sum, t) => sum + t.amount),
-      // TODO(Q15): 거래 요약의 월 조회가 생기면 이번 달 사용 금액을 채운다.
-      spentAmount: 0,
+      spentAmount: plan.targets.fold(
+        0,
+        (sum, t) => sum + (spent.byCard[t.cardId] ?? 0),
+      ),
       expectedBenefit: plan.expectedBenefit,
       cardPlans: [
         for (final target in plan.targets)
           if (cardsById[target.cardId] case final card?)
-            CardPlan(card: card, targetAmount: target.amount, usedAmount: 0),
+            CardPlan(
+              card: card,
+              targetAmount: target.amount,
+              usedAmount: spent.byCard[target.cardId] ?? 0,
+            ),
       ],
       categoryPlans: {
         for (final category in categories)
@@ -152,6 +165,24 @@ typedef _CardAmountJson = ({String cardId, int amount});
 _CardAmountJson _cardAmount(Object? item) {
   final json = item as Map;
   return (cardId: '${json['cardId']}', amount: json['targetAmount'] as int);
+}
+
+/// `GET /api/transactions/summary?month=` 응답 중 사용 금액.
+class _SpentJson {
+  const _SpentJson({required this.byCard});
+
+  /// 카드 ID별 그달 사용 금액 (취소 반영). 분석 대상이 아닌 카드도 들어 있다.
+  final Map<String, int> byCard;
+
+  static _SpentJson fromJson(Object? data) {
+    final json = data as Map;
+    return _SpentJson(
+      byCard: {
+        for (final item in json['cards'] as List? ?? const [])
+          '${(item as Map)['cardId']}': item['amount'] as int? ?? 0,
+      },
+    );
+  }
 }
 
 /// `GET /api/plans` 응답.
