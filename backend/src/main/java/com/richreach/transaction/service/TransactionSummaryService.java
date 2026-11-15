@@ -22,7 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 사용자의 기간별 소비 요약. 오늘을 끝으로 1·3·6개월 동안의 합계와 화면용 6개 업종별 소비, 카드별 소비를 계산한다.
+ * 사용자의 기간별·월별 소비 요약. 오늘을 끝으로 1·3·6개월 동안(또는 한 달 동안)의 합계와 화면용 11개 업종별 소비,
+ * 카드별 소비를 계산한다.
  *
  * <p>금액은 취소·환불을 뺀 실제 결제 금액이다. 합계와 업종은 카드 범위({@link CardScope})를 따른다. 기본은 분석 대상으로
  * 고른 카드이고, {@code ALL}이면 사용자의 모든 거래다. 카드별 소비는 범위와 상관없이 활성 카드 전체를 보여준다.
@@ -40,13 +41,25 @@ public class TransactionSummaryService {
     private final OwnedCardQueryService ownedCards;
     private final Clock clock;
 
+    /** 오늘을 끝으로 1·3·6개월 동안의 요약. */
     @Transactional(readOnly = true)
     public TransactionSummaryResponse summarize(long userId, SummaryPeriod period, CardScope scope) {
-        LocalDate to = LocalDate.now(clock);
-        LocalDate from = to.minusMonths(period.months());
-        // 기간 끝은 오늘이 끝나는 시각(내일 0시, 미포함)까지 본다.
-        LocalDateTime start = from.atStartOfDay();
-        LocalDateTime end = to.plusDays(1).atStartOfDay();
+        return summarize(userId, SummaryRange.ofPeriod(period, LocalDate.now(clock)), scope);
+    }
+
+    /**
+     * 한 달(달력 기준)의 요약. 이번 달은 1일부터 오늘까지이고, 지난 달은 말일까지다. 아직 오지 않은 월이면 400
+     * ({@code COMMON-400})이다. 합계, 업종, 카드별 금액이 모두 같은 기간이다.
+     */
+    @Transactional(readOnly = true)
+    public TransactionSummaryResponse summarize(long userId, YearMonth month, CardScope scope) {
+        return summarize(userId, SummaryRange.ofMonth(month, LocalDate.now(clock)), scope);
+    }
+
+    private TransactionSummaryResponse summarize(long userId, SummaryRange range, CardScope scope) {
+        // 기간 끝은 마지막 날이 끝나는 시각(다음 날 0시, 미포함)까지 본다.
+        LocalDateTime start = range.from().atStartOfDay();
+        LocalDateTime end = range.to().plusDays(1).atStartOfDay();
 
         List<OwnedCardResponse> cards = ownedCards.list(userId);
         boolean allCards = scope == CardScope.ALL;
@@ -74,7 +87,7 @@ public class TransactionSummaryService {
                 total == null ? 0 : valueOf(total.transactionCount()));
         }).toList();
 
-        return SummaryAssembler.assemble(period, from, to, earliest, totals, cardSummaries);
+        return SummaryAssembler.assemble(range, earliest, totals, cardSummaries);
     }
 
     /**

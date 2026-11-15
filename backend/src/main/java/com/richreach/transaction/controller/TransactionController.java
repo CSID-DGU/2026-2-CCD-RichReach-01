@@ -8,6 +8,7 @@ import com.richreach.global.response.PageResponse;
 import com.richreach.global.security.AuthenticatedUser;
 import com.richreach.transaction.dto.CardScope;
 import com.richreach.transaction.dto.ChangeCategoryRequest;
+import com.richreach.transaction.dto.SummaryMonth;
 import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionResponse;
 import com.richreach.transaction.dto.TransactionSummaryResponse;
@@ -42,9 +43,13 @@ public class TransactionController {
     private final TransactionCategoryService categoryService;
 
     /**
-     * 기간별 소비 요약. {@code period}는 {@code 1M}, {@code 3M}, {@code 6M} 중 하나이고, 없거나 다른 값이면
+     * 기간별 또는 월별 소비 요약. {@code period}는 {@code 1M}, {@code 3M}, {@code 6M} 중 하나이고, 없거나 다른 값이면
      * 400({@code TRANS-002})이다. 금액은 취소·환불을 뺀 값이며, 수집된 거래가 요청한 기간보다 짧으면 {@code partial=true}다.
      * 거래가 없으면 합계와 11개 업종이 모두 0인 응답이다.
+     *
+     * <p>{@code month=yyyy-MM}을 보내면 그달 1일부터 말일까지(이번 달은 오늘까지) 요약한다. {@code month}가 있으면
+     * {@code period}는 무시하고, 응답의 {@code period}는 null이며 {@code month}가 채워진다. 형식이 틀리거나 아직 오지 않은
+     * 월이면 400({@code COMMON-400})이다. 합계, 업종, 카드별 금액이 모두 같은 기간이다.
      *
      * <p>{@code cardScope}는 합계와 업종이 어느 카드의 거래를 볼지다. {@code SELECTED}(기본)는 분석 대상으로 고른 카드,
      * {@code ALL}은 모든 거래이고, 다른 값이면 400({@code COMMON-400})이다. 응답의 {@code cards}는 범위와 상관없이
@@ -53,7 +58,12 @@ public class TransactionController {
     @GetMapping("/summary")
     public ApiResponse<TransactionSummaryResponse> summary(@AuthenticationPrincipal AuthenticatedUser user,
                                                            @RequestParam(required = false) String period,
+                                                           @RequestParam(required = false) String month,
                                                            @RequestParam(required = false) String cardScope) {
+        if (month != null) {
+            return ApiResponse.ok(summaryService.summarize(user.userId(), SummaryMonth.parse(month),
+                parseScope(cardScope)));
+        }
         SummaryPeriod summaryPeriod = SummaryPeriod.fromCode(period)
             .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PERIOD));
         return ApiResponse.ok(summaryService.summarize(user.userId(), summaryPeriod, parseScope(cardScope)));

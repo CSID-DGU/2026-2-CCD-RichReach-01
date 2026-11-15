@@ -6,11 +6,12 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 기간별 거래 요약. 기간은 승인일 기준이고, 금액은 취소·환불을 뺀 실제 결제 금액(원)이다.
+ * 기간별 또는 월별 거래 요약. 기간은 승인일 기준이고, 금액은 취소·환불을 뺀 실제 결제 금액(원)이다.
  *
- * @param period           조회 기간 (1M, 3M, 6M)
- * @param from             기간 시작일 (포함)
- * @param to               기간 종료일 (포함, 오늘)
+ * @param period           기간 조회의 기간 (1M, 3M, 6M). 월 조회({@code month})면 null
+ * @param month            월 조회의 월({@code yyyy-MM}). 기간 조회({@code period})면 null
+ * @param from             기간 시작일 (포함). 월 조회면 그달 1일
+ * @param to               기간 종료일 (포함). 기간 조회는 오늘, 월 조회는 말일이고 이번 달이면 오늘
  * @param collectedFrom    수집된 거래 중 가장 오래된 거래의 일자. 수집된 거래가 없으면 null
  * @param partial          수집된 거래가 요청한 기간을 다 채우지 못했는지. 수집된 가장 오래된 거래가 기간 시작일보다 늦으면 true다.
  *                         (소비가 없었던 기간과 수집하지 못한 기간을 구분하지 못하므로 참고용이다.)
@@ -25,6 +26,7 @@ import java.util.List;
  */
 public record TransactionSummaryResponse(
     String period,
+    String month,
     LocalDate from,
     LocalDate to,
     LocalDate collectedFrom,
