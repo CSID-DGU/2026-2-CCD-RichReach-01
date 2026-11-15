@@ -160,9 +160,12 @@ class ApprovalCollectorTest {
     @DisplayName("카드 번호에서 숫자 마지막 4자리를 뽑는다")
     void lastFour() {
         assertThat(ApprovalCollector.lastFour("1111-22**-****-4001")).isEqualTo("4001");
+        assertThat(ApprovalCollector.lastFour("************4001")).isEqualTo("4001");
         assertThat(ApprovalCollector.lastFour("****")).isEmpty();
         assertThat(ApprovalCollector.lastFour(null)).isEmpty();
-        assertThat(ApprovalCollector.lastFour("12")).isEqualTo("12");
+        assertThat(ApprovalCollector.lastFour("12")).isEmpty();
+        // 끝자리가 가려진 번호에서 앞쪽 숫자를 끝 4자리로 읽으면 다른 카드와 잘못 짝지어진다.
+        assertThat(ApprovalCollector.lastFour("1234-56**-****-****")).isEmpty();
     }
 
 }

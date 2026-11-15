@@ -4,6 +4,7 @@ import com.richreach.card.dto.CollectedCard;
 import com.richreach.card.service.OwnedCardService;
 import com.richreach.codef.client.CodefCardClient;
 import com.richreach.codef.client.CodefCardClient.CardListResult;
+import com.richreach.codef.config.CodefProperties;
 import com.richreach.codef.config.CodefSyncProperties;
 import com.richreach.codef.entity.CardCompany;
 import com.richreach.codef.entity.CodefOrgAccount;
@@ -41,7 +42,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @RequiredArgsConstructor
 public class CardSyncWorker {
 
-    /** 제한 시간 직전까지 수집하다 결과를 기록하지 못하는 일이 없도록 남겨 두는 여유. */
+    /** 마지막 호출이 끝난 뒤 저장과 결과 기록에 쓰려고 남겨 두는 여유. */
     private static final java.time.Duration COLLECT_MARGIN = java.time.Duration.ofSeconds(15);
 
     private final CodefSyncJobRepository jobs;
@@ -50,6 +51,7 @@ public class CardSyncWorker {
     private final ApprovalCollector collector;
     private final TransactionTemplate transaction;
     private final CodefSyncProperties properties;
+    private final CodefProperties codefProperties;
     private final Clock clock;
 
     public void run(long jobId) {
@@ -81,7 +83,7 @@ public class CardSyncWorker {
                 synced = true;
                 if (!result.cards().isEmpty()) {
                     target = new CollectTarget(CardCompany.fromOrganizationCode(account.getOrganization()), connectedId,
-                        account.getOrganization(), job.getStartedAt().plus(properties.timeout()).minus(COLLECT_MARGIN));
+                        account.getOrganization(), collectDeadline(job));
                     toSave = new CardsToSave(account.getConnection().getUser().getId(), account.getId(),
                         CardCompany.fromOrganizationCode(account.getOrganization()), result.cards().stream()
                             .map(card -> new CollectedCard(card.name(), card.number(), card.type())).toList());
@@ -152,6 +154,15 @@ public class CardSyncWorker {
                 account.recordSyncError(job.getResultCode());
             }
         }));
+    }
+
+    /**
+     * 이 시각이 지나면 승인내역을 더 부르지 않는다. 마지막 호출이 응답을 최대로 기다려도({@code api-read-timeout}) 작업 제한 시간
+     * 안에 끝나서 결과를 기록할 수 있도록, 제한 시각에서 호출 대기 시간과 여유를 뺀다.
+     */
+    private LocalDateTime collectDeadline(CodefSyncJob job) {
+        return job.getStartedAt().plus(properties.timeout()).minus(codefProperties.apiReadTimeout())
+            .minus(COLLECT_MARGIN);
     }
 
     private LocalDateTime now() {

@@ -146,10 +146,17 @@ public class ApprovalCollector {
         return new Result(status, saved, unmatched, collectedFrom, collectedTo);
     }
 
-    /** 카드 번호의 마지막 4자리 숫자. 가려진 별표와 구분자는 무시하고 숫자가 4자리보다 적으면 있는 만큼, 없으면 빈 문자열이다. */
+    /**
+     * 카드 번호의 끝 4자리. 하이픈과 공백만 없애고, 마지막 네 글자가 모두 숫자일 때만 돌려준다. 끝자리가 가려져 있거나
+     * 4자리가 안 되면 빈 문자열이라 어떤 카드와도 짝지지 않는다. (가려진 별표를 지우면 앞쪽 숫자가 끝 4자리로 잘못 읽힌다)
+     */
     static String lastFour(String number) {
-        String digits = number == null ? "" : number.replaceAll("\\D", "");
-        return digits.length() <= 4 ? digits : digits.substring(digits.length() - 4);
+        String compact = number == null ? "" : number.replaceAll("[\s-]", "");
+        if (compact.length() < 4) {
+            return "";
+        }
+        String tail = compact.substring(compact.length() - 4);
+        return tail.chars().allMatch(Character::isDigit) ? tail : "";
     }
 
 }
