@@ -28,6 +28,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.List;
@@ -480,6 +481,178 @@ class TransactionSummaryApiTest {
                 .andExpect(jsonPath("$.data.cards[2].amount").value(0))
                 .andExpect(jsonPath("$.data.cards[2].transactionCount").value(0));
         }
+    }
+
+    // ---- 월 조회 (month=yyyy-MM) ----
+
+    private YearMonth thisMonth() {
+        return YearMonth.from(today);
+    }
+
+    @Test
+    @DisplayName("month는 이번 달 1일부터 오늘까지의 거래만 합치고, 지난 달·오늘 이후 거래는 제외한다")
+    void monthSumsFromFirstDayToToday() throws Exception {
+        YearMonth month = thisMonth();
+        save(month.atDay(1).atStartOfDay(), 100, "CAFE");                              // 1일 0시: 포함
+        save(today.atTime(23, 59, 59), 200, "CAFE");                                   // 오늘 마지막 시각: 포함
+        save(month.minusMonths(1).atEndOfMonth().atTime(23, 59, 59), 400, "CAFE");    // 지난 달 말일: 제외
+        save(today.plusDays(1).atTime(9, 0), 800, "CAFE");                             // 내일: 제외
+
+        summary(accessToken, "?month=" + month).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.month").value(month.toString()))
+            .andExpect(jsonPath("$.data.period").value(nullValue()))
+            .andExpect(jsonPath("$.data.from").value(month.atDay(1).toString()))
+            .andExpect(jsonPath("$.data.to").value(today.toString()))
+            .andExpect(jsonPath("$.data.totalAmount").value(300))
+            .andExpect(jsonPath("$.data.transactionCount").value(2))
+            .andExpect(jsonPath("$.data.categories[1].category").value("CAFE"))
+            .andExpect(jsonPath("$.data.categories[1].amount").value(300));
+    }
+
+    @Test
+    @DisplayName("지난 달은 1일부터 말일까지 전부 합치고, 앞뒤 달의 거래는 제외한다")
+    void pastMonthCoversTheWholeMonth() throws Exception {
+        YearMonth month = thisMonth().minusMonths(1);
+        save(month.atDay(1).atStartOfDay(), 100, "DINING");                            // 1일 0시: 포함
+        save(month.atEndOfMonth().atTime(23, 59, 59), 200, "DINING");                  // 말일 마지막 시각: 포함
+        save(month.atDay(1).minusDays(1).atTime(23, 59, 59), 400, "DINING");           // 그 전 달 말일: 제외
+        save(month.plusMonths(1).atDay(1).atStartOfDay(), 800, "DINING");              // 다음 달 1일 0시: 제외
+
+        summary(accessToken, "?month=" + month).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.month").value(month.toString()))
+            .andExpect(jsonPath("$.data.from").value(month.atDay(1).toString()))
+            .andExpect(jsonPath("$.data.to").value(month.atEndOfMonth().toString()))
+            .andExpect(jsonPath("$.data.totalAmount").value(300))
+            .andExpect(jsonPath("$.data.transactionCount").value(2));
+    }
+
+    @Test
+    @DisplayName("month의 앞뒤 공백은 무시하고, 응답 month는 표준 형식이다")
+    void monthValueIsNormalized() throws Exception {
+        save(thisMonth().atDay(1).atStartOfDay(), 100, "CAFE");
+
+        summary(accessToken, "?month= " + thisMonth() + " ").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.month").value(thisMonth().toString()));
+    }
+
+    @Test
+    @DisplayName("아직 오지 않은 월은 400 COMMON-400이다")
+    void futureMonthIsRejected() throws Exception {
+        for (YearMonth month : new YearMonth[] {thisMonth().plusMonths(1), thisMonth().plusYears(1)}) {
+            summary(accessToken, "?month=" + month).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"));
+        }
+    }
+
+    @Test
+    @DisplayName("month 형식이 틀리거나 비어 있으면 400 COMMON-400이다")
+    void invalidMonthFormat() throws Exception {
+        for (String query : new String[] {"?month=", "?month=2026-13", "?month=2026-00", "?month=202611",
+            "?month=2026-1", "?month=abc", "?month=2026-11-01", "?month=%2B10000-01", "?period=1M&month="}) {
+            summary(accessToken, query).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"));
+        }
+    }
+
+    @Test
+    @DisplayName("month와 period를 같이 보내면 month가 우선이고 period는 무시한다 (잘못된 period도 오류가 아니다)")
+    void monthTakesPrecedenceOverPeriod() throws Exception {
+        save(thisMonth().atDay(1).atStartOfDay(), 100, "CAFE");
+
+        for (String period : new String[] {"1M", "6M", "abc"}) {
+            summary(accessToken, "?period=" + period + "&month=" + thisMonth()).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.month").value(thisMonth().toString()))
+                .andExpect(jsonPath("$.data.period").value(nullValue()))
+                .andExpect(jsonPath("$.data.totalAmount").value(100));
+        }
+    }
+
+    @Test
+    @DisplayName("기간 조회 응답은 month가 null이다")
+    void periodResponseHasNoMonth() throws Exception {
+        summary("1M").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.period").value("1M"))
+            .andExpect(jsonPath("$.data.month").value(nullValue()));
+    }
+
+    @Test
+    @DisplayName("취소·환불을 뺀 금액으로 월 합계를 내고, 전액 취소는 거래 수에서 뺀다")
+    void monthReflectsCancellations() throws Exception {
+        YearMonth month = thisMonth();
+        save(user, card, month.atDay(1).atTime(9, 0), 50_000, 20_000, "DINING");   // 실제 30,000
+        save(user, card, month.atDay(1).atTime(10, 0), 70_000, 70_000, "SHOPPING"); // 전액 취소
+
+        summary(accessToken, "?month=" + month).andExpect(jsonPath("$.data.totalAmount").value(30_000))
+            .andExpect(jsonPath("$.data.transactionCount").value(1))
+            .andExpect(jsonPath("$.data.canceledAmount").value(90_000));
+    }
+
+    @Test
+    @DisplayName("월 조회에서도 cards는 활성 카드 전체의 그달 금액이고, 합계는 cardScope를 따른다")
+    void monthCardsAndScope() throws Exception {
+        YearMonth month = thisMonth();
+        long second = newCardForSameUser("테스트 카드B");
+        jdbc.update("update user_cards set selected = false where id = ?", second);
+        save(user, card, month.atDay(1).atTime(9, 0), 1_000, 0, "CAFE");
+        save(user, second, month.atDay(1).atTime(10, 0), 2_000, 0, "CAFE");
+        save(user, second, month.minusMonths(1).atDay(1).atTime(10, 0), 9_000, 0, "CAFE"); // 지난 달
+
+        summary(accessToken, "?month=" + month).andExpect(jsonPath("$.data.totalAmount").value(1_000))
+            .andExpect(jsonPath("$.data.cards.length()").value(2))
+            .andExpect(jsonPath("$.data.cards[0].cardId").value(card))
+            .andExpect(jsonPath("$.data.cards[0].amount").value(1_000))
+            .andExpect(jsonPath("$.data.cards[1].cardId").value(second))
+            .andExpect(jsonPath("$.data.cards[1].amount").value(2_000))
+            .andExpect(jsonPath("$.data.cards[1].transactionCount").value(1));
+        summary(accessToken, "?month=" + month + "&cardScope=ALL").andExpect(jsonPath("$.data.totalAmount").value(3_000))
+            .andExpect(jsonPath("$.data.transactionCount").value(2));
+    }
+
+    @Test
+    @DisplayName("알 수 없는 cardScope는 월 조회에서도 400 COMMON-400이다")
+    void monthWithInvalidCardScope() throws Exception {
+        summary(accessToken, "?month=" + thisMonth() + "&cardScope=MINE").andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COMMON-400"));
+    }
+
+    @Test
+    @DisplayName("월 조회에서도 수집된 가장 오래된 거래가 월 시작일보다 늦으면 부분 데이터다")
+    void monthPartialData() throws Exception {
+        YearMonth month = thisMonth().minusMonths(1);
+        save(month.atDay(10).atTime(9, 0), 1_000, "CAFE");
+
+        summary(accessToken, "?month=" + month).andExpect(jsonPath("$.data.partial").value(true))
+            .andExpect(jsonPath("$.data.collectedFrom").value(month.atDay(10).toString()));
+    }
+
+    @Test
+    @DisplayName("월 조회에서 거래가 없으면 합계와 11개 업종이 모두 0이다")
+    void monthWithoutTransactions() throws Exception {
+        summary(accessToken, "?month=" + thisMonth()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalAmount").value(0))
+            .andExpect(jsonPath("$.data.transactionCount").value(0))
+            .andExpect(jsonPath("$.data.partial").value(false))
+            .andExpect(jsonPath("$.data.categories.length()").value(11))
+            .andExpect(jsonPath("$.data.cards.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("월 조회에도 다른 사용자의 거래가 섞이지 않는다")
+    void monthIsIsolatedFromOtherUsers() throws Exception {
+        User other = newUser();
+        long otherCard = newCard(other, "남의 카드");
+        save(other, otherCard, thisMonth().atDay(1).atTime(9, 0), 99_000, 0, "SHOPPING");
+        save(thisMonth().atDay(1).atTime(9, 0), 1_000, "CAFE");
+
+        summary(accessToken, "?month=" + thisMonth()).andExpect(jsonPath("$.data.totalAmount").value(1_000))
+            .andExpect(jsonPath("$.data.cards.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("로그인이 필요하다 (월 조회도 토큰이 없으면 401)")
+    void monthRequiresLogin() throws Exception {
+        summary(null, "?month=" + thisMonth()).andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("AUTH-001"));
     }
 
     @Test
