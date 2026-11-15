@@ -8,7 +8,6 @@ import com.richreach.global.response.PageResponse;
 import com.richreach.global.security.AuthenticatedUser;
 import com.richreach.transaction.dto.CardScope;
 import com.richreach.transaction.dto.ChangeCategoryRequest;
-import com.richreach.transaction.dto.SummaryMonth;
 import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionResponse;
 import com.richreach.transaction.dto.TransactionSummaryResponse;
@@ -60,13 +59,7 @@ public class TransactionController {
                                                            @RequestParam(required = false) String period,
                                                            @RequestParam(required = false) String month,
                                                            @RequestParam(required = false) String cardScope) {
-        if (month != null) {
-            return ApiResponse.ok(summaryService.summarize(user.userId(), SummaryMonth.parse(month),
-                parseScope(cardScope)));
-        }
-        SummaryPeriod summaryPeriod = SummaryPeriod.fromCode(period)
-            .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PERIOD));
-        return ApiResponse.ok(summaryService.summarize(user.userId(), summaryPeriod, parseScope(cardScope)));
+        return ApiResponse.ok(summaryService.summarize(user.userId(), period, month, cardScope));
     }
 
     /**
@@ -101,7 +94,7 @@ public class TransactionController {
             .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PERIOD));
         SpendingCategory spendingCategory = category == null ? null : parseCategory(category);
 
-        var filter = new TransactionQueryService.Filter(summaryPeriod, cardId, parseScope(cardScope), spendingCategory,
+        var filter = new TransactionQueryService.Filter(summaryPeriod, cardId, CardScope.parse(cardScope), spendingCategory,
             includeCanceled);
         return ApiResponse.ok(PageResponse.from(queryService.list(user.userId(), filter, page, size)));
     }
@@ -129,16 +122,6 @@ public class TransactionController {
     public ApiResponse<TransactionResponse> resetCategory(@AuthenticationPrincipal AuthenticatedUser user,
                                                           @PathVariable long transactionId) {
         return ApiResponse.ok(categoryService.reset(user.userId(), transactionId));
-    }
-
-    /** 없으면 기본 범위, 알 수 없는 값이면 400이다. */
-    private static CardScope parseScope(String code) {
-        if (code == null) {
-            return CardScope.DEFAULT;
-        }
-        return CardScope.fromCode(code).orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE,
-            "지원하지 않는 카드 범위입니다. " + Arrays.stream(CardScope.values()).map(Enum::name)
-                .collect(Collectors.joining(", ")) + " 중 하나여야 합니다."));
     }
 
     private static SpendingCategory parseCategory(String code) {

@@ -2,7 +2,10 @@ package com.richreach.transaction.service;
 
 import com.richreach.card.dto.OwnedCardResponse;
 import com.richreach.card.service.OwnedCardQueryService;
+import com.richreach.global.exception.BusinessException;
+import com.richreach.global.exception.ErrorCode;
 import com.richreach.transaction.dto.CardScope;
+import com.richreach.transaction.dto.SummaryMonth;
 import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionSummaryResponse;
 import com.richreach.transaction.dto.TransactionSummaryResponse.CardSummary;
@@ -40,6 +43,25 @@ public class TransactionSummaryService {
     private final CardTransactionRepository transactions;
     private final OwnedCardQueryService ownedCards;
     private final Clock clock;
+
+    /**
+     * 요청 값을 그대로 받는 진입점. 어느 기간으로 요약할지의 규칙을 여기서 정한다.
+     * <ul>
+     *   <li>{@code month}가 있으면 월 조회이고 {@code period}는 무시한다. (잘못된 값이어도 오류가 아니다)</li>
+     *   <li>{@code month}가 없으면 {@code period}(1M, 3M, 6M)가 필요하고, 없거나 다른 값이면 400({@code TRANS-002})이다.</li>
+     *   <li>{@code cardScope}는 없으면 기본 범위이고, 알 수 없는 값이면 400({@code COMMON-400})이다. 기간 값을 먼저 확인한다.</li>
+     * </ul>
+     */
+    @Transactional(readOnly = true)
+    public TransactionSummaryResponse summarize(long userId, String period, String month, String cardScope) {
+        if (month != null) {
+            YearMonth parsedMonth = SummaryMonth.parse(month);
+            return summarize(userId, parsedMonth, CardScope.parse(cardScope));
+        }
+        SummaryPeriod parsedPeriod = SummaryPeriod.fromCode(period)
+            .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PERIOD));
+        return summarize(userId, parsedPeriod, CardScope.parse(cardScope));
+    }
 
     /** 오늘을 끝으로 1·3·6개월 동안의 요약. */
     @Transactional(readOnly = true)
