@@ -44,6 +44,11 @@ cp .env.example .env          # PowerShell: Copy-Item .env.example .env
 `DATA_ENCRYPTION_KEY`는 비어 있으면 앱이 시작되지 않는다. 로컬 DB 전용이라 각자 달라도 되고, `openssl rand -base64 32`로 만든다.
 `JWT_SECRET`은 비워도 실행된다. (임시 키로 시작하고 경고가 나오며, 앱을 다시 켜면 기존 로그인이 풀린다.)
 
+> ⚠️ **Windows에서는 방법 B(전체를 Docker로 실행)를 쓴다.**
+> Windows에서 `./gradlew bootRun`(방법 A, IntelliJ 실행 포함)으로 띄우면 플랜을 생성하는 순간(OR-tools CP-SAT 계산) JVM이 `EXCEPTION_ACCESS_VIOLATION`(`msvcp140.dll`)으로 종료된다.
+> JDK에 들어 있는 오래된 `msvcp140.dll`이 OR-tools와 맞지 않아서 생기는 문제로, 앱 코드와는 상관없다. Docker(리눅스)에서는 정상 동작한다.
+> 서버가 꺼지면 진행 중이던 플랜 작업은 5분(`plan.generation.timeout`)이 지나야 실패로 처리되어 다시 만들 수 있다.
+
 ### 방법 A: DB만 Docker, 앱은 로컬에서 실행 (평소 개발)
 
 ```bash
@@ -63,6 +68,10 @@ IntelliJ에서는 Run Configuration의 **Active profiles**에 `local`, **Environ
 ```bash
 docker compose up -d --build   # MySQL이 healthy가 된 뒤 backend가 기동된다
 ```
+
+- 코드를 바꾼 뒤에는 `--build`를 붙여 다시 실행해야 컨테이너에 반영된다.
+- 로그 확인: `docker logs -f richreach-backend`
+- 확인 전 혜택 규칙까지 써서 플랜을 확인하려면 `.env`에 `BENEFIT_RULE_SELECTION=ALL`을 넣는다.
 
 ### 확인
 
