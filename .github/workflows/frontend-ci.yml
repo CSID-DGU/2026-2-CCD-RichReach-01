@@ -42,7 +42,8 @@ jobs:
         if: steps.detect.outputs.exists == 'true'
         with:
           channel: stable
-          # flutter-version: '3.x.x'   # 팀 버전 확정되면 고정
+          # 로컬 개발 버전과 맞춘다. 올릴 때는 로컬과 함께 올린다. (3.50부터 material.dart 사용 중단 안내로 analyze 실패)
+          flutter-version: '3.47.6'
           cache: true
 
       - name: Install dependencies
