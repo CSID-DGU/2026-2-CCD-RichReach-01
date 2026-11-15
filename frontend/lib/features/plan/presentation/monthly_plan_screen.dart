@@ -94,7 +94,7 @@ class _PlanContent extends ConsumerWidget {
                 showPlanChange(context, ref, plan.month, change),
           ),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: 18),
         const SectionHeader(title: '카드별 목표 사용금액'),
         const SizedBox(height: 10),
         for (final cardPlan in plan.cardPlans) ...[
