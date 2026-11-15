@@ -12,8 +12,11 @@ import '../domain/consent_terms.dart';
 Future<bool?> showConsentTermsSheet(
   BuildContext context,
   CodefConsent consent,
-) {
-  final terms = ConsentTerms.of(consent);
+) => showTermsSheet(context, ConsentTerms.of(consent));
+
+/// [terms] 약관 상세 시트 (ONB-02C1~C3과 같은 모양, 회원가입 약관에도 쓴다).
+/// "동의하기"면 true, "동의하지 않기"면 false, 닫으면 null.
+Future<bool?> showTermsSheet(BuildContext context, ConsentTerms terms) {
   return _showSheet(
     context,
     title: terms.title,

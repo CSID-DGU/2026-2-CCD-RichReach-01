@@ -149,13 +149,11 @@ void main() {
       expect(findText('820,000원'), findsOneWidget);
     });
 
-    testWidgets('아직 없는 화면으로 가는 버튼은 준비 중 안내를 보여준다', (tester) async {
+    testWidgets('카드별 목표 사용금액에 추천 근거 링크가 없다', (tester) async {
       await pumpAppAt(tester, AppRoute.monthlyPlan);
 
-      await tester.tap(find.bySemanticsLabel('추천 근거'));
-      await tester.pump();
-
-      expect(findText('추천 근거 화면은 준비 중이에요.'), findsOneWidget);
+      expect(findText('카드별 목표 사용금액'), findsOneWidget);
+      expect(find.textContaining('추천 근거'), findsNothing);
     });
 
     testWidgets('플랜을 불러오지 못하면 다시 시도할 수 있다', (tester) async {
