@@ -10,7 +10,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-@EnableConfigurationProperties({CodefProperties.class, CodefSyncProperties.class, CodefDebugProperties.class})
+@EnableConfigurationProperties({CodefProperties.class, CodefSyncProperties.class, CodefDebugProperties.class,
+    CodefCollectProperties.class})
 public class CodefConfig {
 
     /**

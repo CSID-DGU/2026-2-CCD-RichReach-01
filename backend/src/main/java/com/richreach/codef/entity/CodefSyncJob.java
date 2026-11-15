@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -80,6 +81,22 @@ public class CodefSyncJob {
     @Column(nullable = false)
     private boolean retryable;
 
+    /** 승인내역 수집 결과(SUCCESS, PARTIAL, FAILED). 수집하지 않았으면 null. */
+    @Column(name = "tx_status", length = 20)
+    private String txStatus;
+
+    @Column(name = "tx_saved_count")
+    private Integer txSavedCount;
+
+    @Column(name = "tx_unmatched_count")
+    private Integer txUnmatchedCount;
+
+    @Column(name = "tx_collected_from")
+    private LocalDate txCollectedFrom;
+
+    @Column(name = "tx_collected_to")
+    private LocalDate txCollectedTo;
+
     @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
 
@@ -108,6 +125,15 @@ public class CodefSyncJob {
         this.fetchedCount = cardCount;
         this.resultCode = resultCode;
         this.finishedAt = finishedAt;
+    }
+
+    /** 승인내역 수집 결과를 남긴다. 기간은 수집을 마친 범위이고, 하나도 마치지 못했으면 null이다. */
+    public void recordTransactions(String txStatus, int saved, int unmatched, LocalDate from, LocalDate to) {
+        this.txStatus = txStatus;
+        this.txSavedCount = saved;
+        this.txUnmatchedCount = unmatched;
+        this.txCollectedFrom = from;
+        this.txCollectedTo = to;
     }
 
     /** 실패로 끝났다. {@code retryable}이 false면 다시 시도하면 안 되는 오류다(계정 잠김 위험 등). */
