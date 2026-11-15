@@ -96,7 +96,7 @@ class _PlanContent extends ConsumerWidget {
         ],
         const SizedBox(height: 8),
         const SectionHeader(title: '카드별 목표 사용금액'),
-        const SizedBox(height: 4),
+        const SizedBox(height: 10),
         for (final cardPlan in plan.cardPlans) ...[
           CardPlanRow(
             plan: cardPlan,
