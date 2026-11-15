@@ -6,7 +6,6 @@ import '../../../app/app_route.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/widgets/more_link.dart';
 import '../../../core/widgets/tab_page_title.dart';
 import '../../onboarding/presentation/load_failure_view.dart';
 import '../application/monthly_plan_providers.dart';
@@ -72,13 +71,6 @@ class _PlanContent extends ConsumerWidget {
 
   final MonthlyPlan plan;
 
-  // TODO(#80): 추천 근거 화면이 생기면 그 화면으로 이동한다.
-  void _comingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('$feature 화면은 준비 중이에요.')));
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final change = plan.change;
@@ -102,16 +94,9 @@ class _PlanContent extends ConsumerWidget {
                 showPlanChange(context, ref, plan.month, change),
           ),
         ],
-        const SizedBox(height: 8),
-        SectionHeader(
-          title: '카드별 목표 사용금액',
-          trailing: MoreLink(
-            label: '추천 근거',
-            fontWeight: FontWeight.w600,
-            onTap: () => _comingSoon(context, '추천 근거'),
-          ),
-        ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 18),
+        const SectionHeader(title: '카드별 목표 사용금액'),
+        const SizedBox(height: 10),
         for (final cardPlan in plan.cardPlans) ...[
           CardPlanRow(
             plan: cardPlan,

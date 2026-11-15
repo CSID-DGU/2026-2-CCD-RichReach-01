@@ -367,7 +367,7 @@ class PlanChangeBanner extends StatelessWidget {
   }
 }
 
-/// 섹션 제목과 오른쪽 링크 (예: "카드별 목표 사용금액 · 추천 근거 ›").
+/// 섹션 제목과 오른쪽 링크 (예: "최근 사용 내역 · 전체보기 ›").
 class SectionHeader extends StatelessWidget {
   const SectionHeader({super.key, required this.title, this.trailing});
 
