@@ -2,7 +2,7 @@
 name: 기능 개발
 about: 새로운 기능 개발을 등록합니다
 title: "[Feature] "
-labels: feature
+labels: FEATURE
 ---
 
 ## 개요

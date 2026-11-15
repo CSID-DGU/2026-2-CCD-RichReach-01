@@ -135,3 +135,7 @@ flutter test
 ## 참고
 
 - 다른 플랫폼이 필요해지면 `flutter create --platforms=<플랫폼> .`으로 다시 추가할 수 있습니다.
+
+## 시연 모드 (개발용)
+
+중간 발표 시연 영상용으로, 카드 선택(ONB-04)부터 월간 플랜(PLAN-01)까지 시연 자료의 값을 보여 주는 실행 방법입니다. 만드는 방법과 촬영할 때 주의할 점은 [tool/demo_fixture/README.md](tool/demo_fixture/README.md)를 보세요.

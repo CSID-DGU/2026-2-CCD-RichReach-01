@@ -2,7 +2,8 @@
 
 > 상태: **회원가입 ~ 최초 플랜 생성(AUTH-01 ~ ONB-07B)은 구현된 API로 연동을 마쳤습니다.** 월간 플랜(PLAN-01)은 일부 API가 남아 있습니다. (2026-11-10 기준)
 > 기준 디자인: Figma 온보딩 새 디자인 (AUTH-01 ~ ONB-07B), 월간 플랜(PLAN-01 ~ 03)
-> 서버 API 문서: `http://localhost:8080/swagger-ui.html` (필드의 최종 기준은 Swagger와 백엔드 코드입니다)
+> API 명세: [openapi.json](openapi.json) (서버 없이 보기, 아래 1-1 참고) / 서버를 띄웠다면 `http://localhost:8080/swagger-ui.html`
+> 필드의 최종 기준은 API 명세와 백엔드 코드입니다. 이 문서의 JSON은 화면 설명용 예시입니다.
 
 프론트가 화면을 만들 때 필요한 데이터와, 실제 연동한 API의 요청·응답을 화면별로 정리한 문서입니다.
 프론트는 `USE_FAKE_API=true`(기본값)면 가짜 데이터로, `false`면 실제 서버로 동작합니다.
@@ -24,7 +25,7 @@
 | 분석 | ONB-06 소비패턴·월간 예산 | `GET /api/plans/analysis` | ✅ #192·#207 | ✅ | ✅ (시연 데이터) |
 | 플랜 | ONB-07A 플랜 생성 중 | `POST /api/plans`, `GET /api/plans/jobs/{jobId}` | ✅ #204 | ✅ | ✅ (EVEN_SPLIT 임시 전략) |
 | 플랜 | ONB-07B 플랜 생성 완료 | `GET /api/plans?month=` | ✅ #212 | ✅ | ✅ |
-| 플랜 | **PLAN-01 월간 플랜** | `GET /api/plans?month=`, `GET /api/plans/{planId}/categories` + **이번 달 사용 금액 (API 없음)** | 🟡 일부 | ⬜ | - |
+| 플랜 | **PLAN-01 월간 플랜** | `GET /api/plans?month=`, `GET /api/plans/{planId}/categories` + **이번 달 사용 금액 (API 없음)** | 🟡 일부 | 🟡 있는 API만 | ✅ |
 | 플랜 | PLAN-02·03 카드별·업종별 상세 | `GET /api/plans/{planId}/categories` | 🟡 일부 | ⬜ | - |
 | 공통 | 로그인 후 시작 화면 (Q8) | `GET /api/connections`, `GET /api/plans?month=` | ✅ | ⬜ | - |
 
@@ -51,7 +52,16 @@
 | 오래 걸리는 작업 | 작업 시작 → `jobId` → 1~2초마다 상태 조회 | 카드 동기화, 플랜 생성 (Q2) |
 | 오류 | `code`로 구분 (`AUTH-xxx`, `CONN-xxx`, `TRANS-xxx`, `PLAN-xxx`, `COMMON-400`) | `message`는 화면에 그대로 보여줘도 되는 문구 |
 
-### 1-1. 실제 서버로 확인하기 (`USE_FAKE_API=false`)
+### 1-1. API 명세 보기
+
+- **서버 없이 보기**: [docs/api/openapi.json](openapi.json)에 백엔드의 OpenAPI 명세가 있습니다. (백엔드 #217)
+  - [editor.swagger.io](https://editor.swagger.io)나 Postman에 `openapi.json`을 불러옵니다.
+  - 또는 `npx serve docs/api`로 띄운 뒤 `index.html`을 엽니다. (파일을 직접 열면 브라우저 보안 때문에 JSON을 읽지 못할 수 있습니다.) 실제 호출(Try it out)은 꺼져 있습니다.
+- **서버를 띄웠다면**: `http://localhost:8080/swagger-ui.html`이 항상 최신입니다.
+- `openapi.json`은 백엔드가 API를 바꿀 때 다시 뽑는 파일이라 **최신이 아닐 수 있습니다.** 다르면 서버의 Swagger와 백엔드 코드를 기준으로 합니다.
+  - 다시 뽑는 방법: 서버를 띄운 상태에서 `curl -s http://localhost:8080/v3/api-docs -o docs/api/openapi.json`
+
+### 1-2. 실제 서버로 확인하기 (`USE_FAKE_API=false`)
 
 - **공용 DB로 서버를 실행할 때**는 `SPRING_FLYWAY_ENABLED=false`로 실행합니다. (DB 구조 변경은 백엔드 담당이 적용합니다.)
 - **내 PC의 로컬 DB로 확인하기**: [backend/README.md](../../backend/README.md)의 **"방법 A"** 를 따릅니다.
@@ -63,7 +73,7 @@
   - 확인된 혜택 규칙이 없으면 예상 혜택이 0원입니다. 시연할 때는 `BENEFIT_RULE_SELECTION=ALL`로 실행합니다.
 - 서버 주소 기본값은 `http://localhost:8080` (에뮬레이터에서는 `http://10.0.2.2:8080`)입니다.
 
-### 1-2. enum
+### 1-3. enum
 
 **카드사 (`CardCompany`)**: `KB`(KB국민카드), `HYUNDAI`(현대카드), `NH`(NH농협카드), `CITI`(씨티카드), `WOORI`(우리카드), `BC`(BC카드), `SHINHAN`(신한카드)
 
@@ -507,7 +517,12 @@ ONB-04에서 고른 **분석 대상 카드**의 거래를 보여줍니다. 요�
 
 ## 5. 월간 플랜 (PLAN-01)
 
-중간 발표 목표 화면입니다. 지금은 가짜 데이터로 화면이 만들어져 있고, 아래처럼 API를 붙입니다.
+중간 발표 목표 화면입니다. API가 있는 부분은 연동했고(#223), 없는 부분은 화면을 그대로 두고 아래처럼 채웁니다.
+
+- 이번 달 사용 금액·사용률: 0원, 0% (API가 생기면 채움)
+- 플랜 변경 안내: 서버에 변경 내역이 없어 나오지 않음
+- 소비예산 수정: 서버에 저장하지 않고 앱 안에서만 비율대로 다시 나눔 (앱을 다시 켜면 서버 플랜으로 돌아감)
+- 카드별·업종별 상세(PLAN-02·03)의 실적·한도·혜택: 가짜 기본값
 
 | 화면 요소 | 필요한 데이터 | API | 상태 |
 |---|---|---|---|

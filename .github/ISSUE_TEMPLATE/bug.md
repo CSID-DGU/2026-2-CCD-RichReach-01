@@ -2,7 +2,7 @@
 name: 버그 리포트
 about: 발견한 버그를 등록합니다
 title: "[Bug] "
-labels: bug
+labels: BUG
 ---
 
 ## 버그 설명
