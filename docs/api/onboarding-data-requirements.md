@@ -1,6 +1,6 @@
 # 온보딩·월간 플랜 API 연동 문서
 
-> 상태: **회원가입 ~ 최초 플랜 생성(AUTH-01 ~ ONB-07B)은 구현된 API로 연동을 마쳤습니다.** 월간 플랜(PLAN-01)은 일부 API가 남아 있습니다. (2026-11-10 기준)
+> 상태: **회원가입 ~ 최초 플랜 생성(AUTH-01 ~ ONB-07B)은 구현된 API로 연동을 마쳤습니다.** 월간 플랜(PLAN-01)은 플랜·업종별 사용계획·이번 달 사용 금액까지 연동했고, 플랜 변경 이력과 예산 재계산 API(Q17)가 남아 있습니다. (2026-11-15 기준)
 > 기준 디자인: Figma 온보딩 새 디자인 (AUTH-01 ~ ONB-07B), 월간 플랜(PLAN-01 ~ 03)
 > API 명세: [openapi.json](openapi.json) (서버 없이 보기, 아래 1-1 참고) / 서버를 띄웠다면 `http://localhost:8080/swagger-ui.html`
 > 필드의 최종 기준은 API 명세와 백엔드 코드입니다. 이 문서의 JSON은 화면 설명용 예시입니다.
@@ -25,7 +25,7 @@
 | 분석 | ONB-06 소비패턴·월간 예산 | `GET /api/plans/analysis` | ✅ #192·#207 | ✅ | ✅ (시연 데이터) |
 | 플랜 | ONB-07A 플랜 생성 중 | `POST /api/plans`, `GET /api/plans/jobs/{jobId}` | ✅ #204 | ✅ | ✅ (EVEN_SPLIT 임시 전략) |
 | 플랜 | ONB-07B 플랜 생성 완료 | `GET /api/plans?month=` | ✅ #212 | ✅ | ✅ |
-| 플랜 | **PLAN-01 월간 플랜** | `GET /api/plans?month=`, `GET /api/plans/{planId}/categories` + **이번 달 사용 금액 (API 없음)** | 🟡 일부 | 🟡 있는 API만 | ✅ |
+| 플랜 | **PLAN-01 월간 플랜** | `GET /api/plans?month=`, `GET /api/plans/{planId}/categories`, `GET /api/transactions/summary?month=` + 플랜 변경 이력 (API 없음, Q17) | 🟡 대부분 | 🟡 변경 이력 외 연동 | ✅ |
 | 플랜 | PLAN-02·03 카드별·업종별 상세 | `GET /api/plans/{planId}/categories` | 🟡 일부 | ⬜ | - |
 | 공통 | 로그인 후 시작 화면 (Q8) | `GET /api/connections`, `GET /api/plans?month=` | ✅ | ⬜ | - |
 
@@ -547,9 +547,9 @@ ONB-04에서 고른 **분석 대상 카드**의 거래를 보여줍니다. 요�
 
 ## 5. 월간 플랜 (PLAN-01)
 
-중간 발표 목표 화면입니다. API가 있는 부분은 연동했고(#223), 없는 부분은 화면을 그대로 두고 아래처럼 채웁니다.
+중간 발표 목표 화면입니다. API가 있는 부분은 연동했고(#223, #237), 없는 부분은 화면을 그대로 두고 아래처럼 채웁니다.
 
-- 이번 달 사용 금액·사용률: 거래 요약의 월 조회(`GET /api/transactions/summary?month=`, 백엔드 #231)로 채웁니다. 월 조회가 반영되기 전에는 0원, 0%입니다.
+- 이번 달 사용 금액·사용률: 거래 요약의 월 조회(`GET /api/transactions/summary?month=`, 백엔드 #231)로 채웁니다. 플랜과 같은 달을 조회하고, 합계는 `totalAmount`(분석 대상으로 고른 카드의 합), 카드별 금액은 `cards[].amount`를 `cardId`로 맞춥니다. (프론트 #237)
 - 플랜 변경 안내: 서버에 변경 내역이 없어 나오지 않음
 - 소비예산 수정: 서버에 저장하지 않고 앱 안에서만 비율대로 다시 나눔 (앱을 다시 켜면 서버 플랜으로 돌아감)
 - 카드별·업종별 상세(PLAN-02·03)의 실적·한도·혜택: 가짜 기본값

@@ -259,6 +259,33 @@ void main() {
     expect(server.paths, isEmpty);
   });
 
+  test('월 거래 요약은 시연 자료의 그달 요약, 없으면 0원으로 답한다', () async {
+    Future<Map> month(String value) => api.get(
+      ApiPaths.transactionSummary,
+      query: {'month': value},
+      parse: (d) => d as Map,
+    );
+
+    final september = await month('2026-09');
+    expect(
+      (september['month'], september['period'], september['totalAmount']),
+      ('2026-09', null, 800000),
+    );
+
+    // 시연 기준일(10월 1일)이 속한 달은 아직 사용 금액이 없다.
+    final october = await month('2026-10');
+    expect((october['from'], october['to']), ('2026-10-01', '2026-10-01'));
+    expect(october['totalAmount'], 0);
+    expect([for (final c in october['cards'] as List) c['amount']], [0, 0]);
+
+    final plan = await ApiMonthlyPlanRepository(
+      api,
+      ApiCardRepository(api),
+    ).fetchPlan(DateTime(2026, 10));
+    expect(plan!.spentAmount, 0);
+    expect(server.paths, isEmpty);
+  });
+
   test('시연 자료로 답하지 않는 요청은 실제 서버로 보낸다', () async {
     final data = await api.get(ApiPaths.cardCompanies, parse: (d) => d);
 

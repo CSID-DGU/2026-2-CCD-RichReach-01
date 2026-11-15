@@ -90,6 +90,34 @@ void main() {
     expect(_submitButton(tester).onPressed, isNotNull);
   });
 
+  testWidgets('약관 보기에서 동의하기·동의하지 않기로 체크 상태를 바꾼다', (tester) async {
+    await _pumpSignup(tester);
+    await _fillForm(tester);
+    Finder detail() => find.byTooltip('[필수] 서비스 이용약관 및 개인정보 수집에 동의합니다. 보기');
+
+    await tester.tap(detail());
+    await tester.pumpAndSettle();
+    expect(findText('[필수] 서비스 이용약관 및 개인정보 수집·이용 동의'), findsOneWidget);
+    expect(findText('이름, 전화번호, 이메일(아이디), 비밀번호(암호화해 저장)'), findsOneWidget);
+
+    await tester.tap(findText('동의하기'));
+    await tester.pumpAndSettle();
+    expect(_submitButton(tester).onPressed, isNotNull);
+
+    await tester.tap(detail());
+    await tester.pumpAndSettle();
+    await tester.tap(findText('동의하지 않기'));
+    await tester.pumpAndSettle();
+    expect(_submitButton(tester).onPressed, isNull);
+
+    // 닫으면 그대로
+    await tester.tap(detail());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('닫기'));
+    await tester.pumpAndSettle();
+    expect(_submitButton(tester).onPressed, isNull);
+  });
+
   testWidgets('전화번호는 하이픈이 자동으로 들어간다', (tester) async {
     await _pumpSignup(tester);
 

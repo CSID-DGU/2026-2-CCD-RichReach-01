@@ -8,7 +8,7 @@ class TermsSection {
   final String body;
 }
 
-/// 약관 상세 시트 내용 (ONB-02C1~C3). 첫 칸은 강조해서 보여준다.
+/// 약관 상세 시트 내용 (ONB-02C1~C3, 회원가입 약관). 첫 칸은 강조해서 보여준다.
 ///
 /// 약관 본문은 앱에 두고, 서버에는 동의한 약관 버전만 기록한다 (온보딩 문서 Q3).
 class ConsentTerms {
@@ -35,6 +35,24 @@ class ConsentTerms {
     CodefConsent.transaction => transaction,
     CodefConsent.privacy => privacy,
   };
+
+  /// 회원가입(AUTH-01)의 서비스 이용약관 및 개인정보 수집·이용 동의.
+  static const signup = ConsentTerms(
+    title: '[필수] 서비스 이용약관 및 개인정보 수집·이용 동의',
+    subtitle: '동국대학교 융합캡스톤디자인 프로젝트 · 팀 리치리치',
+    summary: '회원 가입과 로그인에 필요한 정보의 수집·이용',
+    sections: [
+      TermsSection(
+        '서비스 안내',
+        '카드루트는 보유카드의 소비를 분석해 월간 카드 플랜과 맞춤 카드를 추천하는 학생 프로젝트 서비스예요.',
+      ),
+      TermsSection('수집·이용 주체', '동국대학교 융합캡스톤디자인 프로젝트 팀 리치리치'),
+      TermsSection('수집 항목', '이름, 전화번호, 이메일(아이디), 비밀번호(암호화해 저장)'),
+      TermsSection('이용 목적', '회원 식별, 로그인, 아이디 찾기·비밀번호 재설정, 서비스 안내'),
+      TermsSection('보유 기간', '회원 탈퇴 시까지'),
+      TermsSection('거부 시 제한', '동의하지 않으면 회원가입을 할 수 없어요.'),
+    ],
+  );
 
   static const cardInfo = ConsentTerms(
     title: '[필수] 카드정보 조회 동의',

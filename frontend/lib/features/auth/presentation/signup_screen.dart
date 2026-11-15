@@ -16,6 +16,8 @@ import '../../../core/widgets/primary_button.dart';
 import '../application/auth_providers.dart';
 import '../data/signup_repository.dart';
 import '../domain/signup_validator.dart';
+import '../../onboarding/domain/consent_terms.dart';
+import '../../onboarding/presentation/consent_terms_sheet.dart';
 
 /// AUTH-01 회원가입 화면.
 ///
@@ -136,11 +138,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   void _onLogin() => context.go(AppRoute.login.path);
 
-  void _showTerms() {
-    // TODO(#19): 약관 본문 제공 방식이 정해지면 상세 화면으로 연결한다.
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('약관 내용은 준비 중이에요.')));
+  /// 약관 상세 시트 (ONB-02C와 같은 모양). "동의하기"/"동의하지 않기"로 체크 상태를 바꾼다.
+  Future<void> _showTerms() async {
+    final agreed = await showTermsSheet(context, ConsentTerms.signup);
+    if (agreed != null && mounted) setState(() => _termsAgreed = agreed);
   }
 
   @override
