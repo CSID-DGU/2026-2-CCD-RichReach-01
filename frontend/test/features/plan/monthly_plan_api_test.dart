@@ -87,6 +87,43 @@ final _plan = _ok({
   ],
 });
 
+final _spent = _ok({
+  'period': null,
+  'month': '2026-11',
+  'from': '2026-11-01',
+  'to': '2026-11-10',
+  'collectedFrom': '2026-05-01',
+  'partial': false,
+  // 분석 대상으로 고른 카드(4)만 센 합계. 카드별 금액과 따로 쓴다.
+  'totalAmount': 200000,
+  'canceledAmount': 0,
+  'transactionCount': 21,
+  'categories': [],
+  'cards': [
+    {
+      'cardId': 4,
+      'cardCompany': 'SHINHAN',
+      'selected': true,
+      'amount': 200000,
+      'transactionCount': 15,
+    },
+    {
+      'cardId': 3,
+      'cardCompany': 'KB',
+      'selected': false,
+      'amount': 38000,
+      'transactionCount': 6,
+    },
+    {
+      'cardId': 8,
+      'cardCompany': 'NH',
+      'selected': false,
+      'amount': 5000,
+      'transactionCount': 1,
+    },
+  ],
+});
+
 final _categories = _ok({
   'planId': 7,
   'month': '2026-11',
@@ -150,23 +187,35 @@ void main() {
   }
 
   (int, Map<String, Object?>) planServer(RequestOptions options) =>
-      options.path == ApiPaths.plans ? _plan : _categories;
+      switch (options.path) {
+        ApiPaths.plans => _plan,
+        ApiPaths.transactionSummary => _spent,
+        _ => _categories,
+      };
 
-  test('플랜과 업종별 사용계획으로 PLAN-01 플랜을 만든다', () async {
+  test('플랜, 업종별 사용계획, 월 거래 요약으로 PLAN-01 플랜을 만든다', () async {
     final (repo, server) = repository(planServer);
 
     final plan = await repo.fetchPlan(DateTime(2026, 11, 10));
 
     expect(server.requests.first.path, ApiPaths.plans);
     expect(server.requests.first.queryParameters, {'month': '2026-11'});
-    expect(server.requests.last.path, ApiPaths.planCategories(7));
+    expect(
+      server.requests.map((r) => r.path),
+      containsAll([ApiPaths.planCategories(7), ApiPaths.transactionSummary]),
+    );
+    // 사용 금액은 플랜과 같은 달의 거래 요약으로 조회한다.
+    final summary = server.requests.firstWhere(
+      (r) => r.path == ApiPaths.transactionSummary,
+    );
+    expect(summary.queryParameters, {'month': '2026-11'});
 
     expect(plan!.month, DateTime(2026, 11));
     // 소비예산은 카드별 목표 금액의 합 (보유카드에 없는 카드 포함)
     expect(plan.budget, 820000);
     expect(plan.expectedBenefit, 32000);
-    // 이번 달 사용 금액 API가 없어 0원
-    expect(plan.spentAmount, 0);
+    // 사용 금액은 플랜에 든 카드(4·3·99)의 그달 금액 합. 플랜 밖 카드(8)는 세지 않는다.
+    expect(plan.spentAmount, 200000);
     expect(plan.change, isNull);
 
     // 보유카드에 없는 카드는 이미지·카드사를 알 수 없어 뺀다.
@@ -174,7 +223,8 @@ void main() {
       ('신한 샘플 신용카드', 500000),
       ('KB국민 샘플 체크카드', 300000),
     ]);
-    expect(plan.cardPlans.every((p) => p.usedAmount == 0), isTrue);
+    // 카드별 사용 금액은 cardId로 맞춘다.
+    expect(plan.cardPlans.map((p) => p.usedAmount), [200000, 38000]);
 
     // 앱이 모르는 업종은 건너뛴다.
     expect(plan.categoryPlans.keys, [SpendingCategory.dining]);

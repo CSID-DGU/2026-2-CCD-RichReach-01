@@ -115,7 +115,10 @@ class DemoFixtureAdapter implements HttpClientAdapter {
     return switch ((options.method, path)) {
       ('GET', ApiPaths.cards) => _ok(_cards()),
       ('PUT', ApiPaths.cardSelection) => _select(options.data),
-      ('GET', ApiPaths.transactionSummary) => _ok(_summary(query['period'])),
+      ('GET', ApiPaths.transactionSummary) => _ok(switch (query['month']) {
+        final month? => _monthSummary(month),
+        null => _summary(query['period']),
+      }),
       ('GET', ApiPaths.transactions) => _ok(
         _transactions(int.tryParse(query['size'] ?? '')),
       ),
@@ -151,6 +154,11 @@ class DemoFixtureAdapter implements HttpClientAdapter {
   Map<String, Object?> _summary(String? period) {
     // 자료에 없는 기간이면 가장 긴 기간의 요약을 쓴다.
     final summary = fixture.summaries[period] ?? fixture.summaries.values.last;
+    return _summaryWithSelection(summary);
+  }
+
+  /// 요약의 카드 선택 여부를 지금 선택한 카드에 맞춘다.
+  Map<String, Object?> _summaryWithSelection(Map<String, Object?> summary) {
     return {
       ...summary,
       'cards': [
@@ -158,6 +166,48 @@ class DemoFixtureAdapter implements HttpClientAdapter {
           {
             ...(card as Map).cast<String, Object?>(),
             'selected': _selected.contains('${card['cardId']}'),
+          },
+      ],
+    };
+  }
+
+  /// 월 조회(`month=yyyy-MM`). 시연 자료에 그달 1일~말일 요약(1개월 기간)이 있으면 그것을,
+  /// 없으면(시연 기준일이 속한 플랜 달 등) 사용 금액 0원으로 답한다.
+  Map<String, Object?> _monthSummary(String month) {
+    final first = DateTime.parse('$month-01');
+    final last = DateTime(first.year, first.month + 1, 0);
+    String day(DateTime d) =>
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    for (final summary in fixture.summaries.values) {
+      if (summary['from'] == day(first) && summary['to'] == day(last)) {
+        return {
+          ..._summaryWithSelection(summary),
+          'period': null,
+          'month': month,
+        };
+      }
+    }
+    final today = fixture.today;
+    final to = today.year == first.year && today.month == first.month
+        ? today
+        : last;
+    return {
+      'period': null,
+      'month': month,
+      'from': day(first),
+      'to': day(to),
+      'partial': false,
+      'totalAmount': 0,
+      'canceledAmount': 0,
+      'transactionCount': 0,
+      'categories': const [],
+      'cards': [
+        for (final card in fixture.cards)
+          {
+            ...card,
+            'selected': _selected.contains('${card['cardId']}'),
+            'amount': 0,
+            'transactionCount': 0,
           },
       ],
     };
