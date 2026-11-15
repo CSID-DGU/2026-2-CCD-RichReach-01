@@ -94,8 +94,8 @@ final _spent = _ok({
   'to': '2026-11-10',
   'collectedFrom': '2026-05-01',
   'partial': false,
-  // 분석 대상 선택이 바뀌어 합계가 0원이어도 플랜 카드의 금액으로 계산한다.
-  'totalAmount': 0,
+  // 분석 대상으로 고른 카드(4)만 센 합계. 카드별 금액과 따로 쓴다.
+  'totalAmount': 200000,
   'canceledAmount': 0,
   'transactionCount': 21,
   'categories': [],
@@ -215,7 +215,7 @@ void main() {
     expect(plan.budget, 820000);
     expect(plan.expectedBenefit, 32000);
     // 사용 금액은 플랜에 든 카드(4·3·99)의 그달 금액 합. 플랜 밖 카드(8)는 세지 않는다.
-    expect(plan.spentAmount, 238000);
+    expect(plan.spentAmount, 200000);
     expect(plan.change, isNull);
 
     // 보유카드에 없는 카드는 이미지·카드사를 알 수 없어 뺀다.

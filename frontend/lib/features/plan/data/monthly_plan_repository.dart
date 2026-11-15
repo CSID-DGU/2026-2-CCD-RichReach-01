@@ -37,8 +37,7 @@ abstract interface class MonthlyPlanRepository {
 /// - 업종별 권장 카드: `GET /api/plans/{planId}/categories`
 /// - 카드 이미지·종류·번호: `GET /api/cards`에서 `cardId`로 찾는다.
 /// - 사용 금액: `GET /api/transactions/summary?month=` (그달 1일~말일, 이번 달은 오늘까지)
-///   카드별 금액(`cards[].amount`)을 `cardId`로 맞추고, 합계는 플랜에 든 카드의 금액 합이다.
-///   (`totalAmount`는 지금 분석 대상으로 고른 카드만 세서, 선택을 바꾸면 플랜 카드와 어긋날 수 있다.)
+///   합계는 `totalAmount`(분석 대상으로 고른 카드의 합), 카드별 금액은 `cards[].amount`를 `cardId`로 맞춘다.
 ///
 /// 아직 API가 없는 부분은 화면을 그대로 두고 아래처럼 채운다.
 /// - 플랜 변경 안내: 서버에 변경 내역이 없어 보여줄 변경이 없다.
@@ -96,10 +95,7 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
     return MonthlyPlan(
       month: _key(month),
       budget: plan.targets.fold(0, (sum, t) => sum + t.amount),
-      spentAmount: plan.targets.fold(
-        0,
-        (sum, t) => sum + (spent.byCard[t.cardId] ?? 0),
-      ),
+      spentAmount: spent.total,
       expectedBenefit: plan.expectedBenefit,
       cardPlans: [
         for (final target in plan.targets)
@@ -169,7 +165,10 @@ _CardAmountJson _cardAmount(Object? item) {
 
 /// `GET /api/transactions/summary?month=` 응답 중 사용 금액.
 class _SpentJson {
-  const _SpentJson({required this.byCard});
+  const _SpentJson({required this.total, required this.byCard});
+
+  /// 분석 대상으로 고른 카드의 그달 사용 금액 합 (취소 반영)
+  final int total;
 
   /// 카드 ID별 그달 사용 금액 (취소 반영). 분석 대상이 아닌 카드도 들어 있다.
   final Map<String, int> byCard;
@@ -177,6 +176,7 @@ class _SpentJson {
   static _SpentJson fromJson(Object? data) {
     final json = data as Map;
     return _SpentJson(
+      total: json['totalAmount'] as int? ?? 0,
       byCard: {
         for (final item in json['cards'] as List? ?? const [])
           '${(item as Map)['cardId']}': item['amount'] as int? ?? 0,
