@@ -296,15 +296,20 @@
   "totalCount": 3,
   "completedCount": 3,
   "results": [
-    { "connectionId": 11, "cardCompany": "KB", "status": "SUCCESS", "cardCount": 1, "failureCode": null, "failureReason": null },
-    { "connectionId": 12, "cardCompany": "SHINHAN", "status": "SUCCESS", "cardCount": 1, "failureCode": null, "failureReason": null },
-    { "connectionId": 13, "cardCompany": "WOORI", "status": "FAILED", "cardCount": 0, "failureCode": "SYNC_TIMEOUT", "failureReason": "카드사 응답이 늦어 정보를 불러오지 못했어요." }
+    { "connectionId": 11, "cardCompany": "KB", "status": "SUCCESS", "cardCount": 1, "failureCode": null, "failureReason": null,
+      "transactions": { "status": "SUCCESS", "savedCount": 214, "unmatchedCount": 0, "collectedFrom": "2026-06-01", "collectedTo": "2026-11-15" } },
+    { "connectionId": 12, "cardCompany": "SHINHAN", "status": "SUCCESS", "cardCount": 1, "failureCode": null, "failureReason": null, "transactions": null },
+    { "connectionId": 13, "cardCompany": "WOORI", "status": "FAILED", "cardCount": 0, "failureCode": "SYNC_TIMEOUT", "failureReason": "카드사 응답이 늦어 정보를 불러오지 못했어요.", "transactions": null }
   ]
 }
 ```
 
 - `status`: `IN_PROGRESS`, `SUCCESS`(모두 성공), `PARTIAL_SUCCESS`(일부 성공), `FAILED`(모두 실패)
 - `failureCode`: `SYNC_TIMEOUT`, `CODEF_UNAVAILABLE`, `ACCOUNT_RESTRICTED`, `SYNC_FAILED`. `failureReason`은 화면에 그대로 보여줍니다.
+- `transactions`(승인내역 수집 결과, #232): 카드 저장 뒤 같은 작업에서 **최근 6개월을 월 단위로 수집**하고, 끝나야 `status`가 `SUCCESS`가 됩니다(그래서 6개월치는 카드사당 수 초~수십 초 더 걸릴 수 있어요). 수집이 실패해도 카드 동기화는 `SUCCESS`이고 `transactions.status`만 `FAILED`입니다.
+  - `transactions.status`: `SUCCESS`(전부 수집), `PARTIAL`(최근 일부 달만 수집, 다음 동기화가 이어서 채움), `FAILED`(수집 못 함). 카드가 0장이거나 실패한 카드사는 `null`.
+  - `savedCount`: 새로 저장·갱신한 거래 수, `unmatchedCount`: 보유카드를 정하지 못해 저장하지 않은 승인내역 수, `collectedFrom`/`collectedTo`: 실제로 수집을 마친 승인일 범위.
+  - 수집한 거래는 `GET /api/transactions`, `GET /api/transactions/summary`(`month` 포함)로 읽습니다. 같은 거래를 다시 수집해도 중복되지 않습니다.
 - `ACCOUNT_RESTRICTED`(계정 일시 제한)인 카드사는 서버가 동기화에서 건너뛰어 결과에 없을 수 있습니다. 앱은 요청한 카드사가 결과에 없으면 제한된 카드사로 보고 "다시 연결하기"를 막습니다.
 - 동기화가 진행 중이면 409 `CONN-007`, 요청한 카드사가 모두 제한 중이면 409 `CONN-008`입니다.
 - 로그인 후 시작 화면을 정할 때는 연결 목록 `GET /api/connections`를 씁니다. (Q8, 연결한 카드사와 최근 동기화 상태)

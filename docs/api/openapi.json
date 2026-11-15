@@ -2367,6 +2367,33 @@
           },
           "failureReason": {
             "type": "string"
+          },
+          "transactions": {
+            "$ref": "#/components/schemas/TransactionCollection"
+          }
+        }
+      },
+      "TransactionCollection": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "savedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unmatchedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "collectedFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "collectedTo": {
+            "type": "string",
+            "format": "date"
           }
         }
       },
