@@ -42,7 +42,7 @@ class ApiCardRepository implements CardRepository {
         if (companies[(item as Map)['cardCompany']] case final company?)
           OwnedCard(
             id: '${item['cardId']}',
-            name: item['cardName'] as String,
+            name: cardDisplayName(item['cardName'] as String),
             company: company,
             maskedNumber: item['maskedNumber'] as String? ?? '',
             type: types[item['cardType']] ?? CardType.unknown,

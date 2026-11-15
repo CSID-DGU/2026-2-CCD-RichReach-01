@@ -97,7 +97,10 @@ class ApiPlanRepository implements PlanRepository {
       for (final item in json['cardTargets'] as List)
         (
           id: '${(item as Map)['cardId']}',
-          name: item['cardName'] as String?,
+          name: switch (item['cardName']) {
+            final String name => cardDisplayName(name),
+            _ => null,
+          },
           amount: item['targetAmount'] as int,
         ),
     ];

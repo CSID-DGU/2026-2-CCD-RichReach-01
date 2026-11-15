@@ -437,16 +437,19 @@ class CardPlanRow extends StatelessWidget {
                   children: [
                     Text(
                       plan.card.name,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodyStrong.copyWith(fontSize: 13),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${formatWon(plan.remainingAmount)} 남음',
+                      plan.overAmount > 0
+                          ? '${formatWon(plan.overAmount)} 초과'
+                          : '${formatWon(plan.remainingAmount)} 남음',
                       style: AppTextStyles.caption.copyWith(
                         fontWeight: FontWeight.w500,
                         height: 1.35,
+                        color: plan.overAmount > 0 ? AppColors.error : null,
                       ),
                     ),
                   ],
