@@ -11,12 +11,12 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/onboarding_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/step_header.dart';
-import '../../../core/widgets/word_wrap_text.dart';
 import '../../../core/network/api_exception.dart';
 import '../application/budget_plan_providers.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan.dart';
 import 'connection_widgets.dart';
+import 'failure_notice.dart';
 
 /// ONB-07A 최초 플랜 생성 중 화면. 생성 중에는 뒤로가기를 막고, 끝나면 생성 완료(ONB-07B)로 이동한다.
 class PlanGeneratingScreen extends ConsumerStatefulWidget {
@@ -89,7 +89,10 @@ class _PlanGeneratingScreenState extends ConsumerState<PlanGeneratingScreen> {
         body: alreadyCreated
             ? const _AlreadyCreated()
             : error != null
-            ? _GenerationFailure(message: _errorMessage(error))
+            ? FailureNotice(
+                title: '플랜을 만들지 못했어요',
+                message: _errorMessage(error),
+              )
             : Column(
                 children: [
                   const SizedBox(height: 168),
@@ -150,46 +153,6 @@ class _AlreadyCreated extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         const CenteredTitle(title: '이번 달 플랜이 이미 있어요', titleSize: 22),
-      ],
-    );
-  }
-}
-
-/// 플랜을 만들지 못했을 때의 안내. 아이콘·글자 크기·버튼 구성은 AUTH-04(세션 만료)와 같다.
-class _GenerationFailure extends StatelessWidget {
-  const _GenerationFailure({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: 168),
-        Center(
-          child: Image.asset(
-            AppAssets.connectionWarningExclamation,
-            width: 171,
-            height: 153,
-            excludeFromSemantics: true,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Semantics(
-          header: true,
-          child: Text(
-            '플랜을 만들지 못했어요',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.title.copyWith(fontSize: 20),
-          ),
-        ),
-        const SizedBox(height: 15),
-        WordWrapText(
-          message,
-          textAlign: TextAlign.center,
-          style: AppTextStyles.caption.copyWith(fontSize: 13),
-        ),
       ],
     );
   }

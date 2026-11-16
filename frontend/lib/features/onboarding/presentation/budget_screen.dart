@@ -18,7 +18,7 @@ import '../application/budget_plan_providers.dart';
 import '../domain/budget.dart';
 import '../domain/transaction.dart';
 import 'budget_dialogs.dart';
-import 'load_failure_view.dart';
+import 'failure_notice.dart';
 
 /// ONB-06 소비패턴·월간 예산 화면.
 class BudgetScreen extends ConsumerStatefulWidget {
@@ -70,22 +70,27 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
           onEditTotal: () => _editTotal(budget),
           onEditCategories: () => _editCategories(budget),
         ),
-        AsyncError() => LoadFailureView(
-          message: '소비내역을 분석하지 못했어요.',
-          onRetry: () => ref.invalidate(spendingAnalysisProvider),
+        AsyncError(:final error) => FailureNotice(
+          title: '소비내역을 분석하지 못했어요',
+          message: FailureNotice.messageOf(error),
         ),
         _ => const Padding(
           padding: EdgeInsets.symmetric(vertical: 120),
           child: Center(child: CircularProgressIndicator()),
         ),
       },
-      bottom: PrimaryButton(
-        label: '이 예산으로 플랜 만들기',
-        // 예산이 0원이면(분석할 소비가 없고 아직 입력하지 않음) 플랜을 만들 수 없다.
-        onPressed: budget == null || budget.total <= 0 || _saving
-            ? null
-            : () => _createPlan(budget),
-      ),
+      bottom: analysisAsync is AsyncError
+          ? PrimaryButton(
+              label: '다시 시도',
+              onPressed: () => ref.invalidate(spendingAnalysisProvider),
+            )
+          : PrimaryButton(
+              label: '이 예산으로 플랜 만들기',
+              // 예산이 0원이면(분석할 소비가 없고 아직 입력하지 않음) 플랜을 만들 수 없다.
+              onPressed: budget == null || budget.total <= 0 || _saving
+                  ? null
+                  : () => _createPlan(budget),
+            ),
     );
   }
 }
