@@ -1,4 +1,4 @@
-package com.richreach.recommendation.config;
+package com.richreach.global.openai;
 
 import java.net.http.HttpClient;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

@@ -1,4 +1,4 @@
-package com.richreach.recommendation.config;
+package com.richreach.global.openai;
 
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;

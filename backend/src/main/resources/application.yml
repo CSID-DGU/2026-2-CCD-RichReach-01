@@ -53,7 +53,7 @@ richreach:
   benefit:
     engine: ${BENEFIT_ENGINE:simple}
     rule-selection: ${BENEFIT_RULE_SELECTION:READY_ONLY}
-  # 결제 질문 해석에만 사용. 카드 혜택 계산과 추천 순위는 백엔드가 맡는다.
+  # 사용자가 예산 초안을 대화로 검토할 때만 사용. 혜택 계산과 플랜 저장은 별도 기능이다.
   openai:
     api-key: ${OPENAI_API_KEY:}
     model: ${OPENAI_MODEL:gpt-5-nano}

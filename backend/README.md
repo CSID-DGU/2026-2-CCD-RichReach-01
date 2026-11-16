@@ -115,8 +115,8 @@ docker compose up -d mysql  # .env의 새 값으로 다시 생성
 
 CI: [backend-ci.yml](../.github/workflows/backend-ci.yml)
 
-## OpenAI 결제 질문 해석
+## 월 예산 챗봇 미리보기
 
-로그인한 사용자는 `POST /api/recommendations/interpret`에 `{"question":"편의점에서 1000원 결제할 때 어떤 카드 써?"}`를 보낼 수 있다. 응답 `data`에는 질문에서 추출한 업종, 가맹점, 금액, 카드 질문 여부가 담긴다. 이 API는 카드 혜택 계산이나 최종 카드 추천을 수행하지 않는다. 전체 추천 API 초안과 연결 범위는 [OpenAI 연결 문서](../docs/api/recommendation-openai-integration.md)를 참고한다.
+로그인한 사용자는 `POST /api/plans/chat/preview`로 현재 월 예산 초안과 메시지를 보낸다. 서버는 OpenAI에서 대화 답변과 업종별 예산·계획 방향 수정 의도를 받아, 기존 예산 규칙으로 검증한 **수정안**을 반환한다. 이 API는 플랜을 저장하거나 카드 혜택을 계산하지 않는다. 화면 연결과 확인 절차는 [월 예산 챗봇 API 문서](../docs/api/plan-chat-openai.md)를 참고한다.
 
-서버 실행 환경에 `OPENAI_API_KEY`를 설정한다. `OPENAI_MODEL`의 기본값은 `gpt-5-nano`다. 키는 프론트엔드 코드나 Git에 넣지 않는다. 키가 없어도 서버는 시작되며, 이 엔드포인트를 호출하면 `RECOMMEND-003`을 반환한다.
+서버 실행 환경에 `OPENAI_API_KEY`를 설정한다. `OPENAI_MODEL`의 기본값은 `gpt-5-nano`다. 키는 프론트엔드 코드나 Git에 넣지 않는다. 키가 없어도 서버는 시작되며, 이 엔드포인트를 호출하면 `PLAN-007`을 반환한다.
