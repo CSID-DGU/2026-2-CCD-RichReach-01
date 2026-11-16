@@ -11,6 +11,8 @@ import '../features/auth/presentation/session_expired_screen.dart';
 import '../features/auth/presentation/signup_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
 import '../features/home/presentation/home_screen.dart';
+import '../features/home/presentation/planned_expense_form_screen.dart';
+import '../features/home/presentation/planned_expense_screen.dart';
 import '../features/home/presentation/transaction_history_screen.dart';
 import '../features/onboarding/presentation/budget_screen.dart';
 import '../features/onboarding/presentation/card_company_select_screen.dart';
@@ -26,6 +28,7 @@ import '../features/onboarding/presentation/service_intro_screen.dart';
 import '../features/onboarding/presentation/transactions_screen.dart';
 import '../features/onboarding/domain/transaction.dart';
 import '../features/plan/presentation/card_plan_detail_screen.dart';
+import '../features/plan/presentation/card_settings_screen.dart';
 import '../features/plan/presentation/category_plan_detail_screen.dart';
 import '../features/plan/presentation/monthly_plan_screen.dart';
 import '../features/recommendation/presentation/card_recommendation_screen.dart';
@@ -120,6 +123,13 @@ Widget _screenFor(AppRoute route, GoRouterState state) {
     AppRoute.recommendationHistory => const ChatHistoryScreen(),
     AppRoute.home => const HomeScreen(),
     AppRoute.transactionHistory => const TransactionHistoryScreen(),
+    AppRoute.plannedExpenses => const PlannedExpenseScreen(),
+    AppRoute.plannedExpenseNew => const PlannedExpenseFormScreen(),
+    AppRoute.plannedExpenseEdit => PlannedExpenseFormScreen(
+      expenseId: state.pathParameters['expenseId'],
+    ),
+    AppRoute.cardSettings || AppRoute.recommendationCardSettings =>
+      CardSettingsScreen(cardId: state.pathParameters['cardId'] ?? ''),
     AppRoute.report ||
     AppRoute.settings => ComingSoonScreen(title: route.title),
   };

@@ -28,6 +28,7 @@ class LabeledTextField extends StatefulWidget {
     this.enabled = true,
     this.actionLabel,
     this.onAction,
+    this.labelStyle,
   });
 
   final String label;
@@ -44,6 +45,9 @@ class LabeledTextField extends StatefulWidget {
   final bool enabled;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// 라벨 글자 모양. 없으면 작은 회색 글자(12). 색은 상태(오류·비활성)에 따라 바뀐다.
+  final TextStyle? labelStyle;
 
   @override
   State<LabeledTextField> createState() => _LabeledTextFieldState();
@@ -66,7 +70,11 @@ class _LabeledTextFieldState extends State<LabeledTextField> {
       children: [
         Text(
           widget.label,
-          style: AppTextStyles.caption.copyWith(color: labelColor),
+          style:
+              widget.labelStyle?.copyWith(
+                color: !widget.enabled || hasError ? labelColor : null,
+              ) ??
+              AppTextStyles.caption.copyWith(color: labelColor),
         ),
         const SizedBox(height: 4),
         TextField(
