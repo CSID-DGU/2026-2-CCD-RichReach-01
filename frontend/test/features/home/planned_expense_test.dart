@@ -109,7 +109,8 @@ void main() {
 
       expect(find.byType(PlannedExpenseScreen), findsOneWidget);
       expect(findText('노트북'), findsOneWidget);
-      expect(findText('12개월 할부'), findsOneWidget);
+      // 할부는 금액 아래에 개월 수와 이번 달 반영 금액으로 보여준다.
+      expect(findText('12개월 · 월 100,000원'), findsOneWidget);
       // 510,000 + 이번 달 반영 100,000
       expect(findText('610,000원'), findsOneWidget);
       expect(findText('400,000원'), findsOneWidget);

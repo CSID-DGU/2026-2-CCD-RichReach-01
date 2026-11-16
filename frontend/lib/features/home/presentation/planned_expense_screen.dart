@@ -212,23 +212,29 @@ class _ExpenseItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                // 두 칩을 한 줄에 둔다. 칸이 좁으면 할부 칩의 글자를 줄인다.
-                Row(
-                  children: [
-                    BudgetMethodChip(method: expense.budgetMethod),
-                    if (expense.installmentMonths case final months?) ...[
-                      const SizedBox(width: 4),
-                      Flexible(child: InstallmentChip(months: months)),
-                    ],
-                  ],
-                ),
+                BudgetMethodChip(method: expense.budgetMethod),
               ],
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            formatWon(expense.amount),
-            style: AppTextStyles.bodyStrong.copyWith(fontSize: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                formatWon(expense.amount),
+                style: AppTextStyles.bodyStrong.copyWith(fontSize: 14),
+              ),
+              if (installmentSummary(expense) case final summary?) ...[
+                const SizedBox(height: 4),
+                Text(
+                  summary,
+                  style: AppTextStyles.caption.copyWith(
+                    fontSize: 11,
+                    height: 14 / 11,
+                  ),
+                ),
+              ],
+            ],
           ),
           SizedBox(
             width: 44,
@@ -349,30 +355,25 @@ class _ActionSheet extends StatelessWidget {
                           style: big.copyWith(fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            BudgetMethodChip(
-                              method: expense.budgetMethod,
-                              large: true,
-                            ),
-                            if (expense.installmentMonths
-                                case final months?) ...[
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: InstallmentChip(
-                                  months: months,
-                                  large: true,
-                                ),
-                              ),
-                            ],
-                          ],
+                        BudgetMethodChip(
+                          method: expense.budgetMethod,
+                          large: true,
                         ),
                       ],
                     ),
                   ),
-                  Text(
-                    formatWon(expense.amount),
-                    style: big.copyWith(fontWeight: FontWeight.w600),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        formatWon(expense.amount),
+                        style: big.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      if (installmentSummary(expense) case final summary?) ...[
+                        const SizedBox(height: 4),
+                        Text(summary, style: AppTextStyles.caption),
+                      ],
+                    ],
                   ),
                 ],
               ),
