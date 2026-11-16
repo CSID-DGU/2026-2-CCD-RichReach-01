@@ -93,18 +93,14 @@ void main() {
       expect(findText('매월 약 100,000원씩 예산에 반영돼요'), findsOneWidget);
 
       await tester.tap(find.bySemanticsLabel('쇼핑'));
-      await tester.scrollUntilVisible(
-        findText('예산 밖 추가 지출'),
-        200,
-        // 아래 깔린 HOME-07 목록이 아니라 입력 화면을 스크롤한다.
-        scrollable: find
-            .descendant(
-              of: find.byType(PlannedExpenseFormScreen),
-              matching: find.byType(Scrollable),
-            )
-            .first,
+      // 아래 깔린 HOME-07의 칩에도 같은 글자가 있어 입력 화면 안에서 찾는다.
+      final extra = find.descendant(
+        of: find.byType(PlannedExpenseFormScreen),
+        matching: findText('예산 밖 추가 지출'),
       );
-      await tester.tap(findText('예산 밖 추가 지출'));
+      await tester.ensureVisible(extra);
+      await tester.pumpAndSettle();
+      await tester.tap(extra);
       await tester.pump();
       expect(_button(tester, '소비 플랜에 반영하기').onPressed, isNotNull);
 
