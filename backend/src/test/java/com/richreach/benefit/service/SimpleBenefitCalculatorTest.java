@@ -148,15 +148,15 @@ class SimpleBenefitCalculatorTest {
     }
 
     @Test
-    @DisplayName("일 한도나 횟수 한도가 있는 규칙이 혜택을 내면 적용하지 않았다는 안내를 남긴다")
+    @DisplayName("적용할 수 없는 일 한도나 횟수 한도 규칙은 예상 혜택에서 제외한다")
     void notesUnappliedLimits() {
         long ruleId = insertRule("limited", "DINING", null, 5.0, null, true);
         jdbc.update("update benefit_rules set daily_limit = 5000, monthly_count_limit = 3 where id = ?", ruleId);
 
         BenefitResult result = calculator(RuleSelection.READY_ONLY).calculate(query(0));
 
-        assertThat(result.totalBenefit()).isEqualTo(15_000);
-        assertThat(result.notes()).singleElement().asString().contains("일 한도", "횟수 한도");
+        assertThat(result.totalBenefit()).isZero();
+        assertThat(result.notes()).singleElement().asString().contains("제외");
     }
 
 }
