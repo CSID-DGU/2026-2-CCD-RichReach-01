@@ -58,7 +58,7 @@ void main() {
     expect(findText('820,000원'), findsOneWidget);
     expect(findText('음식·배달, 편의·마트 플랜이 변경됐어요'), findsOneWidget);
     expect(findText('결제 전 카드 추천'), findsOneWidget);
-    expect(findText('예정지출 추가'), findsOneWidget);
+    expect(findText('예정지출 관리'), findsOneWidget);
     expect(findText('카드별 목표 사용금액'), findsOneWidget);
     expect(findText('신한 Deep Dream'), findsWidgets);
   });
