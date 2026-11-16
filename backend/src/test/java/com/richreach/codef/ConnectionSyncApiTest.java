@@ -583,6 +583,44 @@ class ConnectionSyncApiTest {
         syncStatus(accessToken, jobId).andExpect(jsonPath("$.data.results[0].transactions").doesNotExist());
     }
 
+    @Test
+    @DisplayName("수집을 마친 기간을 카드사 계정에 기록하고, 다시 동기화하면 마지막 달부터만 가져온다")
+    void recordsCollectedRangeAndCollectsIncrementally() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, cardsOf(2));
+
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        CodefOrgAccount recorded = orgAccounts.findById(kb.getId()).orElseThrow();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        assertThat(recorded.getTxCollectedFrom()).isEqualTo(today.minusMonths(5).withDayOfMonth(1));
+        assertThat(recorded.getTxCollectedTo()).isEqualTo(today);
+        assertThat(recorded.getTxCollectedCardIds()).isNotBlank();
+        verify(approvals, org.mockito.Mockito.times(6)).fetchApprovals(anyString(), eq(KB), any(), any());
+
+        // 같은 카드로 다시 동기화하면 이번 달만 다시 가져온다. (이미 수집한 달은 건너뜀)
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        verify(approvals, org.mockito.Mockito.times(7)).fetchApprovals(anyString(), eq(KB), any(), any());
+        CodefOrgAccount again = orgAccounts.findById(kb.getId()).orElseThrow();
+        assertThat(again.getTxCollectedFrom()).isEqualTo(recorded.getTxCollectedFrom());
+    }
+
+    @Test
+    @DisplayName("승인내역 수집이 실패하면 수집 범위를 기록하지 않는다")
+    void failedCollectionRecordsNoRange() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, cardsOf(1));
+        when(approvals.fetchApprovals(anyString(), eq(KB), any(), any()))
+            .thenReturn(ApprovalListResult.failure("CF-09999"));
+
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        CodefOrgAccount account = orgAccounts.findById(kb.getId()).orElseThrow();
+        assertThat(account.getTxCollectedFrom()).isNull();
+        assertThat(account.getTxCollectedTo()).isNull();
+    }
+
     // ---- 보유카드 저장 ----
 
     @Test
