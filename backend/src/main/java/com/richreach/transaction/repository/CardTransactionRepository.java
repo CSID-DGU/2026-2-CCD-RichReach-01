@@ -64,6 +64,20 @@ public interface CardTransactionRepository extends JpaRepository<CardTransaction
                               @Param("to") LocalDateTime to);
 
     /**
+     * 보유카드 한 장의 거래 중 승인일시가 {@code from} 이상 {@code to} 미만인 것의 업종과 취소·환불을 뺀 금액. 혜택을 거래별로
+     * 나눌 때 쓴다. 업종은 {@link #sumByCategory}와 같이 사용자가 고친 값이 먼저다.
+     */
+    @Query("""
+        select new com.richreach.transaction.repository.TransactionNet(
+            t.id, coalesce(t.categoryOverride, t.category), t.amount - t.canceledAmount)
+        from CardTransaction t
+        where t.userId = :userId and t.userCardId = :cardId and t.approvedAt >= :from and t.approvedAt < :to
+        order by t.approvedAt, t.id
+        """)
+    List<TransactionNet> findNets(@Param("userId") Long userId, @Param("cardId") Long cardId,
+                                  @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /**
      * 사용자의 거래 중 가장 오래된 승인일시. 거래가 없으면 null.
      * {@code allCards}가 false이면 {@code cardIds}에 든 카드의 거래만 본다. ({@code cardIds}는 비어 있으면 안 된다.)
      */
