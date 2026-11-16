@@ -8,7 +8,6 @@ import com.richreach.global.response.PageResponse;
 import com.richreach.global.security.AuthenticatedUser;
 import com.richreach.transaction.dto.CardScope;
 import com.richreach.transaction.dto.ChangeCategoryRequest;
-import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionResponse;
 import com.richreach.transaction.dto.TransactionSummaryResponse;
 import com.richreach.transaction.service.TransactionCategoryService;
@@ -67,6 +66,9 @@ public class TransactionController {
      * <ul>
      *   <li>{@code period}: {@code 1M}, {@code 3M}, {@code 6M}. 요약과 같은 기준(승인일). 다른 값이면 400({@code TRANS-002}).
      *       없으면 전체 기간이다.</li>
+     *   <li>{@code month}: {@code yyyy-MM}. 그달 1일부터 말일까지(이번 달은 오늘까지) 승인일 기준으로 본다. 요약과 같은 규칙으로,
+     *       {@code month}가 있으면 {@code period}는 무시하고(잘못된 값이어도 오류가 아니다), 형식이 틀리거나 아직 오지 않은
+     *       월이면 400({@code COMMON-400})이다.</li>
      *   <li>{@code cardId}: 이 보유카드의 거래만. 내 카드가 아니면 결과가 비어 있다. 지정하면 {@code cardScope}보다 우선한다.</li>
      *   <li>{@code cardScope}: {@code cardId}가 없을 때 볼 카드. {@code SELECTED}(기본)는 분석 대상으로 고른 카드,
      *       {@code ALL}은 모든 거래다. 다른 값이면 400({@code COMMON-400}).</li>
@@ -80,6 +82,7 @@ public class TransactionController {
     @GetMapping
     public ApiResponse<PageResponse<TransactionResponse>> list(@AuthenticationPrincipal AuthenticatedUser user,
                                                                @RequestParam(required = false) String period,
+                                                               @RequestParam(required = false) String month,
                                                                @RequestParam(required = false) Long cardId,
                                                                @RequestParam(required = false) String cardScope,
                                                                @RequestParam(required = false) String category,
@@ -90,11 +93,9 @@ public class TransactionController {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE,
                 "page는 0 이상, size는 1부터 " + MAX_PAGE_SIZE + "까지여야 합니다.");
         }
-        SummaryPeriod summaryPeriod = period == null ? null : SummaryPeriod.fromCode(period)
-            .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PERIOD));
         SpendingCategory spendingCategory = category == null ? null : parseCategory(category);
 
-        var filter = new TransactionQueryService.Filter(summaryPeriod, cardId, CardScope.parse(cardScope), spendingCategory,
+        var filter = new TransactionQueryService.Filter(period, month, cardId, CardScope.parse(cardScope), spendingCategory,
             includeCanceled);
         return ApiResponse.ok(PageResponse.from(queryService.list(user.userId(), filter, page, size)));
     }

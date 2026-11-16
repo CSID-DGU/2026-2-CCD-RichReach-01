@@ -29,6 +29,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.List;
@@ -265,6 +266,79 @@ class TransactionApiTest {
         for (String query : new String[] {"?period=2M", "?period=", "?period=abc"}) {
             list(query).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("TRANS-002"));
         }
+    }
+
+    @Test
+    @DisplayName("month는 그달 1일부터 말일까지(승인일)이고, 앞뒤 달의 거래는 경계 시각에도 들어오지 않는다")
+    void monthFilter() throws Exception {
+        YearMonth thisMonth = YearMonth.from(today);
+        YearMonth lastMonth = thisMonth.minusMonths(1);
+        save(lastMonth.minusMonths(1).atEndOfMonth().atTime(23, 59, 59), "지지난달 말일", 1_000, "CAFE");
+        save(lastMonth.atDay(1).atStartOfDay(), "지난달 1일 0시", 1_000, "CAFE");
+        save(lastMonth.atEndOfMonth().atTime(23, 59, 59), "지난달 말일 23시59분", 1_000, "CAFE");
+        save(thisMonth.atDay(1).atStartOfDay(), "이번달 1일 0시", 1_000, "CAFE");
+
+        list("?month=" + lastMonth).andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(2))
+            .andExpect(jsonPath("$.data.content[0].merchantName").value("지난달 말일 23시59분"))
+            .andExpect(jsonPath("$.data.content[1].merchantName").value("지난달 1일 0시"));
+        list("?month=" + thisMonth).andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].merchantName").value("이번달 1일 0시"));
+        // 앞뒤 공백은 요약처럼 무시한다.
+        list("?month= " + lastMonth + " ").andExpect(jsonPath("$.data.totalElements").value(2));
+    }
+
+    @Test
+    @DisplayName("이번 달 조회는 오늘까지만 본다. 오늘 이후로 기록된 거래는 나오지 않는다")
+    void currentMonthEndsToday() throws Exception {
+        YearMonth thisMonth = YearMonth.from(today);
+        save(today.atTime(9, 0), "오늘", 1_000, "CAFE");
+        save(today.plusDays(1).atTime(9, 0), "내일", 1_000, "CAFE");
+
+        list("?month=" + thisMonth).andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].merchantName").value("오늘"));
+    }
+
+    @Test
+    @DisplayName("month가 있으면 period는 무시한다. 잘못된 period여도 오류가 아니다 (요약과 같은 규칙)")
+    void monthBeatsPeriod() throws Exception {
+        YearMonth lastMonth = YearMonth.from(today).minusMonths(1);
+        save(lastMonth.atDay(15).atTime(12, 0), "지난달", 1_000, "CAFE");
+        save(today.atTime(9, 0), "오늘", 1_000, "CAFE");
+
+        list("?month=" + lastMonth + "&period=1M").andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.content[0].merchantName").value("지난달"));
+        list("?month=" + lastMonth + "&period=abc").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
+    @DisplayName("month 형식이 틀리거나 비어 있거나 아직 오지 않은 월이면 400 COMMON-400이다")
+    void invalidMonth() throws Exception {
+        String future = YearMonth.from(today).plusMonths(1).toString();
+        for (String query : new String[] {"?month=", "?month=abc", "?month=2026-13", "?month=202611", "?month=2026-1",
+            "?month=" + future}) {
+            list(query).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("COMMON-400"));
+        }
+    }
+
+    @Test
+    @DisplayName("month는 카드, 업종, 취소 제외, 페이징과 함께 동작한다")
+    void monthCombinesWithOtherFilters() throws Exception {
+        YearMonth lastMonth = YearMonth.from(today).minusMonths(1);
+        long second = newCardForSameUser("두 번째 카드");
+        save(user, card, lastMonth.atDay(3).atTime(9, 0), "카페A", 1_000, 0, "CAFE");
+        save(user, card, lastMonth.atDay(4).atTime(9, 0), "카페B", 2_000, 2_000, "CAFE");
+        save(user, card, lastMonth.atDay(5).atTime(9, 0), "식당", 3_000, 0, "DINING");
+        save(user, second, lastMonth.atDay(6).atTime(9, 0), "다른 카드 카페", 4_000, 0, "CAFE");
+        save(user, card, today.atTime(9, 0), "이번 달 카페", 5_000, 0, "CAFE");
+
+        String month = "?month=" + lastMonth;
+        list(month + "&cardId=" + card).andExpect(jsonPath("$.data.totalElements").value(3));
+        list(month + "&cardScope=ALL&category=CAFE").andExpect(jsonPath("$.data.totalElements").value(3));
+        list(month + "&cardScope=ALL&category=CAFE&includeCanceled=false")
+            .andExpect(jsonPath("$.data.totalElements").value(2));
+        list(month + "&cardScope=ALL&size=2&page=1").andExpect(jsonPath("$.data.totalElements").value(4))
+            .andExpect(jsonPath("$.data.content", hasSize(2)));
     }
 
     @Test
