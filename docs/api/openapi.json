@@ -1707,6 +1707,10 @@
           },
           "overseas": {
             "type": "boolean"
+          },
+          "benefitAmount": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -1897,6 +1901,10 @@
             "format": "int64"
           },
           "transactionCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "benefitAmount": {
             "type": "integer",
             "format": "int64"
           },
