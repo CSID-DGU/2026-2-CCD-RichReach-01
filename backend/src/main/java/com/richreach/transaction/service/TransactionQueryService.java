@@ -12,6 +12,7 @@ import com.richreach.transaction.repository.CardTransactionRepository;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,7 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ul>
  *   <li>목록은 승인일시 최신순이고, 같으면 나중에 저장된 것이 먼저다.</li>
- *   <li>기간은 요약과 같은 기준이다. 오늘을 끝으로 N개월 전 같은 날부터 오늘까지, 승인일 기준이다. 기간이 없으면 전체다.</li>
+ *   <li>기간은 요약과 같은 기준이고 승인일 기준이다. 기간 조회는 오늘을 끝으로 N개월 전 같은 날부터 오늘까지이고, 월 조회는
+ *       그달 1일부터 말일까지(이번 달은 오늘까지)다. 월이 있으면 기간은 무시한다. 둘 다 없으면 전체다.</li>
  *   <li>취소된 거래는 기본으로 목록에 나오고 {@code status}로 구분한다. 전액 취소를 숨길 수 있다.</li>
  * </ul>
  * 가맹점명과 금액은 소비 정보라서 로그에 남기지 않는다.
@@ -39,8 +41,10 @@ public class TransactionQueryService {
     private final OwnedCardQueryService ownedCards;
     private final Clock clock;
 
-    /** 목록 조회 조건. 값이 없는 조건은 적용하지 않는다. */
-    public record Filter(SummaryPeriod period, Long cardId, CardScope scope, SpendingCategory category,
+    /**
+     * 목록 조회 조건. 값이 없는 조건은 적용하지 않는다. {@code month}가 있으면 {@code period}는 쓰지 않는다. (요약과 같은 규칙)
+     */
+    public record Filter(SummaryPeriod period, YearMonth month, Long cardId, CardScope scope, SpendingCategory category,
                          boolean includeCanceled) {
 
     }
@@ -49,8 +53,13 @@ public class TransactionQueryService {
     public Page<TransactionResponse> list(long userId, Filter filter, int page, int size) {
         LocalDateTime from = null;
         LocalDateTime to = null;
-        if (filter.period() != null) {
-            LocalDate today = LocalDate.now(clock);
+        LocalDate today = LocalDate.now(clock);
+        if (filter.month() != null) {
+            // 아직 오지 않은 월이면 요약과 같이 400(COMMON-400)이다. 끝은 마지막 날이 끝나는 시각(다음 날 0시, 미포함)까지 본다.
+            SummaryRange range = SummaryRange.ofMonth(filter.month(), today);
+            from = range.from().atStartOfDay();
+            to = range.to().plusDays(1).atStartOfDay();
+        } else if (filter.period() != null) {
             from = today.minusMonths(filter.period().months()).atStartOfDay();
             to = today.plusDays(1).atStartOfDay();
         }
