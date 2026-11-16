@@ -11,7 +11,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.richreach.card.dto.OwnedCardResponse;
+import com.richreach.card.dto.MatchableCard;
 import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.codef.client.CodefApprovalClient;
 import com.richreach.codef.client.CodefApprovalClient.ApprovalListResult;
@@ -52,14 +52,13 @@ class ApprovalCollectorTest {
         ownedCards = mock(OwnedCardQueryService.class);
         store = mock(TransactionStoreService.class);
         collector = new ApprovalCollector(approvals, ownedCards, store, new CodefCollectProperties(6), CLOCK);
-        when(ownedCards.list(1L)).thenReturn(List.of(card(10L, CardCompany.KB, "************4001"),
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(10L, CardCompany.KB, "************4001"),
             card(11L, CardCompany.KB, "************4002"), card(12L, CardCompany.SHINHAN, "************4001")));
         when(store.saveCollected(anyLong(), anyLong(), anyList())).thenReturn(new SaveResult(1, 0, 0, 0));
     }
 
-    private static OwnedCardResponse card(long id, CardCompany company, String masked) {
-        return new OwnedCardResponse(id, null, company, "카드" + id, masked, null,
-            OwnedCardResponse.AnalysisStatus.UNAVAILABLE, true, null);
+    private static MatchableCard card(long id, CardCompany company, String masked) {
+        return new MatchableCard(id, company, masked);
     }
 
     private static CodefApproval approval(String no, String cardNumber) {
@@ -108,7 +107,7 @@ class ApprovalCollectorTest {
     @Test
     @DisplayName("같은 끝 4자리 카드가 둘이면 어느 카드인지 알 수 없어 저장하지 않는다")
     void ambiguousCardIsNotSaved() {
-        when(ownedCards.list(1L)).thenReturn(List.of(card(10L, CardCompany.KB, "************4001"),
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(10L, CardCompany.KB, "************4001"),
             card(11L, CardCompany.KB, "************4001")));
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "****4001")))
             .thenReturn(ok());
@@ -159,7 +158,7 @@ class ApprovalCollectorTest {
     @Test
     @DisplayName("끝자리 하나가 가려진 카드(신한)도 숫자가 충돌하지 않는 후보가 하나면 저장한다")
     void matchesCardWithMaskedLastDigit() {
-        when(ownedCards.list(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************400*"),
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************400*"),
             card(21L, CardCompany.KB, "************410*")));
         when(approvals.fetchApprovals(any(), any(), any(), any()))
             .thenReturn(ok(approval("A", "1234********400*"))).thenReturn(ok());
@@ -174,7 +173,7 @@ class ApprovalCollectorTest {
     @Test
     @DisplayName("가려진 자리 때문에 후보가 여러 장이면 정하지 않는다")
     void ambiguousWhenMaskedDigitsMatchSeveralCards() {
-        when(ownedCards.list(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************4001"),
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************4001"),
             card(21L, CardCompany.KB, "************4002")));
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "************400*")))
             .thenReturn(ok());
@@ -188,7 +187,7 @@ class ApprovalCollectorTest {
     @Test
     @DisplayName("카드사에 보유카드가 한 장이면 번호가 모두 가려져 있어도 그 카드로 저장한다")
     void singleCandidateMatchesFullyMaskedNumber() {
-        when(ownedCards.list(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************4001")));
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************4001")));
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "****************")))
             .thenReturn(ok());
 
@@ -201,7 +200,7 @@ class ApprovalCollectorTest {
     @Test
     @DisplayName("보유카드가 한 장이어도 숫자가 충돌하면 다른 카드의 승인내역이라 저장하지 않는다")
     void conflictingDigitsAreNeverMatched() {
-        when(ownedCards.list(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************4001")));
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************4001")));
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "************9999")))
             .thenReturn(ok());
 
@@ -324,7 +323,7 @@ class ApprovalCollectorTest {
     @Test
     @DisplayName("보유카드를 읽지 못하면 FAILED이고 기존 기록은 그대로 둔다")
     void unreadableCardsKeepPreviousRange() {
-        when(ownedCards.list(1L)).thenThrow(new IllegalStateException("db"));
+        when(ownedCards.listForMatching(1L)).thenThrow(new IllegalStateException("db"));
         ApprovalCollector.Range previous = range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 11, 10), KB_CARD_IDS);
 
         ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", previous, FAR);
