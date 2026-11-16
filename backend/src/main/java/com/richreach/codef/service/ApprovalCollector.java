@@ -1,6 +1,6 @@
 package com.richreach.codef.service;
 
-import com.richreach.card.dto.OwnedCardResponse;
+import com.richreach.card.dto.MatchableCard;
 import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.codef.client.CodefApprovalClient;
 import com.richreach.codef.client.CodefApprovalClient.ApprovalListResult;
@@ -72,9 +72,9 @@ public class ApprovalCollector {
     public Result collect(long userId, CardCompany company, String connectedId, String organization,
                           LocalDateTime deadline) {
         LocalDate today = LocalDate.now(clock);
-        List<OwnedCardResponse> candidates;
+        List<MatchableCard> candidates;
         try {
-            candidates = ownedCards.list(userId).stream().filter(card -> card.cardCompany() == company).toList();
+            candidates = ownedCards.listForMatching(userId).stream().filter(card -> card.cardCompany() == company).toList();
         } catch (RuntimeException e) {
             log.error("승인내역 수집 중 보유카드를 읽지 못했습니다: type={}", e.getClass().getSimpleName());
             return new Result(FAILED, 0, 0, null, null);
@@ -101,8 +101,8 @@ public class ApprovalCollector {
                 }
                 Map<Long, List<CollectedTransaction>> byCard = new LinkedHashMap<>();
                 for (CodefApproval approval : result.approvals()) {
-                    List<OwnedCardResponse> matches = candidates.stream()
-                        .filter(card -> isCompatible(card.maskedNumber(), approval.cardNumber())).toList();
+                    List<MatchableCard> matches = candidates.stream()
+                        .filter(card -> isCompatible(card.number(), approval.cardNumber())).toList();
                     if (matches.size() != 1) {
                         unmatched++;
                         continue;
