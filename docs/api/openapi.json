@@ -618,6 +618,14 @@
             }
           },
           {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "cardId",
             "in": "query",
             "required": false,
