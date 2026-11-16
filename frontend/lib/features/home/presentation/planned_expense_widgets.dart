@@ -47,12 +47,16 @@ class PlannedExpenseBottomBar extends StatelessWidget {
 }
 
 /// 둥근 칩. [highlighted]면 연보라 바탕에 보라 글자, 아니면 흰 바탕·회색 테두리.
+///
+/// [width]를 주면 그 너비로 고정하고, 없으면 글자 너비에 맞춘다.
+/// 글자가 칸보다 크면(큰 글자 설정 등) 줄을 바꾸지 않고 글자를 줄인다.
 class PlannedExpenseChip extends StatelessWidget {
   const PlannedExpenseChip({
     super.key,
     required this.label,
     required this.highlighted,
     this.large = false,
+    this.width,
   });
 
   final String label;
@@ -60,26 +64,31 @@ class PlannedExpenseChip extends StatelessWidget {
 
   /// 시트(HOME-08)에서 쓰는 큰 칩 (높이 29, 글자 14)
   final bool large;
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: width,
       height: large ? 29 : 18,
-      padding: EdgeInsets.symmetric(horizontal: large ? 10 : 8),
+      padding: EdgeInsets.symmetric(horizontal: large ? 10 : 6),
       decoration: BoxDecoration(
         color: highlighted ? AppColors.primarySubtle : AppColors.background,
         borderRadius: BorderRadius.circular(999),
         border: highlighted ? null : Border.all(color: AppColors.border),
       ),
-      // 글자 너비만큼만 차지하고 세로 가운데에 둔다.
       child: Center(
-        widthFactor: 1,
-        child: Text(
-          label,
-          style: AppTextStyles.caption.copyWith(
-            fontSize: large ? 14 : 10,
-            height: 18 / (large ? 14 : 10),
-            color: highlighted ? AppColors.primary : AppColors.textSecondary,
+        widthFactor: width == null ? 1 : null,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: AppTextStyles.caption.copyWith(
+              fontSize: large ? 14 : 10,
+              height: 18 / (large ? 14 : 10),
+              color: highlighted ? AppColors.primary : AppColors.textSecondary,
+            ),
           ),
         ),
       ),
@@ -88,6 +97,7 @@ class PlannedExpenseChip extends StatelessWidget {
 }
 
 /// 예산 반영 방식 칩. "기존 예산에서 조정"은 강조, "예산 밖 추가 지출"은 테두리만.
+/// 두 칩은 같은 크기다 (Figma: 목록 93×18, 시트 134×29).
 class BudgetMethodChip extends StatelessWidget {
   const BudgetMethodChip({super.key, required this.method, this.large = false});
 
@@ -98,6 +108,22 @@ class BudgetMethodChip extends StatelessWidget {
   Widget build(BuildContext context) => PlannedExpenseChip(
     label: method.chipLabel,
     highlighted: method == BudgetMethod.withinBudget,
+    large: large,
+    width: large ? 134 : 93,
+  );
+}
+
+/// 할부 개월 수 칩 ("3개월 할부"). 반영 방식 칩과 같은 높이로, 글자 너비에 맞춘다.
+class InstallmentChip extends StatelessWidget {
+  const InstallmentChip({super.key, required this.months, this.large = false});
+
+  final int months;
+  final bool large;
+
+  @override
+  Widget build(BuildContext context) => PlannedExpenseChip(
+    label: '$months개월 할부',
+    highlighted: false,
     large: large,
   );
 }

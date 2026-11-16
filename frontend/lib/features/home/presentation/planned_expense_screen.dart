@@ -212,16 +212,14 @@ class _ExpenseItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
+                // 두 칩을 한 줄에 둔다. 칸이 좁으면 할부 칩의 글자를 줄인다.
+                Row(
                   children: [
                     BudgetMethodChip(method: expense.budgetMethod),
-                    if (expense.installmentMonths case final months?)
-                      PlannedExpenseChip(
-                        label: '$months개월 할부',
-                        highlighted: false,
-                      ),
+                    if (expense.installmentMonths case final months?) ...[
+                      const SizedBox(width: 4),
+                      Flexible(child: InstallmentChip(months: months)),
+                    ],
                   ],
                 ),
               ],
@@ -351,9 +349,23 @@ class _ActionSheet extends StatelessWidget {
                           style: big.copyWith(fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 4),
-                        BudgetMethodChip(
-                          method: expense.budgetMethod,
-                          large: true,
+                        Row(
+                          children: [
+                            BudgetMethodChip(
+                              method: expense.budgetMethod,
+                              large: true,
+                            ),
+                            if (expense.installmentMonths
+                                case final months?) ...[
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: InstallmentChip(
+                                  months: months,
+                                  large: true,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),

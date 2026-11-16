@@ -319,13 +319,16 @@ class _MonthChip extends StatelessWidget {
             height: 29,
             constraints: const BoxConstraints(minWidth: 49),
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            alignment: Alignment.center,
-            child: Text(
-              '$months개월',
-              style: AppTextStyles.caption.copyWith(
-                height: 16 / 12,
-                fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
-                color: selected ? AppColors.onPrimary : AppColors.primary,
+            // 글자 너비만큼만 차지한다 (Figma 49×29).
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                '$months개월',
+                style: AppTextStyles.caption.copyWith(
+                  height: 16 / 12,
+                  fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
+                  color: selected ? AppColors.onPrimary : AppColors.primary,
+                ),
               ),
             ),
           ),
