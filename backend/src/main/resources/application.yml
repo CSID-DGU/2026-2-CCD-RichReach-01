@@ -53,6 +53,10 @@ richreach:
   benefit:
     engine: ${BENEFIT_ENGINE:simple}
     rule-selection: ${BENEFIT_RULE_SELECTION:READY_ONLY}
+  # 결제 질문 해석에만 사용. 카드 혜택 계산과 추천 순위는 백엔드가 맡는다.
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-5-nano}
   # 시연용 보유카드·거래 만들기. 평소에는 꺼 두고, 로컬 DB에서 만들 때만 켠다. (DemoSeedRunner 참고)
   demo-seed:
     enabled: ${DEMO_SEED_ON_STARTUP:false}
