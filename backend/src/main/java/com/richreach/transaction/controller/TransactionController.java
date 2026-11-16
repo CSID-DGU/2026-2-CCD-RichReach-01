@@ -43,7 +43,7 @@ public class TransactionController {
 
     /**
      * 기간별 또는 월별 소비 요약. {@code period}는 {@code 1M}, {@code 3M}, {@code 6M} 중 하나이고, 없거나 다른 값이면
-     * 400({@code TRANS-002})이다. 금액은 취소·환불을 뺀 값이며, 수집된 거래가 요청한 기간보다 짧으면 {@code partial=true}다.
+     * 400({@code TRANS-002})이다. 금액은 취소·환불을 뺀 값이며, 수집한 기간이 요청한 기간보다 짧으면 {@code partial=true}다.
      * 거래가 없으면 합계와 11개 업종이 모두 0인 응답이다.
      *
      * <p>{@code month=yyyy-MM}을 보내면 그달 1일부터 말일까지(이번 달은 오늘까지) 요약한다. {@code month}가 있으면
