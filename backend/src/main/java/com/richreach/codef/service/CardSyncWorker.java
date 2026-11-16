@@ -83,7 +83,7 @@ public class CardSyncWorker {
                 synced = true;
                 if (!result.cards().isEmpty()) {
                     target = new CollectTarget(CardCompany.fromOrganizationCode(account.getOrganization()), connectedId,
-                        account.getOrganization(), collectDeadline(job));
+                        account.getOrganization(), previousRange(account), collectDeadline(job));
                     toSave = new CardsToSave(account.getConnection().getUser().getId(), account.getId(),
                         CardCompany.fromOrganizationCode(account.getOrganization()), result.cards().stream()
                             .map(card -> new CollectedCard(card.name(), card.number(), card.type())).toList());
@@ -106,7 +106,7 @@ public class CardSyncWorker {
                     return;
                 }
                 collection = collector.collect(toSave.userId(), target.company(), target.connectedId(),
-                    target.organization(), target.deadline());
+                    target.organization(), target.previous(), target.deadline());
             }
             record(jobId, update, synced, collection);
         } catch (RuntimeException e) {
@@ -143,11 +143,15 @@ public class CardSyncWorker {
                 return;
             }
             update.accept(job);
+            CodefOrgAccount account = job.getOrgAccount();
             if (collection != null) {
                 job.recordTransactions(collection.status(), collection.saved(), collection.unmatched(),
                     collection.from(), collection.to());
+                // 수집을 마친 기간을 카드사 계정에 기록한다. 다음 동기화가 이어서 수집하고, 거래 요약이 부분 수집 여부를 가리는 데 쓴다.
+                ApprovalCollector.Range range = collection.range();
+                account.recordCollectedRange(range == null ? null : range.from(), range == null ? null : range.to(),
+                    range == null ? null : range.cardIds());
             }
-            CodefOrgAccount account = job.getOrgAccount();
             if (synced) {
                 account.markSynced(now());
             } else {
@@ -165,13 +169,22 @@ public class CardSyncWorker {
             .minus(COLLECT_MARGIN);
     }
 
+    /** 카드사 계정에 기록된 수집 범위. 기록이 없으면 null. */
+    private static ApprovalCollector.Range previousRange(CodefOrgAccount account) {
+        if (account.getTxCollectedFrom() == null || account.getTxCollectedTo() == null) {
+            return null;
+        }
+        return new ApprovalCollector.Range(account.getTxCollectedFrom(), account.getTxCollectedTo(),
+            account.getTxCollectedCardIds());
+    }
+
     private LocalDateTime now() {
         return Times.nowSeconds(clock);
     }
 
     /** 승인내역을 수집할 대상. connectedId가 들어 있어서 로그에 남기지 않는다. */
     private record CollectTarget(CardCompany company, String connectedId, String organization,
-                                 LocalDateTime deadline) {
+                                 ApprovalCollector.Range previous, LocalDateTime deadline) {
 
         @Override
         public String toString() {
