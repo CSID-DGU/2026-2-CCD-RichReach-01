@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -64,6 +65,17 @@ public class CodefOrgAccount {
     @Column(name = "last_synced_at")
     private LocalDateTime lastSyncedAt;
 
+    /** 거래(승인내역) 수집을 마친 연속된 기간. 아직 수집 기록이 없으면 null. */
+    @Column(name = "tx_collected_from")
+    private LocalDate txCollectedFrom;
+
+    @Column(name = "tx_collected_to")
+    private LocalDate txCollectedTo;
+
+    /** 기록할 때의 보유카드 id 목록(쉼표로 구분). 카드 구성이 바뀌었는지 가리는 데 쓴다. */
+    @Column(name = "tx_collected_card_ids", length = 255)
+    private String txCollectedCardIds;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -85,6 +97,13 @@ public class CodefOrgAccount {
     public void markSynced(LocalDateTime syncedAt) {
         this.lastSyncedAt = syncedAt;
         this.lastErrorCode = null;
+    }
+
+    /** 거래 수집을 마친 기간을 기록한다. 기록을 지우려면 모두 null로 넘긴다. */
+    public void recordCollectedRange(LocalDate from, LocalDate to, String cardIds) {
+        this.txCollectedFrom = from;
+        this.txCollectedTo = to;
+        this.txCollectedCardIds = cardIds;
     }
 
     /** 동기화에 실패한 오류 코드를 남긴다. 연결 상태(status)는 바꾸지 않는다. */

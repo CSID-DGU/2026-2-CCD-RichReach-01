@@ -2,6 +2,7 @@ package com.richreach.transaction.service;
 
 import com.richreach.card.dto.OwnedCardResponse;
 import com.richreach.card.service.OwnedCardQueryService;
+import com.richreach.codef.service.CollectionRangeQueryService;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
 import com.richreach.transaction.dto.CardScope;
@@ -42,6 +43,7 @@ public class TransactionSummaryService {
 
     private final CardTransactionRepository transactions;
     private final OwnedCardQueryService ownedCards;
+    private final CollectionRangeQueryService collectionRanges;
     private final Clock clock;
 
     /**
@@ -109,7 +111,9 @@ public class TransactionSummaryService {
                 total == null ? 0 : valueOf(total.transactionCount()));
         }).toList();
 
-        return SummaryAssembler.assemble(range, earliest, totals, cardSummaries);
+        // 카드사에서 수집을 마친 기간이 기록되어 있으면 그것으로, 없으면 가장 오래된 거래의 날짜로 수집 기간을 본다.
+        LocalDate recordedFrom = collectionRanges.collectedFrom(userId).orElse(null);
+        return SummaryAssembler.assemble(range, earliest, recordedFrom, totals, cardSummaries);
     }
 
     /**

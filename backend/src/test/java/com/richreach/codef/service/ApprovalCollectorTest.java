@@ -75,7 +75,7 @@ class ApprovalCollectorTest {
     void fetchesMonthlyChunksNewestFirst() {
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok());
 
-        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
 
         ArgumentCaptor<LocalDate> from = ArgumentCaptor.forClass(LocalDate.class);
         ArgumentCaptor<LocalDate> to = ArgumentCaptor.forClass(LocalDate.class);
@@ -96,7 +96,7 @@ class ApprovalCollectorTest {
             ok(approval("A", "1111-22**-****-4001"), approval("B", "9999-99**-****-9999"), approval("C", null)))
             .thenReturn(ok());
 
-        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
 
         verify(store).saveCollected(eq(1L), eq(10L), anyList());
         verify(store, never()).saveCollected(eq(1L), eq(12L), anyList());
@@ -112,7 +112,7 @@ class ApprovalCollectorTest {
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "****4001")))
             .thenReturn(ok());
 
-        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
 
         verify(store, never()).saveCollected(anyLong(), anyLong(), anyList());
         assertThat(result.unmatched()).isEqualTo(1);
@@ -124,7 +124,7 @@ class ApprovalCollectorTest {
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(), ok(),
             ApprovalListResult.failure("CF-12207"));
 
-        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
 
         verify(approvals, times(3)).fetchApprovals(any(), any(), any(), any());
         assertThat(result.status()).isEqualTo(ApprovalCollector.PARTIAL);
@@ -138,7 +138,7 @@ class ApprovalCollectorTest {
         when(approvals.fetchApprovals(any(), any(), any(), any()))
             .thenThrow(new BusinessException(ErrorCode.CODEF_UNAVAILABLE));
 
-        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
 
         assertThat(result.status()).isEqualTo(ApprovalCollector.FAILED);
         assertThat(result.from()).isNull();
@@ -148,7 +148,7 @@ class ApprovalCollectorTest {
     @Test
     @DisplayName("제한 시각이 지났으면 더 부르지 않고 지금까지의 결과로 끝낸다")
     void stopsAfterDeadline() {
-        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301",
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null,
             LocalDateTime.of(2020, 1, 1, 0, 0));
 
         verify(approvals, never()).fetchApprovals(any(), any(), any(), any());
@@ -163,7 +163,7 @@ class ApprovalCollectorTest {
         when(approvals.fetchApprovals(any(), any(), any(), any()))
             .thenReturn(ok(approval("A", "1234********400*"))).thenReturn(ok());
 
-        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
 
         verify(store).saveCollected(eq(1L), eq(20L), anyList());
         assertThat(result.saved()).isEqualTo(1);
@@ -178,7 +178,7 @@ class ApprovalCollectorTest {
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "************400*")))
             .thenReturn(ok());
 
-        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
 
         verify(store, never()).saveCollected(anyLong(), anyLong(), anyList());
         assertThat(result.unmatched()).isEqualTo(1);
@@ -191,7 +191,7 @@ class ApprovalCollectorTest {
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "****************")))
             .thenReturn(ok());
 
-        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
 
         verify(store).saveCollected(eq(1L), eq(20L), anyList());
         assertThat(result.unmatched()).isZero();
@@ -204,7 +204,7 @@ class ApprovalCollectorTest {
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "************9999")))
             .thenReturn(ok());
 
-        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
 
         verify(store, never()).saveCollected(anyLong(), anyLong(), anyList());
         assertThat(result.unmatched()).isEqualTo(1);
@@ -220,6 +220,116 @@ class ApprovalCollectorTest {
         assertThat(ApprovalCollector.isCompatible("************4001", "")).isTrue();
         // 앞쪽 숫자가 보이는 번호는 앞쪽도 비교한다. (끝 4자리가 우연히 같아도 앞이 다르면 다른 카드)
         assertThat(ApprovalCollector.isCompatible("1234********4001", "9999********4001")).isFalse();
+    }
+
+    // ---- 수집 범위 기록과 증분 수집 ----
+    // setUp의 보유카드: KB 10, 11 (SHINHAN 12). 오늘은 2026-11-15, 6개월 창은 2026-06-01부터다.
+
+    private static final String KB_CARD_IDS = "10,11";
+
+    private static ApprovalCollector.Range range(LocalDate from, LocalDate to, String cardIds) {
+        return new ApprovalCollector.Range(from, to, cardIds);
+    }
+
+    @Test
+    @DisplayName("기록이 없으면 6개월 전체를 수집하고, 수집한 기간과 카드 구성을 돌려준다")
+    void firstCollectionReturnsFullRange() {
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok());
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
+
+        verify(approvals, times(6)).fetchApprovals(any(), any(), any(), any());
+        assertThat(result.range()).isEqualTo(range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 11, 15), KB_CARD_IDS));
+    }
+
+    @Test
+    @DisplayName("이미 수집한 기록이 있으면 마지막으로 수집한 달부터 이번 달까지만 다시 가져오고, 기록은 이어서 늘린다")
+    void incrementalCollectionFetchesOnlyFromLastCollectedMonth() {
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok());
+        ApprovalCollector.Range previous = range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 11, 10), KB_CARD_IDS);
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", previous, FAR);
+
+        verify(approvals, times(1)).fetchApprovals(any(), any(), any(), any());
+        verify(approvals).fetchApprovals("cid", "0301", LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 15));
+        assertThat(result.status()).isEqualTo(ApprovalCollector.SUCCESS);
+        assertThat(result.range()).isEqualTo(range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 11, 15), KB_CARD_IDS));
+    }
+
+    @Test
+    @DisplayName("마지막 수집이 몇 달 전이면 그 달부터 이번 달까지를 가져오고, 그보다 오래된 달은 건너뛴다")
+    void incrementalCollectionCoversTheGapSinceLastCollection() {
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok());
+        ApprovalCollector.Range previous = range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 9, 20), KB_CARD_IDS);
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", previous, FAR);
+
+        verify(approvals, times(3)).fetchApprovals(any(), any(), any(), any());
+        verify(approvals).fetchApprovals("cid", "0301", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+        assertThat(result.range()).isEqualTo(range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 11, 15), KB_CARD_IDS));
+    }
+
+    @Test
+    @DisplayName("기록된 시작일보다 오래된 달이 창 안에 있으면 그 달도 채운다")
+    void incrementalCollectionBackfillsOlderMonths() {
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok());
+        ApprovalCollector.Range previous = range(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 11, 10), KB_CARD_IDS);
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", previous, FAR);
+
+        // 이번 달 + 기록보다 오래된 8·7·6월. 10·9월은 이미 수집했다.
+        verify(approvals, times(4)).fetchApprovals(any(), any(), any(), any());
+        verify(approvals).fetchApprovals("cid", "0301", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31));
+        assertThat(result.range()).isEqualTo(range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 11, 15), KB_CARD_IDS));
+    }
+
+    @Test
+    @DisplayName("보유카드 구성이 기록할 때와 다르면 기록을 믿지 않고 6개월 전체를 다시 수집한다")
+    void changedCardsIgnoreThePreviousRange() {
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok());
+        ApprovalCollector.Range previous = range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 11, 10), "10");
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", previous, FAR);
+
+        verify(approvals, times(6)).fetchApprovals(any(), any(), any(), any());
+        assertThat(result.range().cardIds()).isEqualTo(KB_CARD_IDS);
+    }
+
+    @Test
+    @DisplayName("증분 수집이 첫 달부터 실패하면 FAILED이고 기존 기록은 그대로 둔다")
+    void failedIncrementalCollectionKeepsPreviousRange() {
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ApprovalListResult.failure("CF-09999"));
+        ApprovalCollector.Range previous = range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 11, 10), KB_CARD_IDS);
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", previous, FAR);
+
+        assertThat(result.status()).isEqualTo(ApprovalCollector.FAILED);
+        assertThat(result.range()).isEqualTo(previous);
+    }
+
+    @Test
+    @DisplayName("증분 수집이 기록과 이어지기 전에 실패하면, 이어지지 않는 구간은 기록하지 않고 새로 수집한 구간만 남긴다")
+    void gapBeforeThePreviousRangeIsNotRecorded() {
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(), ApprovalListResult.failure("CF-09999"));
+        ApprovalCollector.Range previous = range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 9, 20), KB_CARD_IDS);
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", previous, FAR);
+
+        // 11월은 가져왔지만 10월에서 실패해서 9월의 기록과 이어지지 않는다.
+        assertThat(result.status()).isEqualTo(ApprovalCollector.PARTIAL);
+        assertThat(result.range()).isEqualTo(range(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 15), KB_CARD_IDS));
+    }
+
+    @Test
+    @DisplayName("보유카드를 읽지 못하면 FAILED이고 기존 기록은 그대로 둔다")
+    void unreadableCardsKeepPreviousRange() {
+        when(ownedCards.listForMatching(1L)).thenThrow(new IllegalStateException("db"));
+        ApprovalCollector.Range previous = range(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 11, 10), KB_CARD_IDS);
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", previous, FAR);
+
+        assertThat(result.status()).isEqualTo(ApprovalCollector.FAILED);
+        assertThat(result.range()).isEqualTo(previous);
     }
 
 }

@@ -74,7 +74,7 @@ class ApprovalCollectorCardMatchingTest {
     private ApprovalCollector.Result collectWith(String approvalCardNumber) {
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(
             new ApprovalListResult(true, 1, "CF-00000", List.of(approval(approvalCardNumber))));
-        return collector.collect(1L, CardCompany.SHINHAN, "cid", SHINHAN, FAR);
+        return collector.collect(1L, CardCompany.SHINHAN, "cid", SHINHAN, null, FAR);
     }
 
     @Test

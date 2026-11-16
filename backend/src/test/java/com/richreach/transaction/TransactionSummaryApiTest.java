@@ -354,6 +354,35 @@ class TransactionSummaryApiTest {
         summary("3M").andExpect(jsonPath("$.data.partial").value(false));
     }
 
+    // ---- 수집 범위 기록 ----
+
+    /** 사용자의 카드사 계정에 거래 수집을 마친 기간을 기록한다. (동기화가 하는 일) */
+    private void recordCollected(LocalDate from) {
+        var account = orgAccounts.findActiveByUserId(user.getId()).get(0);
+        account.recordCollectedRange(from, today, "1");
+        orgAccounts.save(account);
+    }
+
+    @Test
+    @DisplayName("수집 범위가 기록되어 있으면, 소비가 늦게 시작해 앞쪽 거래가 없어도 부분 데이터가 아니다")
+    void recordedRangeMakesNoSpendingPeriodNotPartial() throws Exception {
+        save(today.minusDays(10).atTime(9, 0), 1_000, "CAFE");
+        recordCollected(today.minusMonths(6).withDayOfMonth(1));
+
+        summary("3M").andExpect(jsonPath("$.data.partial").value(false))
+            .andExpect(jsonPath("$.data.collectedFrom").value(today.minusMonths(6).withDayOfMonth(1).toString()));
+    }
+
+    @Test
+    @DisplayName("수집 범위가 기간보다 짧게 기록되어 있으면, 거래가 더 이전에 있어도 부분 데이터다")
+    void recordedRangeShorterThanThePeriodIsPartial() throws Exception {
+        save(today.minusDays(100).atTime(9, 0), 1_000, "CAFE");
+        recordCollected(today.minusMonths(1).withDayOfMonth(1));
+
+        summary("3M").andExpect(jsonPath("$.data.partial").value(true))
+            .andExpect(jsonPath("$.data.collectedFrom").value(today.minusMonths(1).withDayOfMonth(1).toString()));
+    }
+
     // ---- 거래가 없는 경우, 격리 ----
 
     @Test

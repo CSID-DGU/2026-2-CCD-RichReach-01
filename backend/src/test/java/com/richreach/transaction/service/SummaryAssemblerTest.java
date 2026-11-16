@@ -184,6 +184,47 @@ class SummaryAssemblerTest {
         assertThat(response.collectedFrom()).isNull();
     }
 
+    // ---- 기록된 수집 범위 ----
+
+    private static TransactionSummaryResponse assembleWithRecord(LocalDateTime earliest, LocalDate recordedFrom) {
+        return SummaryAssembler.assemble(new SummaryRange("1M", null, FROM, TO), earliest, recordedFrom, List.of(),
+            List.of());
+    }
+
+    @Test
+    @DisplayName("기간 전체를 수집했다고 기록되어 있으면, 소비가 늦게 시작돼도 부분 데이터가 아니다")
+    void recordedRangeCoveringTheStartIsNotPartial() {
+        TransactionSummaryResponse response = assembleWithRecord(FROM.plusDays(20).atTime(12, 0), FROM.minusDays(60));
+
+        assertThat(response.partial()).isFalse();
+        assertThat(response.collectedFrom()).isEqualTo(FROM.minusDays(60));
+    }
+
+    @Test
+    @DisplayName("기록된 수집 시작일이 기간 시작일보다 늦으면, 거래가 더 이전에 있어도 부분 데이터다")
+    void recordedRangeStartingAfterTheStartIsPartial() {
+        TransactionSummaryResponse response = assembleWithRecord(FROM.minusDays(5).atTime(9, 0), FROM.plusDays(10));
+
+        assertThat(response.partial()).isTrue();
+        assertThat(response.collectedFrom()).isEqualTo(FROM.plusDays(10));
+    }
+
+    @Test
+    @DisplayName("거래가 하나도 없어도 기록된 수집 시작일이 기간 시작일보다 늦으면 부분 데이터다")
+    void recordedRangeAloneDecidesPartialWithoutTransactions() {
+        assertThat(assembleWithRecord(null, FROM.plusDays(3)).partial()).isTrue();
+        assertThat(assembleWithRecord(null, FROM).partial()).isFalse();
+    }
+
+    @Test
+    @DisplayName("기록이 없으면 기존처럼 가장 오래된 거래의 날짜로 추정한다")
+    void withoutRecordFallsBackToEarliestTransaction() {
+        TransactionSummaryResponse response = assembleWithRecord(FROM.plusDays(5).atTime(12, 0), null);
+
+        assertThat(response.partial()).isTrue();
+        assertThat(response.collectedFrom()).isEqualTo(FROM.plusDays(5));
+    }
+
     // ---- 응답 ----
 
     @Test
