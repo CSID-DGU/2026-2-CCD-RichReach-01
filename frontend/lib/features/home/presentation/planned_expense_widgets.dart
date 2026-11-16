@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/formatters/money_formatter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../domain/planned_expense.dart';
@@ -113,17 +114,10 @@ class BudgetMethodChip extends StatelessWidget {
   );
 }
 
-/// 할부 개월 수 칩 ("3개월 할부"). 반영 방식 칩과 같은 높이로, 글자 너비에 맞춘다.
-class InstallmentChip extends StatelessWidget {
-  const InstallmentChip({super.key, required this.months, this.large = false});
-
-  final int months;
-  final bool large;
-
-  @override
-  Widget build(BuildContext context) => PlannedExpenseChip(
-    label: '$months개월 할부',
-    highlighted: false,
-    large: large,
-  );
-}
+/// 할부 정보 한 줄 ("6개월 · 월 20,000원"). 일시불이면 null.
+/// 목록과 시트에서 금액 아래에 작은 회색 글자로 보여준다.
+String? installmentSummary(PlannedExpense expense) =>
+    switch (expense.installmentMonths) {
+      final months? => '$months개월 · 월 ${formatWon(expense.monthlyAmount)}',
+      null => null,
+    };
