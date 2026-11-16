@@ -6,6 +6,7 @@ import com.richreach.global.category.SpendingCategory;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
 import com.richreach.transaction.dto.CardScope;
+import com.richreach.transaction.dto.SummaryMonth;
 import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionResponse;
 import com.richreach.transaction.repository.CardTransactionRepository;
@@ -42,9 +43,10 @@ public class TransactionQueryService {
     private final Clock clock;
 
     /**
-     * 목록 조회 조건. 값이 없는 조건은 적용하지 않는다. {@code month}가 있으면 {@code period}는 쓰지 않는다. (요약과 같은 규칙)
+     * 목록 조회 조건. 값이 없는 조건은 적용하지 않는다. {@code period}와 {@code month}는 요청 값 그대로이고, 어느 쪽을 쓸지는
+     * 서비스가 정한다. (요약과 같은 규칙: {@code month}가 있으면 {@code period}는 무시한다)
      */
-    public record Filter(SummaryPeriod period, YearMonth month, Long cardId, CardScope scope, SpendingCategory category,
+    public record Filter(String period, String month, Long cardId, CardScope scope, SpendingCategory category,
                          boolean includeCanceled) {
 
     }
@@ -55,12 +57,15 @@ public class TransactionQueryService {
         LocalDateTime to = null;
         LocalDate today = LocalDate.now(clock);
         if (filter.month() != null) {
-            // 아직 오지 않은 월이면 요약과 같이 400(COMMON-400)이다. 끝은 마지막 날이 끝나는 시각(다음 날 0시, 미포함)까지 본다.
-            SummaryRange range = SummaryRange.ofMonth(filter.month(), today);
+            // 형식이 틀리거나 아직 오지 않은 월이면 요약과 같이 400(COMMON-400)이다. 끝은 마지막 날이 끝나는 시각(다음 날 0시, 미포함)까지 본다.
+            YearMonth month = SummaryMonth.parse(filter.month());
+            SummaryRange range = SummaryRange.ofMonth(month, today);
             from = range.from().atStartOfDay();
             to = range.to().plusDays(1).atStartOfDay();
         } else if (filter.period() != null) {
-            from = today.minusMonths(filter.period().months()).atStartOfDay();
+            SummaryPeriod period = SummaryPeriod.fromCode(filter.period())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PERIOD));
+            from = today.minusMonths(period.months()).atStartOfDay();
             to = today.plusDays(1).atStartOfDay();
         }
         // 카드를 직접 지정하면 그 카드를 본다. 지정하지 않았을 때만 카드 범위를 따른다.

@@ -8,15 +8,12 @@ import com.richreach.global.response.PageResponse;
 import com.richreach.global.security.AuthenticatedUser;
 import com.richreach.transaction.dto.CardScope;
 import com.richreach.transaction.dto.ChangeCategoryRequest;
-import com.richreach.transaction.dto.SummaryMonth;
-import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionResponse;
 import com.richreach.transaction.dto.TransactionSummaryResponse;
 import com.richreach.transaction.service.TransactionCategoryService;
 import com.richreach.transaction.service.TransactionQueryService;
 import com.richreach.transaction.service.TransactionSummaryService;
 import jakarta.validation.Valid;
-import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -96,13 +93,9 @@ public class TransactionController {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE,
                 "page는 0 이상, size는 1부터 " + MAX_PAGE_SIZE + "까지여야 합니다.");
         }
-        // 월이 있으면 기간은 보지 않는다. (요약과 같은 규칙)
-        YearMonth summaryMonth = month == null ? null : SummaryMonth.parse(month);
-        SummaryPeriod summaryPeriod = summaryMonth != null || period == null ? null : SummaryPeriod.fromCode(period)
-            .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PERIOD));
         SpendingCategory spendingCategory = category == null ? null : parseCategory(category);
 
-        var filter = new TransactionQueryService.Filter(summaryPeriod, summaryMonth, cardId, CardScope.parse(cardScope), spendingCategory,
+        var filter = new TransactionQueryService.Filter(period, month, cardId, CardScope.parse(cardScope), spendingCategory,
             includeCanceled);
         return ApiResponse.ok(PageResponse.from(queryService.list(user.userId(), filter, page, size)));
     }
