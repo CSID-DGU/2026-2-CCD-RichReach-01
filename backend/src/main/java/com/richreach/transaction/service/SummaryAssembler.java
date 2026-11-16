@@ -22,7 +22,8 @@ import java.util.Map;
  *   <li>업종은 화면용 11개를 항상 같은 순서로 모두 내려준다. 거래가 없는 업종은 0이다.</li>
  *   <li>분류 전(null)이거나 11개 업종이 아닌 값은 {@code ETC}로 모은다.</li>
  *   <li>비율은 전체 합계에서 차지하는 비중(0~1)이고 소수 넷째 자리까지 반올림한다. 합계가 0이면 0이다.</li>
- *   <li>수집된 가장 오래된 거래가 기간 시작일보다 늦으면 부분 데이터({@code partial})로 표시한다.</li>
+ *   <li>수집을 마친 기간의 시작일이 기간 시작일보다 늦으면 부분 데이터({@code partial})로 표시한다. 시작일은 카드사에서 수집을
+ *       마친 기록이 있으면 그것이고, 없으면 수집된 가장 오래된 거래의 날짜다.</li>
  * </ul>
  */
 final class SummaryAssembler {
@@ -50,6 +51,16 @@ final class SummaryAssembler {
 
     static TransactionSummaryResponse assemble(SummaryRange range, LocalDateTime earliestApprovedAt,
                                                List<CategoryTotal> totals, List<CardSummary> cards) {
+        return assemble(range, earliestApprovedAt, null, totals, cards);
+    }
+
+    /**
+     * @param recordedFrom 카드사에서 실제로 수집을 마친 가장 이른 날짜. 있으면 가장 오래된 거래의 날짜보다 우선한다. 없으면(수집
+     *                     기록이 없는 기존 데이터) 가장 오래된 거래의 날짜로 추정한다.
+     */
+    static TransactionSummaryResponse assemble(SummaryRange range, LocalDateTime earliestApprovedAt,
+                                               LocalDate recordedFrom, List<CategoryTotal> totals,
+                                               List<CardSummary> cards) {
         Map<SpendingCategory, Accumulator> byCategory = new EnumMap<>(SpendingCategory.class);
         for (SpendingCategory category : SpendingCategory.values()) {
             byCategory.put(category, new Accumulator());
@@ -72,7 +83,8 @@ final class SummaryAssembler {
                 accumulator.count));
         }
 
-        LocalDate collectedFrom = earliestApprovedAt == null ? null : earliestApprovedAt.toLocalDate();
+        LocalDate collectedFrom = recordedFrom != null ? recordedFrom
+            : earliestApprovedAt == null ? null : earliestApprovedAt.toLocalDate();
         boolean partial = collectedFrom != null && collectedFrom.isAfter(range.from());
         return new TransactionSummaryResponse(range.period(), range.month(), range.from(), range.to(), collectedFrom,
             partial, totalAmount, canceledAmount, transactionCount, List.copyOf(categories), List.copyOf(cards));
