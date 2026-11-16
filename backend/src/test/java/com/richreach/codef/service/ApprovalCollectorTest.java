@@ -11,7 +11,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.richreach.card.dto.OwnedCardResponse;
+import com.richreach.card.dto.MatchableCard;
 import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.codef.client.CodefApprovalClient;
 import com.richreach.codef.client.CodefApprovalClient.ApprovalListResult;
@@ -52,14 +52,13 @@ class ApprovalCollectorTest {
         ownedCards = mock(OwnedCardQueryService.class);
         store = mock(TransactionStoreService.class);
         collector = new ApprovalCollector(approvals, ownedCards, store, new CodefCollectProperties(6), CLOCK);
-        when(ownedCards.list(1L)).thenReturn(List.of(card(10L, CardCompany.KB, "************4001"),
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(10L, CardCompany.KB, "************4001"),
             card(11L, CardCompany.KB, "************4002"), card(12L, CardCompany.SHINHAN, "************4001")));
         when(store.saveCollected(anyLong(), anyLong(), anyList())).thenReturn(new SaveResult(1, 0, 0, 0));
     }
 
-    private static OwnedCardResponse card(long id, CardCompany company, String masked) {
-        return new OwnedCardResponse(id, null, company, "카드" + id, masked, null,
-            OwnedCardResponse.AnalysisStatus.UNAVAILABLE, true, null);
+    private static MatchableCard card(long id, CardCompany company, String masked) {
+        return new MatchableCard(id, company, masked);
     }
 
     private static CodefApproval approval(String no, String cardNumber) {
@@ -108,7 +107,7 @@ class ApprovalCollectorTest {
     @Test
     @DisplayName("같은 끝 4자리 카드가 둘이면 어느 카드인지 알 수 없어 저장하지 않는다")
     void ambiguousCardIsNotSaved() {
-        when(ownedCards.list(1L)).thenReturn(List.of(card(10L, CardCompany.KB, "************4001"),
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(10L, CardCompany.KB, "************4001"),
             card(11L, CardCompany.KB, "************4001")));
         when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "****4001")))
             .thenReturn(ok());
@@ -157,15 +156,70 @@ class ApprovalCollectorTest {
     }
 
     @Test
-    @DisplayName("카드 번호에서 숫자 마지막 4자리를 뽑는다")
-    void lastFour() {
-        assertThat(ApprovalCollector.lastFour("1111-22**-****-4001")).isEqualTo("4001");
-        assertThat(ApprovalCollector.lastFour("************4001")).isEqualTo("4001");
-        assertThat(ApprovalCollector.lastFour("****")).isEmpty();
-        assertThat(ApprovalCollector.lastFour(null)).isEmpty();
-        assertThat(ApprovalCollector.lastFour("12")).isEmpty();
-        // 끝자리가 가려진 번호에서 앞쪽 숫자를 끝 4자리로 읽으면 다른 카드와 잘못 짝지어진다.
-        assertThat(ApprovalCollector.lastFour("1234-56**-****-****")).isEmpty();
+    @DisplayName("끝자리 하나가 가려진 카드(신한)도 숫자가 충돌하지 않는 후보가 하나면 저장한다")
+    void matchesCardWithMaskedLastDigit() {
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************400*"),
+            card(21L, CardCompany.KB, "************410*")));
+        when(approvals.fetchApprovals(any(), any(), any(), any()))
+            .thenReturn(ok(approval("A", "1234********400*"))).thenReturn(ok());
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+
+        verify(store).saveCollected(eq(1L), eq(20L), anyList());
+        assertThat(result.saved()).isEqualTo(1);
+        assertThat(result.unmatched()).isZero();
+    }
+
+    @Test
+    @DisplayName("가려진 자리 때문에 후보가 여러 장이면 정하지 않는다")
+    void ambiguousWhenMaskedDigitsMatchSeveralCards() {
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************4001"),
+            card(21L, CardCompany.KB, "************4002")));
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "************400*")))
+            .thenReturn(ok());
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+
+        verify(store, never()).saveCollected(anyLong(), anyLong(), anyList());
+        assertThat(result.unmatched()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("카드사에 보유카드가 한 장이면 번호가 모두 가려져 있어도 그 카드로 저장한다")
+    void singleCandidateMatchesFullyMaskedNumber() {
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************4001")));
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "****************")))
+            .thenReturn(ok());
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+
+        verify(store).saveCollected(eq(1L), eq(20L), anyList());
+        assertThat(result.unmatched()).isZero();
+    }
+
+    @Test
+    @DisplayName("보유카드가 한 장이어도 숫자가 충돌하면 다른 카드의 승인내역이라 저장하지 않는다")
+    void conflictingDigitsAreNeverMatched() {
+        when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(20L, CardCompany.KB, "************4001")));
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "************9999")))
+            .thenReturn(ok());
+
+        ApprovalCollector.Result result = collector.collect(1L, CardCompany.KB, "cid", "0301", FAR);
+
+        verify(store, never()).saveCollected(anyLong(), anyLong(), anyList());
+        assertThat(result.unmatched()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("카드 번호 비교는 구분자를 없애고 끝을 맞춰 숫자인 자리만 본다")
+    void isCompatible() {
+        assertThat(ApprovalCollector.isCompatible("************4001", "1111-22**-****-4001")).isTrue();
+        assertThat(ApprovalCollector.isCompatible("************400*", "************4001")).isTrue();
+        assertThat(ApprovalCollector.isCompatible("************4001", "************4002")).isFalse();
+        assertThat(ApprovalCollector.isCompatible("************4001", null)).isTrue();
+        assertThat(ApprovalCollector.isCompatible("************4001", "")).isTrue();
+        // 앞쪽 숫자가 보이는 번호는 앞쪽도 비교한다. (끝 4자리가 우연히 같아도 앞이 다르면 다른 카드)
+        assertThat(ApprovalCollector.isCompatible("1234********4001", "9999********4001")).isFalse();
     }
 
 }

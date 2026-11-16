@@ -1,6 +1,6 @@
 package com.richreach.codef.service;
 
-import com.richreach.card.dto.OwnedCardResponse;
+import com.richreach.card.dto.MatchableCard;
 import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.codef.client.CodefApprovalClient;
 import com.richreach.codef.client.CodefApprovalClient.ApprovalListResult;
@@ -32,8 +32,9 @@ import org.springframework.stereotype.Component;
  * 이때 이미 가져온 달은 그대로 저장되어 있고 결과는 {@code PARTIAL}이다. 같은 거래를 다시 가져와도 거래 저장이 중복을 막으므로
  * 다음 동기화가 부족한 부분을 채운다.
  *
- * <p>승인내역에는 카드 이름이 없고 카드 번호도 일부가 가려져 있어서, 같은 카드사의 보유카드 중 카드 번호의 마지막 4자리
- * 숫자가 같은 카드가 <b>하나일 때만</b> 그 카드의 거래로 저장한다. 하나로 정하지 못한 항목은 저장하지 않고 건수만 센다.
+ * <p>승인내역에는 카드 이름이 없고 카드 번호도 일부가 가려져 있어서, 같은 카드사의 보유카드 중 카드 번호가 충돌하지 않는
+ * (양쪽 다 숫자인 자리가 모두 같은) 카드가 <b>하나일 때만</b> 그 카드의 거래로 저장한다. 가려진 자리는 비교하지 않는다.
+ * 하나로 정하지 못한 항목은 저장하지 않고 건수만 센다.
  * 이 클래스는 예외를 밖으로 던지지 않는다. 수집이 실패해도 이미 저장한 카드 동기화는 성공으로 남겨야 해서다.
  * 가맹점명, 금액, 카드번호는 로그에 남기지 않는다.
  */
@@ -71,22 +72,13 @@ public class ApprovalCollector {
     public Result collect(long userId, CardCompany company, String connectedId, String organization,
                           LocalDateTime deadline) {
         LocalDate today = LocalDate.now(clock);
-        List<OwnedCardResponse> candidates;
+        List<MatchableCard> candidates;
         try {
-            candidates = ownedCards.list(userId).stream().filter(card -> card.cardCompany() == company).toList();
+            candidates = ownedCards.listForMatching(userId).stream().filter(card -> card.cardCompany() == company).toList();
         } catch (RuntimeException e) {
             log.error("승인내역 수집 중 보유카드를 읽지 못했습니다: type={}", e.getClass().getSimpleName());
             return new Result(FAILED, 0, 0, null, null);
         }
-        Map<String, List<OwnedCardResponse>> byLastFour = new LinkedHashMap<>();
-        for (OwnedCardResponse card : candidates) {
-            String key = lastFour(card.maskedNumber());
-            // 숫자가 없는 카드는 어떤 승인내역과도 짝지을 수 없다.
-            if (!key.isEmpty()) {
-                byLastFour.computeIfAbsent(key, k -> new ArrayList<>()).add(card);
-            }
-        }
-
         int months = properties.months();
         int saved = 0;
         int unmatched = 0;
@@ -109,8 +101,8 @@ public class ApprovalCollector {
                 }
                 Map<Long, List<CollectedTransaction>> byCard = new LinkedHashMap<>();
                 for (CodefApproval approval : result.approvals()) {
-                    List<OwnedCardResponse> matches = byLastFour.getOrDefault(lastFour(approval.cardNumber()),
-                        List.of());
+                    List<MatchableCard> matches = candidates.stream()
+                        .filter(card -> isCompatible(card.number(), approval.cardNumber())).toList();
                     if (matches.size() != 1) {
                         unmatched++;
                         continue;
@@ -147,16 +139,29 @@ public class ApprovalCollector {
     }
 
     /**
-     * 카드 번호의 끝 4자리. 하이픈과 공백만 없애고, 마지막 네 글자가 모두 숫자일 때만 돌려준다. 끝자리가 가려져 있거나
-     * 4자리가 안 되면 빈 문자열이라 어떤 카드와도 짝지지 않는다. (가려진 별표를 지우면 앞쪽 숫자가 끝 4자리로 잘못 읽힌다)
+     * 두 카드 번호가 같은 카드일 수 있는지. 하이픈과 공백을 없애고 끝을 맞춰서 한 자리씩 비교하며, 양쪽 다 숫자인 자리가
+     * 다르면 다른 카드다. 가려진 자리(별표)나 없는 자리는 비교하지 않는다. 카드사마다 가리는 자리가 달라서(예: 신한은 끝자리
+     * 하나도 가려진다) 끝 4자리가 정확히 같을 때만 보면 짝지을 수 없는 카드가 생긴다.
+     *
+     * <p>다른 카드와 충돌하지 않는다는 뜻이지 같은 카드라는 확정은 아니다. 후보가 하나일 때만 그 카드로 정하므로, 가려진
+     * 자리가 많아 여러 카드와 맞을 수 있으면 정하지 않는다.
      */
-    static String lastFour(String number) {
-        String compact = number == null ? "" : number.replaceAll("[\s-]", "");
-        if (compact.length() < 4) {
-            return "";
+    static boolean isCompatible(String ownedNumber, String approvalNumber) {
+        String owned = compact(ownedNumber);
+        String approval = compact(approvalNumber);
+        int length = Math.min(owned.length(), approval.length());
+        for (int i = 1; i <= length; i++) {
+            char left = owned.charAt(owned.length() - i);
+            char right = approval.charAt(approval.length() - i);
+            if (Character.isDigit(left) && Character.isDigit(right) && left != right) {
+                return false;
+            }
         }
-        String tail = compact.substring(compact.length() - 4);
-        return tail.chars().allMatch(Character::isDigit) ? tail : "";
+        return true;
+    }
+
+    private static String compact(String number) {
+        return number == null ? "" : number.replaceAll("[\s-]", "");
     }
 
 }
