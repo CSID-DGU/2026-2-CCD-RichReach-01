@@ -87,7 +87,7 @@ final class SummaryAssembler {
             : earliestApprovedAt == null ? null : earliestApprovedAt.toLocalDate();
         boolean partial = collectedFrom != null && collectedFrom.isAfter(range.from());
         return new TransactionSummaryResponse(range.period(), range.month(), range.from(), range.to(), collectedFrom,
-            partial, totalAmount, canceledAmount, transactionCount, List.copyOf(categories), List.copyOf(cards));
+            partial, totalAmount, canceledAmount, transactionCount, null, List.copyOf(categories), List.copyOf(cards));
     }
 
     private static double ratio(long amount, long total) {

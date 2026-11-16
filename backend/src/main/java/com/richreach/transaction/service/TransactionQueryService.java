@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +41,7 @@ public class TransactionQueryService {
 
     private final CardTransactionRepository transactions;
     private final OwnedCardQueryService ownedCards;
+    private final TransactionBenefitService benefits;
     private final Clock clock;
 
     /**
@@ -75,14 +77,19 @@ public class TransactionQueryService {
                 .map(OwnedCardResponse::cardId).toList();
         }
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("approvedAt"), Sort.Order.desc("id")));
-        return transactions.findAll(TransactionSpecifications.filter(userId, from, to, filter.cardId(), cardIds,
-            filter.category(), filter.includeCanceled()), pageable).map(TransactionResponse::from);
+        Page<TransactionResponse> result = transactions.findAll(TransactionSpecifications.filter(userId, from, to,
+            filter.cardId(), cardIds, filter.category(), filter.includeCanceled()), pageable).map(TransactionResponse::from);
+        // 예상 혜택은 같은 카드·달의 거래를 함께 보고 계산하므로 한 페이지의 거래를 모아서 채운다.
+        Map<Long, Long> benefit = benefits.forTransactions(userId, result.getContent());
+        return result.map(item -> item.withBenefit(benefit.get(item.transactionId())));
     }
 
     @Transactional(readOnly = true)
     public TransactionResponse get(long userId, long transactionId) {
-        return transactions.findByIdAndUserId(transactionId, userId).map(TransactionResponse::from)
+        TransactionResponse response = transactions.findByIdAndUserId(transactionId, userId)
+            .map(TransactionResponse::from)
             .orElseThrow(() -> new BusinessException(ErrorCode.TRANSACTION_NOT_FOUND));
+        return response.withBenefit(benefits.forTransactions(userId, List.of(response)).get(transactionId));
     }
 
 }

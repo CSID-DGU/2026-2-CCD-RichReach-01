@@ -21,6 +21,9 @@ import java.util.List;
  * @param canceledAmount   기간 안에 승인된 거래 중 취소·환불된 금액. 취소가 일어난 날이 아니라 원거래의 승인일로 센다.
  *                         (기간 전에 승인한 거래를 기간 안에 환불해도 여기에 들어가지 않는다.)
  * @param transactionCount 거래 수. 전액 취소된 거래는 세지 않는다.
+ * @param benefitAmount    월 조회({@code month})일 때 그달 거래의 <b>예상</b> 혜택 합계(원). 카드사가 실제로 지급한 금액이 아니라
+ *                         카드 혜택 규칙으로 계산한 추정값이고, 합계와 같은 카드 범위({@code cardScope})의 거래를 본다. 거래 목록의
+ *                         {@code benefitAmount}를 더한 값과 같다. 기간 조회({@code period})이거나 계산할 수 있는 카드가 없으면 null이다.
  * @param categories       화면용 11개 업종별 소비. 거래가 없는 업종도 0으로 포함하며 항상 같은 순서다.
  * @param cards            보유카드(활성 카드 전체)별 같은 기간의 거래 건수와 금액. 카드 범위({@code cardScope})와 상관없이
  *                         모든 활성 카드를 {@code selected} 표시와 함께 내려주고, 거래가 없는 카드는 0이다.
@@ -36,8 +39,15 @@ public record TransactionSummaryResponse(
     long totalAmount,
     long canceledAmount,
     long transactionCount,
+    Long benefitAmount,
     List<CategorySummary> categories,
     List<CardSummary> cards) {
+
+    /** 예상 혜택 합계를 채운 같은 요약. */
+    public TransactionSummaryResponse withBenefitAmount(Long benefit) {
+        return new TransactionSummaryResponse(period, month, from, to, collectedFrom, partial, totalAmount, canceledAmount,
+            transactionCount, benefit, categories, cards);
+    }
 
     /**
      * 업종 하나의 소비.

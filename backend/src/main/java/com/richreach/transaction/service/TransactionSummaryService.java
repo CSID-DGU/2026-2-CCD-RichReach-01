@@ -44,6 +44,7 @@ public class TransactionSummaryService {
     private final CardTransactionRepository transactions;
     private final OwnedCardQueryService ownedCards;
     private final CollectionRangeQueryService collectionRanges;
+    private final TransactionBenefitService benefits;
     private final Clock clock;
 
     /**
@@ -113,7 +114,14 @@ public class TransactionSummaryService {
 
         // 카드사에서 수집을 마친 기간이 기록되어 있으면 그것으로, 없으면 가장 오래된 거래의 날짜로 수집 기간을 본다.
         LocalDate recordedFrom = collectionRanges.collectedFrom(userId).orElse(null);
-        return SummaryAssembler.assemble(range, earliest, recordedFrom, totals, cardSummaries);
+        TransactionSummaryResponse summary = SummaryAssembler.assemble(range, earliest, recordedFrom, totals, cardSummaries);
+        if (range.month() == null) {
+            // 혜택은 달 단위로 계산하므로 월 조회에만 준다.
+            return summary;
+        }
+        // 합계와 같은 카드 범위의 그달 예상 혜택. 거래 목록의 거래별 혜택을 더한 값과 같다.
+        List<Long> benefitCards = byCard.keySet().stream().filter(id -> allCards || selectedIds.contains(id)).toList();
+        return summary.withBenefitAmount(benefits.monthTotal(userId, YearMonth.parse(range.month()), benefitCards));
     }
 
     /**
