@@ -123,7 +123,7 @@ class _TransactionHistoryScreenState
   }
 }
 
-/// 보라 요약 카드: "10월 총 사용금액", 금액, 건수, 받은 혜택.
+/// 보라 요약 카드: "10월 총 사용금액", 금액, 건수, 예상 혜택.
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({required this.history});
 
@@ -188,7 +188,7 @@ class _SummaryCard extends StatelessWidget {
               ),
               if (history.totalBenefit case final benefit?)
                 Text(
-                  '받은 혜택 +${formatWon(benefit)}',
+                  '예상 혜택 +${formatWon(benefit)}',
                   style: small.copyWith(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

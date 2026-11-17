@@ -72,6 +72,7 @@ Map<String, Object?> _tx(
   String merchant = 'GS25',
   String category = 'CONVENIENCE_STORE',
   int amount = 5000,
+  int? benefit = 50,
 }) => {
   'transactionId': approvedAt.hashCode,
   'cardId': cardId,
@@ -86,6 +87,7 @@ Map<String, Object?> _tx(
   'categoryEdited': false,
   'installmentMonths': 0,
   'overseas': false,
+  'benefitAmount': benefit,
 };
 
 Map<String, Object?> _page(List<Map<String, Object?>> content, bool hasNext) =>
@@ -98,12 +100,12 @@ final _summary = {
   'to': '2026-11-15',
   'totalAmount': 18000,
   'transactionCount': 3,
+  'benefitAmount': 180,
   'cards': const [],
 };
 
 ApiSpendingRepository _repository(
   _FakeServer server, {
-  DateTime? now,
   List<OwnedCard>? cards,
 }) => ApiSpendingRepository(
   ApiClient.create(
@@ -121,11 +123,10 @@ ApiSpendingRepository _repository(
           _card('2', CardCompany.bc, 'BC 체크'),
         ],
   ),
-  now: () => now ?? DateTime(2026, 11, 15),
 );
 
 void main() {
-  test('월 요약·연결 상태·거래 목록으로 이번 달 사용 내역을 만든다', () async {
+  test('월 요약·연결 상태·이번 달 거래 목록으로 사용 내역과 예상 혜택을 만든다', () async {
     final server = _FakeServer(
       (options) => switch (options.uri.path) {
         ApiPaths.transactionSummary => _summary,
@@ -134,13 +135,24 @@ void main() {
           {'cardCompany': 'BC', 'status': 'SUCCESS'},
         ],
         _ => _page([
-          _tx(1, '2026-11-14T12:42:00', merchant: '스타벅스', category: 'CAFE'),
-          _tx(2, '2026-11-02T08:05:00', merchant: '', amount: 8000),
+          _tx(
+            1,
+            '2026-11-14T12:42:00',
+            merchant: '스타벅스',
+            category: 'CAFE',
+            benefit: 120,
+          ),
+          // 계산할 수 없는 거래(null)는 혜택 0으로 두어 표시하지 않는다.
+          _tx(
+            2,
+            '2026-11-02T08:05:00',
+            merchant: '',
+            amount: 8000,
+            benefit: null,
+          ),
           // 보유카드에 없는 카드의 거래는 뺀다.
           _tx(9, '2026-11-01T09:00:00'),
-          // 지난달 거래는 뺀다.
-          _tx(1, '2026-10-31T23:59:00'),
-        ], true),
+        ], false),
       },
     );
 
@@ -148,16 +160,15 @@ void main() {
 
     expect((history.totalAmount, history.count), (18000, 3));
     expect(history.synced, isTrue);
-    // 혜택은 API가 없어(Q16) 보여주지 않는다.
-    expect(history.totalBenefit, isNull);
+    expect(history.totalBenefit, 180);
     expect(history.transactions.map((t) => t.merchantName), [
       '스타벅스',
       '가맹점 정보 없음',
     ]);
     expect(history.transactions.first.card.name, 'NH 체크');
     expect(history.transactions.first.category, SpendingCategory.cafe);
+    expect(history.transactions.map((t) => t.benefit), [120, 0]);
     expect(history.transactions.last.amount, 8000);
-    expect(history.transactions.every((t) => t.benefit == 0), isTrue);
 
     final summary = server.requests.firstWhere(
       (r) => r.uri.path == ApiPaths.transactionSummary,
@@ -166,17 +177,16 @@ void main() {
     final list = server.requests.where(
       (r) => r.uri.path == ApiPaths.transactions,
     );
-    // 지난달 거래가 나왔으므로 다음 페이지는 부르지 않는다.
-    expect(list, hasLength(1));
+    // 목록도 월로 조회한다 (백엔드 #269).
     expect(list.single.uri.queryParameters, {
-      'period': '1M',
+      'month': '2026-11',
       'includeCanceled': 'false',
       'page': '0',
       'size': '100',
     });
   });
 
-  test('그달 거래가 다음 페이지에 이어지면 계속 받는다', () async {
+  test('다음 페이지가 있으면 이어서 받는다', () async {
     final server = _FakeServer(
       (options) => switch (options.uri.path) {
         ApiPaths.transactionSummary => _summary,
@@ -212,24 +222,17 @@ void main() {
     expect(history.synced, isFalse);
   });
 
-  test('지난 달은 그달 1일을 덮는 가장 짧은 기간으로 목록을 받는다', () async {
-    Future<String?> periodFor(DateTime month) async {
-      final server = _FakeServer(
-        (options) => switch (options.uri.path) {
-          ApiPaths.transactionSummary => _summary,
-          ApiPaths.connections => const [],
-          _ => _page(const [], false),
-        },
-      );
-      await _repository(server).fetchHistory(month);
-      return server.requests
-          .firstWhere((r) => r.uri.path == ApiPaths.transactions)
-          .uri
-          .queryParameters['period'];
-    }
+  test('예상 혜택을 계산할 수 있는 카드가 없으면 합계는 null이다', () async {
+    final server = _FakeServer(
+      (options) => switch (options.uri.path) {
+        ApiPaths.transactionSummary => {..._summary, 'benefitAmount': null},
+        ApiPaths.connections => const [],
+        _ => _page(const [], false),
+      },
+    );
 
-    expect(await periodFor(DateTime(2026, 10)), '3M');
-    expect(await periodFor(DateTime(2026, 6)), '6M');
-    expect(await periodFor(DateTime(2026, 1)), isNull);
+    final history = await _repository(server).fetchHistory(DateTime(2026, 11));
+
+    expect(history.totalBenefit, isNull);
   });
 }

@@ -9,7 +9,7 @@ import '../domain/spending_transaction.dart';
 
 /// 카드 사용 한 건 (높이 58): 업종 아이콘, 가맹점, 부가 정보, 금액, 혜택.
 ///
-/// - 홈 최근 사용 내역: "카드 · 업종", "혜택 420원"
+/// - 홈 최근 사용 내역: "카드 · 업종", "예상 혜택 420원"
 /// - 거래내역([withTime]): "12:42 · 카드", "+420원"
 class SpendingTransactionRow extends StatelessWidget {
   const SpendingTransactionRow({
@@ -37,7 +37,7 @@ class SpendingTransactionRow extends StatelessWidget {
         : '${t.card.name} · ${t.category.label}';
     final benefit = withTime
         ? '+${formatWon(t.benefit)}'
-        : '혜택 ${formatWon(t.benefit)}';
+        : '예상 혜택 ${formatWon(t.benefit)}';
     return SizedBox(
       height: 58,
       child: Row(
