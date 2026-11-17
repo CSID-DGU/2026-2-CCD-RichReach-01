@@ -23,8 +23,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  *   <li><b>이번 달 플랜만</b> 다시 계산한다. 지난 달 거래가 늦게 들어와도 끝난 달의 플랜은 건드리지 않는다.</li>
  *   <li>그 달에 보여줄 플랜이 없으면 아무것도 하지 않는다. (플랜을 처음 만드는 것은 플랜 생성의 몫이다)</li>
  *   <li>같은 사용자의 같은 달에 재계산이 진행 중이면 새 작업을 만들지 않고 진행 중인 작업에 "끝나기 전에 한 번 더 계산"만
- *       표시한다. 판단과 표시는 사용자 행을 잠근 상태에서 하고, 작업은 끝나기 직전에 같은 잠금 아래에서 그 표시를 확인한다.
- *       그래서 계산 도중에 들어온 거래가 반영되지 않은 채 끝나는 일이 없다.</li>
+ *       표시한다. 판단과 표시는 사용자 행을 잠근 상태에서 하고, 작업은 끝나기 직전(완료할 때와 실패로 기록할 때 모두)에 같은
+ *       잠금 아래에서 그 표시를 확인한다. 그래서 계산 도중에 들어온 거래가 반영되지 않은 채 끝나는 일이 없다. 표시하려는 순간
+ *       작업이 이미 끝나 있으면(표시가 0행) 새 작업을 만든다.</li>
  *   <li>서버가 작업 도중 멈춰 진행 중으로 남은 기록은 {@code plan.generation.timeout}이 지나면 멈춘 것으로 보고 실패로 기록한 뒤
  *       새 작업을 만든다.</li>
  * </ul>
@@ -75,10 +76,10 @@ public class PlanRecalculationService {
             if (job.isTimedOut(properties.timeout(), now)) {
                 jobs.failIfTimedOut(job.getId(), PlanRecalculationWorker.CODE_TIMEOUT,
                     PlanRecalculationWorker.TIMEOUT_REASON, now, now.minus(properties.timeout()));
-            } else {
-                jobs.requestRerun(job.getId());
+            } else if (jobs.requestRerun(job.getId()) == 1) {
                 return Optional.empty();
             }
+            // 표시하지 못했다면(0행) 읽은 뒤에 그 작업이 이미 끝난 것이다. 이 거래를 반영할 작업이 없으니 새로 만든다.
         }
 
         PlanBudget budget = baseline.get().budget();

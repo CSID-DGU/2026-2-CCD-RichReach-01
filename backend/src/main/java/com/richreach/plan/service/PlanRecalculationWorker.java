@@ -77,8 +77,14 @@ public class PlanRecalculationWorker {
             Computation computation = computer.compute(userId, month);
             if (!computation.success()) {
                 log.info("플랜 재계산 실패: id={}, code={}", id, computation.failureCode());
-                fail(id, computation.failureCode(), computation.failureReason());
-                return;
+                // 실패로 끝내기 전에 대기 중인 재계산 요청이 있는지 본다. 있으면 그 요청의 거래를 반영해 다시 계산한다.
+                Outcome failed = transaction.execute(status -> failOrRerun(id, userId, computation.failureCode(),
+                    computation.failureReason()));
+                if (failed != Outcome.RERUN) {
+                    return;
+                }
+                log.info("재계산 실패 뒤 대기 중인 요청이 있어 다시 계산합니다: id={}, run={}", id, run);
+                continue;
             }
             progress(id, 80);
             Outcome outcome = transaction.execute(status -> finish(status, id, userId, month, computation, reason));
@@ -113,15 +119,33 @@ public class PlanRecalculationWorker {
         return Outcome.DONE;
     }
 
+    /**
+     * 계산이 실패했을 때 작업을 끝낸다. 한 트랜잭션이고 사용자 행을 잠근다. "한 번 더 계산" 표시가 켜져 있으면 끄고 다시
+     * 계산하라고 알린다. 표시가 없으면 진행 중인 작업을 실패로 기록한다. 같은 잠금 아래에서 하므로, 실패로 기록하는 동안 들어온
+     * 요청은 이 트랜잭션이 끝난 뒤에 판단되어 새 작업으로 이어진다.
+     */
+    private Outcome failOrRerun(long id, long userId, String code, String reason) {
+        userLock.lock(userId);
+        if (jobs.consumeRerun(id) == 1) {
+            return Outcome.RERUN;
+        }
+        jobs.failIfInProgress(id, code, trim(reason), now());
+        return Outcome.ENDED;
+    }
+
     private void progress(long id, int value) {
         transaction.executeWithoutResult(status -> jobs.updateProgress(id, Math.min(value, 99)));
     }
 
     /** 진행 중인 작업만 실패로 기록한다. 이미 끝난 작업은 바뀌지 않는다. */
     private void fail(long id, String code, String reason) {
-        String trimmed = reason == null || reason.length() <= PlanJob.FAILURE_REASON_MAX_LENGTH
-            ? reason : reason.substring(0, PlanJob.FAILURE_REASON_MAX_LENGTH);
+        String trimmed = trim(reason);
         transaction.executeWithoutResult(status -> jobs.failIfInProgress(id, code, trimmed, now()));
+    }
+
+    private static String trim(String reason) {
+        return reason == null || reason.length() <= PlanJob.FAILURE_REASON_MAX_LENGTH
+            ? reason : reason.substring(0, PlanJob.FAILURE_REASON_MAX_LENGTH);
     }
 
     /** 제한 시간이 지난 진행 중 작업을 시간 초과로 기록한다. */
