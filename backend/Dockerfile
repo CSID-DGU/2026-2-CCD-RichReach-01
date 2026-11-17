@@ -27,4 +27,5 @@ USER app
 ENV TZ=Asia/Seoul
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]
+# 컨테이너에 할당된 메모리의 75%까지 힙으로 쓴다. (기본값 25%는 작은 인스턴스에서 너무 적다)
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]
