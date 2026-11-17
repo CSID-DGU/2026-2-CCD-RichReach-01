@@ -6,7 +6,9 @@ public enum PlanChangeReason {
     /** 카드 동기화로 새 거래가 반영되었다. */
     TRANSACTION_SYNCED("새로 반영된 거래를 기준으로 남은 기간의 카드 사용 계획을 다시 계산했어요."),
     /** 사용자가 거래의 업종을 고쳤다. */
-    CATEGORY_EDITED("거래 업종이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요.");
+    CATEGORY_EDITED("거래 업종이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요."),
+    /** 사용자가 이번 달 소비예산을 고쳤다. */
+    BUDGET_CHANGED("소비예산이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요.");
 
     private final String text;
 

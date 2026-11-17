@@ -138,6 +138,27 @@ class PlanRecalculationComputerTest {
     }
 
     @Test
+    @DisplayName("예산을 새로 정했으면 지금 플랜의 예산 대신 그 예산으로 계산하고, 결과에도 그 예산을 담는다")
+    void usesTheBudgetOverride() {
+        when(ownedCards.list(USER)).thenReturn(List.of(card(10L, 100L, true)));
+        when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(Map.of());
+        when(replanner.replan(any())).thenReturn(success(new RemainingAllocation(10L, SpendingCategory.DINING, 50_000)));
+        Map<SpendingCategory, Long> byCategory = new EnumMap<>(SpendingCategory.class);
+        byCategory.put(SpendingCategory.DINING, 50_000L);
+        PlanBudget override = new PlanBudget(MONTH, 50_000, byCategory);
+
+        Computation result = computer.compute(USER, MONTH, override);
+
+        ArgumentCaptor<RollingPlanInput> input = ArgumentCaptor.forClass(RollingPlanInput.class);
+        verify(replanner).replan(input.capture());
+        assertThat(input.getValue().confirmedBudgetByCategory()).containsOnlyKeys(SpendingCategory.DINING)
+            .containsEntry(SpendingCategory.DINING, 50_000L);
+        assertThat(result.budget()).isEqualTo(override);
+        // 지금 플랜의 예산(외식 30만원, 카페 10만원)은 쓰지 않는다.
+        assertThat(result.baseline().budget().byCategory()).containsEntry(SpendingCategory.DINING, 300_000L);
+    }
+
+    @Test
     @DisplayName("플랜이 없거나 예산을 읽을 수 없거나 분석 대상 카드가 없으면 엔진을 부르지 않고 실패한다")
     void failsWithoutCallingTheEngine() {
         when(baselines.read(USER, MONTH)).thenReturn(Optional.empty());
