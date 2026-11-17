@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_route.dart';
 import '../../../core/formatters/amount_input_formatter.dart';
 import '../../../core/formatters/money_formatter.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_checkbox.dart';
@@ -58,6 +59,9 @@ class _PlannedExpenseFormScreenState
   SpendingCategory? _category;
   BudgetMethod _method = BudgetMethod.withinBudget;
 
+  /// 저장 요청 중이면 true (버튼에 진행 표시)
+  bool _saving = false;
+
   /// 고칠 예정지출. 추가 화면이거나 이미 지워졌으면 null.
   PlannedExpense? _editing;
 
@@ -93,7 +97,7 @@ class _PlannedExpenseFormScreenState
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     final expense = PlannedExpense(
       id: _editing?.id ?? '',
       name: _name.text.trim(),
@@ -103,13 +107,31 @@ class _PlannedExpenseFormScreenState
       installmentMonths: _installment ? _months : null,
     );
     final notifier = ref.read(plannedExpensesProvider.notifier);
-    _isEdit ? notifier.update(expense) : notifier.add(expense);
-    ScaffoldMessenger.of(context)
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving = true);
+    try {
+      _isEdit ? await notifier.save(expense) : await notifier.add(expense);
+    } catch (error) {
+      if (mounted) setState(() => _saving = false);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              error is ApiException
+                  ? error.userMessage
+                  : '예정지출을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
+            ),
+          ),
+        );
+      return;
+    }
+    messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(content: Text(_isEdit ? '예정지출을 고쳤어요.' : '예정지출을 추가했어요.')),
       );
-    context.pop();
+    if (mounted) context.pop();
   }
 
   @override
@@ -213,7 +235,8 @@ class _PlannedExpenseFormScreenState
             helper: '예정지출은 평소 소비패턴 분석에 포함되지 않아요.',
             child: PrimaryButton(
               label: _isEdit ? '변경 내용 저장하기' : '소비 플랜에 반영하기',
-              onPressed: _canSave ? _save : null,
+              loading: _saving,
+              onPressed: _canSave && !_saving ? _save : null,
             ),
           ),
         ],

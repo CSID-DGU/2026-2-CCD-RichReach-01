@@ -3,12 +3,20 @@ import '../../onboarding/domain/transaction.dart';
 /// 예정지출을 이번 달 예산에 반영하는 방식 (HOME-06 "예산에 어떻게 반영할까요?").
 enum BudgetMethod {
   /// 총예산은 그대로 두고 다른 소비 금액을 줄인다.
-  withinBudget('기존 예산 안에서 조정', '기존 예산에서 조정', '총예산은 유지하고 다른 소비 금액을 조정해요.'),
+  withinBudget(
+    'WITHIN_BUDGET',
+    '기존 예산 안에서 조정',
+    '기존 예산에서 조정',
+    '총예산은 유지하고 다른 소비 금액을 조정해요.',
+  ),
 
   /// 이번 달 총예산에 지출 금액을 더한다.
-  extra('예산 밖 추가 지출', '예산 밖 추가 지출', '이번 달 총예산에 지출금액을 추가해요.');
+  extra('EXTRA', '예산 밖 추가 지출', '예산 밖 추가 지출', '이번 달 총예산에 지출금액을 추가해요.');
 
-  const BudgetMethod(this.title, this.chipLabel, this.description);
+  const BudgetMethod(this.code, this.title, this.chipLabel, this.description);
+
+  /// 예정지출 API의 `budgetMethod` 값
+  final String code;
 
   /// 입력 화면의 선택지 제목
   final String title;

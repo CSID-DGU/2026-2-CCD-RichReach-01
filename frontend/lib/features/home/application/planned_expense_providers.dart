@@ -1,69 +1,65 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_config.dart';
-import '../../onboarding/domain/transaction.dart';
+import '../../../core/network/api_providers.dart';
+import '../../plan/application/monthly_plan_providers.dart';
+import '../data/planned_expense_repository.dart';
 import '../domain/planned_expense.dart';
+
+/// 예정지출 저장소. `USE_FAKE_API=false`면 백엔드 API(`/api/planned-expenses`)를 쓴다.
+final plannedExpenseRepositoryProvider = Provider<PlannedExpenseRepository>(
+  (ref) => ApiConfig.useFakeApi
+      ? FakePlannedExpenseRepository()
+      : ApiPlannedExpenseRepository(ref.watch(apiClientProvider)),
+);
 
 /// 이번 달 예정지출 목록 (HOME-06~10).
 ///
-/// 예정지출 API가 아직 없어 앱 안에만 저장한다. 앱을 다시 켜면 사라진다.
-/// 가짜 데이터(`USE_FAKE_API=true`)일 때는 Figma HOME-07의 예시 3건으로 시작한다.
-/// TODO: 예정지출 API가 생기면 저장소를 만들어 서버에 저장하고, 플랜 예산에도 반영한다.
+/// 추가·수정·삭제는 저장소에 저장한 뒤 목록을 바꾼다. 서버는 저장하면 이번 달 플랜을
+/// 다시 계산하므로 월간 플랜도 다시 불러온다.
 final plannedExpensesProvider =
-    NotifierProvider<PlannedExpenses, List<PlannedExpense>>(
+    AsyncNotifierProvider<PlannedExpenses, List<PlannedExpense>>(
       PlannedExpenses.new,
     );
 
-class PlannedExpenses extends Notifier<List<PlannedExpense>> {
-  var _nextId = 0;
+class PlannedExpenses extends AsyncNotifier<List<PlannedExpense>> {
+  PlannedExpenseRepository get _repository =>
+      ref.read(plannedExpenseRepositoryProvider);
 
   @override
-  List<PlannedExpense> build() => ApiConfig.useFakeApi ? samples : const [];
-
-  /// Figma HOME-07의 예시
-  static const samples = [
-    PlannedExpense(
-      id: 'sample-1',
-      name: '친구 생일선물',
-      amount: 130000,
-      category: SpendingCategory.shopping,
-      budgetMethod: BudgetMethod.withinBudget,
-    ),
-    PlannedExpense(
-      id: 'sample-2',
-      name: '제주도 숙소',
-      amount: 300000,
-      category: SpendingCategory.cultureTravel,
-      budgetMethod: BudgetMethod.extra,
-    ),
-    PlannedExpense(
-      id: 'sample-3',
-      name: '정기 건강검진',
-      amount: 80000,
-      category: SpendingCategory.lifeHealth,
-      budgetMethod: BudgetMethod.withinBudget,
-    ),
-  ];
+  Future<List<PlannedExpense>> build() => ref
+      .watch(plannedExpenseRepositoryProvider)
+      .fetch(ref.watch(currentMonthProvider));
 
   PlannedExpense? byId(String id) =>
-      state.where((expense) => expense.id == id).firstOrNull;
+      state.value?.where((expense) => expense.id == id).firstOrNull;
 
-  /// 새 예정지출을 맨 위에 추가한다. [expense]의 id는 무시하고 새로 붙인다.
-  void add(PlannedExpense expense) {
-    state = [expense.copyWith(id: 'local-${_nextId++}'), ...state];
+  /// 새 예정지출을 저장하고 목록 맨 위에 둔다.
+  Future<void> add(PlannedExpense expense) async {
+    final saved = await _repository.add(expense);
+    state = AsyncData([saved, ...?state.value]);
+    _refreshPlan();
   }
 
-  void update(PlannedExpense expense) {
-    state = [
-      for (final e in state)
-        if (e.id == expense.id) expense else e,
-    ];
+  Future<void> save(PlannedExpense expense) async {
+    final saved = await _repository.update(expense);
+    state = AsyncData([
+      for (final e in state.value ?? const <PlannedExpense>[])
+        if (e.id == saved.id) saved else e,
+    ]);
+    _refreshPlan();
   }
 
-  void remove(String id) {
-    state = [
-      for (final e in state)
+  Future<void> remove(String id) async {
+    await _repository.remove(id);
+    state = AsyncData([
+      for (final e in state.value ?? const <PlannedExpense>[])
         if (e.id != id) e,
-    ];
+    ]);
+    _refreshPlan();
   }
+
+  /// 서버가 예정지출을 반영해 이번 달 플랜을 다시 계산하므로 월간 플랜을 다시 불러온다.
+  void _refreshPlan() =>
+      ref.invalidate(monthlyPlanProvider(ref.read(currentMonthProvider)));
 }

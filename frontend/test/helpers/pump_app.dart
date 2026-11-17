@@ -9,6 +9,8 @@ import 'package:frontend/features/auth/application/auth_providers.dart';
 import 'package:frontend/features/auth/data/auth_repository.dart';
 import 'package:frontend/features/auth/data/signup_repository.dart';
 import 'package:frontend/features/home/application/home_providers.dart';
+import 'package:frontend/features/home/application/planned_expense_providers.dart';
+import 'package:frontend/features/home/data/planned_expense_repository.dart';
 import 'package:frontend/features/home/data/spending_repository.dart';
 import 'package:frontend/features/onboarding/application/budget_plan_providers.dart';
 import 'package:frontend/features/onboarding/application/card_connection_providers.dart';
@@ -77,6 +79,9 @@ Future<void> pumpAppAt(
         planRepositoryProvider.overrideWithValue(plan),
         currentMonthProvider.overrideWithValue(testCurrentMonth),
         spendingRepositoryProvider.overrideWithValue(spending),
+        plannedExpenseRepositoryProvider.overrideWith(
+          (ref) => FakePlannedExpenseRepository(delay: Duration.zero),
+        ),
         recommendationClockProvider.overrideWithValue(() => testNow),
         recommendationRepositoryProvider.overrideWithValue(
           recommendation ??
