@@ -30,7 +30,7 @@
 | 공통 | 로그인 후 시작 화면 (Q8) | `GET /api/connections`, `GET /api/plans?month=` | ✅ | ⬜ | - |
 | 홈 | **HOME-01 홈** | PLAN-01과 같은 플랜·월 요약 + `GET /api/transactions` (최근 사용 내역) | 🟡 거래별 혜택은 #270 머지 후 (Q16) | 🟡 혜택 외 연동 (#252), 빠른 실행 "예정지출 관리" → HOME-07 (#258) | - |
 | 홈 | **HOME-03~05 거래내역** (전체·카드별·카테고리) | `GET /api/transactions/summary?month=`, `GET /api/transactions` + 월 목록 조회 (Q19) | 🟡 월 목록은 #269 머지 후, 혜택 없음 (Q16) | 🟡 혜택 외 연동 (#252, 월 목록은 앱에서 거름) | - |
-| 홈 | **HOME-06~10 예정지출** (추가·관리·수정·삭제) | `GET·POST /api/planned-expenses`, `PUT·DELETE /api/planned-expenses/{expenseId}` (Q21) | ✅ (#274) | 🟡 화면 완료, 지금은 앱 안에만 저장 → API 연동 필요 (#258·#262) | - |
+| 홈 | **HOME-06~10 예정지출** (추가·관리·수정·삭제) | `GET·POST /api/planned-expenses`, `PUT·DELETE /api/planned-expenses/{expenseId}` (Q21) | ✅ (#274) | ✅ 서버 API 연동 (#258·#262·#291) | - |
 | 설정 | **SETTINGS-03 카드 정보** (PLAN-02의 카드 설정 버튼) | `PUT /api/cards/selection` (플랜 분석에 포함) + 결제일·연결 계정·자동 동기화·연결 해제 (API 없음, Q22) | 🟡 선택 저장만 | 🟡 선택 저장 외 표시만 (#258) | - |
 
 - ✅ 완료, 🟡 일부 가능, ⬜ 할 일, ⚠️ 확인 필요
@@ -801,15 +801,15 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 
 ### HOME-06~10 예정지출
 
-홈 빠른 실행의 "예정지출 관리"로 들어갑니다. 하단 네비게이션 없이 화면 전체를 씁니다. 예정지출 API가 생겼습니다(백엔드 #274, Q21). **프론트는 아직 연동하지 않아 지금은 앱 안에만 저장하고, 앱을 다시 켜면 사라집니다.** 가짜 데이터(`USE_FAKE_API=true`)일 때는 Figma 예시 3건으로 시작합니다. (프론트 #258, #262)
+홈 빠른 실행의 "예정지출 관리"로 들어갑니다. 하단 네비게이션 없이 화면 전체를 씁니다. 예정지출 API(백엔드 #274)로 서버에 저장합니다(프론트 #291). 저장 중에는 버튼에 진행 표시를 하고, 실패하면 서버 안내 문구(예: 50개 초과 `EXPENSE-003`)를 보여줍니다. 저장하면 서버가 이번 달 플랜을 다시 계산하므로 앱은 월간 플랜을 다시 불러옵니다. 가짜 데이터(`USE_FAKE_API=true`)일 때는 앱 안에만 저장하고 Figma 예시 3건으로 시작합니다. (프론트 #258, #262, #291)
 
 | 화면 | 내용 | 필요한 데이터·API | 상태 |
 |---|---|---|---|
-| HOME-07 예정지출 관리 (`/planned-expenses`) | 이번 달 예정지출 합계와 반영 방식별 금액(보라 카드), 등록된 예정지출 목록, "+ 예정지출 추가" | `GET /api/planned-expenses` | 🟡 API 있음, 앱 안 저장 |
+| HOME-07 예정지출 관리 (`/planned-expenses`) | 이번 달 예정지출 합계와 반영 방식별 금액(보라 카드), 등록된 예정지출 목록, "+ 예정지출 추가" | `GET /api/planned-expenses?month=` | ✅ 연동 (불러오지 못하면 다시 시도) |
 | HOME-08 수정·삭제 시트 | 항목의 `⋯` → 이름·반영 방식·금액, "예정지출 수정" / "예정지출 삭제" / 취소 | - | ✅ 화면 |
-| HOME-06 예정지출 추가 (`/planned-expenses/new`) | 이름, 예상 금액, 할부(2·3·6·12개월), 카테고리 11개, 반영 방식 → "소비 플랜에 반영하기" | `POST /api/planned-expenses` | 🟡 API 있음, 앱 안 저장 |
-| HOME-09 예정지출 수정 (`/planned-expenses/:expenseId/edit`) | HOME-06과 같은 입력 → "변경 내용 저장하기" | `PUT /api/planned-expenses/{expenseId}` | 🟡 API 있음, 앱 안 저장 |
-| HOME-10 삭제 확인 | "예정지출을 삭제할까요?", 대상 이름·금액, 취소 / 삭제 | `DELETE /api/planned-expenses/{expenseId}` | 🟡 API 있음, 앱 안 저장 |
+| HOME-06 예정지출 추가 (`/planned-expenses/new`) | 이름, 예상 금액, 할부(2·3·6·12개월), 카테고리 11개, 반영 방식 → "소비 플랜에 반영하기" | `POST /api/planned-expenses` | ✅ 연동 |
+| HOME-09 예정지출 수정 (`/planned-expenses/:expenseId/edit`) | HOME-06과 같은 입력 → "변경 내용 저장하기" | `PUT /api/planned-expenses/{expenseId}` | ✅ 연동 |
+| HOME-10 삭제 확인 | "예정지출을 삭제할까요?", 대상 이름·금액, 취소 / 삭제 | `DELETE /api/planned-expenses/{expenseId}` | ✅ 연동 |
 
 #### 예정지출 API (#274)
 

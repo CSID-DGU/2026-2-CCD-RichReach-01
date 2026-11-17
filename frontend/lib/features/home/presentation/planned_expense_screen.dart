@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_route.dart';
 import '../../../core/formatters/money_formatter.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../onboarding/presentation/load_failure_view.dart';
 import '../../onboarding/presentation/onboarding_images.dart';
 import '../../plan/presentation/plan_detail_widgets.dart';
 import '../application/planned_expense_providers.dart';
@@ -33,12 +35,20 @@ class PlannedExpenseScreen extends ConsumerWidget {
         );
       case PlannedExpenseAction.delete:
         final confirmed = await confirmPlannedExpenseDelete(context, expense);
-        if (confirmed && context.mounted) {
-          ref.read(plannedExpensesProvider.notifier).remove(expense.id);
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(const SnackBar(content: Text('예정지출을 삭제했어요.')));
+        if (!confirmed || !context.mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        String message;
+        try {
+          await ref.read(plannedExpensesProvider.notifier).remove(expense.id);
+          message = '예정지출을 삭제했어요.';
+        } on ApiException catch (e) {
+          message = e.userMessage;
+        } catch (_) {
+          message = '예정지출을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요.';
         }
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
       case null:
         break;
     }
@@ -46,8 +56,8 @@ class PlannedExpenseScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final expenses = ref.watch(plannedExpensesProvider);
-    final summary = PlannedExpenseSummary.of(expenses);
+    final state = ref.watch(plannedExpensesProvider);
+    final expenses = state.value;
 
     return PlanDetailScaffold(
       title: AppRoute.plannedExpenses.title,
@@ -55,54 +65,68 @@ class PlannedExpenseScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-              children: [
-                _SummaryCard(summary: summary),
-                const SizedBox(height: 16),
-                Semantics(
-                  header: true,
-                  child: Text(
-                    '등록된 예정지출',
-                    style: AppTextStyles.label.copyWith(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      height: 24 / 16,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (expenses.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Center(
-                      child: Text(
-                        '등록된 예정지출이 없어요.',
-                        style: AppTextStyles.description,
-                      ),
-                    ),
-                  )
-                else
-                  for (final (i, expense) in expenses.indexed) ...[
-                    if (i > 0) const SizedBox(height: 12),
-                    _ExpenseItem(
-                      expense: expense,
-                      onMore: () => _openActions(context, ref, expense),
-                    ),
-                  ],
-              ],
-            ),
+            child: switch ((state, expenses)) {
+              (_, final expenses?) => _content(context, ref, expenses),
+              (AsyncError(), _) => LoadFailureView(
+                message: '예정지출을 불러오지 못했어요.',
+                onRetry: () => ref.invalidate(plannedExpensesProvider),
+              ),
+              _ => const Center(child: CircularProgressIndicator()),
+            },
           ),
           PlannedExpenseBottomBar(
             child: PrimaryButton(
               label: '+ 예정지출 추가',
-              onPressed: () =>
-                  context.pushNamed(AppRoute.plannedExpenseNew.name),
+              onPressed: expenses == null
+                  ? null
+                  : () => context.pushNamed(AppRoute.plannedExpenseNew.name),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _content(
+    BuildContext context,
+    WidgetRef ref,
+    List<PlannedExpense> expenses,
+  ) {
+    final summary = PlannedExpenseSummary.of(expenses);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+      children: [
+        _SummaryCard(summary: summary),
+        const SizedBox(height: 16),
+        Semantics(
+          header: true,
+          child: Text(
+            '등록된 예정지출',
+            style: AppTextStyles.label.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              height: 24 / 16,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (expenses.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: Text('등록된 예정지출이 없어요.', style: AppTextStyles.description),
+            ),
+          )
+        else
+          for (final (i, expense) in expenses.indexed) ...[
+            if (i > 0) const SizedBox(height: 12),
+            _ExpenseItem(
+              expense: expense,
+              onMore: () => _openActions(context, ref, expense),
+            ),
+          ],
+      ],
     );
   }
 }
