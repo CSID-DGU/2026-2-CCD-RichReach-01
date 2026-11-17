@@ -47,9 +47,12 @@ import com.richreach.user.entity.User;
 import com.richreach.user.repository.UserRepository;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -62,8 +65,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -93,8 +99,21 @@ class PlanRecalculationApiTest {
     }
 
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
+    /** 서비스와 테스트가 같은 시각을 보도록 고정한 시계. 달이 바뀌는 시각에 실행해도 이번 달 판정이 어긋나지 않는다. */
+    private static final Clock CLOCK = Clock.fixed(Instant.now(), ZoneId.systemDefault());
     /** 재계산은 이번 달 플랜만 대상이다. */
-    private static final YearMonth MONTH = YearMonth.now();
+    private static final YearMonth MONTH = YearMonth.now(CLOCK);
+
+    @TestConfiguration
+    static class FixedClockConfig {
+
+        @Bean
+        @Primary
+        Clock fixedClock() {
+            return CLOCK;
+        }
+
+    }
 
     @MockitoBean
     private RollingPlanReplanner replanner;
@@ -174,12 +193,12 @@ class PlanRecalculationApiTest {
     private User newUser() {
         int n = SEQUENCE.incrementAndGet();
         return users.save(new User("planrecalc" + n + "@example.com", "hash", "김리치", "010%08d".formatted(6000000 + n),
-            "REAL", LocalDateTime.now()));
+            "REAL", LocalDateTime.now(CLOCK)));
     }
 
     /** 카드 상품에 매칭되고 분석 대상으로 선택된 보유카드. 연결은 사용자당 하나라서 이미 있으면 그 연결에 카드사 계정을 더한다. */
     private long newCard(User owner, String cardName) {
-        LocalDateTime now = LocalDateTime.now().withNano(0);
+        LocalDateTime now = LocalDateTime.now(CLOCK).withNano(0);
         Optional<CodefConnection> existing = connections.findByUserId(owner.getId());
         boolean first = existing.isEmpty();
         CodefConnection connection = existing.orElseGet(() -> connections.save(
@@ -211,7 +230,7 @@ class PlanRecalculationApiTest {
     /** 이번 달에 한 번 승인된 거래를 저장한다. */
     private void spend(long cardId, SpendingCategory category, long amount) {
         store.saveCollected(user.getId(), cardId, List.of(new CollectedTransaction("AP-" + UUID.randomUUID(),
-            LocalDate.now().atTime(9, 0), "가맹점", amount, 0, 0, false, category.name())));
+            LocalDate.now(CLOCK).atTime(9, 0), "가맹점", amount, 0, 0, false, category.name())));
     }
 
     private static RollingPlanResult success(RemainingAllocation... remaining) {
@@ -352,7 +371,7 @@ class PlanRecalculationApiTest {
     void concurrentRequestOnlyMarksTheRunningJob() {
         PlanJob running = jobs.save(PlanJob.startRecalculation(user.getId(), UUID.randomUUID().toString(),
             MONTH.toString(), 400_000, "DINING:300000,CAFE:100000", "0".repeat(64),
-            PlanChangeReason.TRANSACTION_SYNCED, LocalDateTime.now().withNano(0)));
+            PlanChangeReason.TRANSACTION_SYNCED, LocalDateTime.now(CLOCK).withNano(0)));
 
         recalculation.requestAndRun(user.getId(), MONTH, PlanChangeReason.CATEGORY_EDITED);
 
@@ -367,7 +386,7 @@ class PlanRecalculationApiTest {
         engineMovesDiningToCardB();
         PlanJob running = jobs.save(PlanJob.startRecalculation(user.getId(), UUID.randomUUID().toString(),
             MONTH.toString(), 400_000, "DINING:300000,CAFE:100000", "0".repeat(64),
-            PlanChangeReason.TRANSACTION_SYNCED, LocalDateTime.now().withNano(0)));
+            PlanChangeReason.TRANSACTION_SYNCED, LocalDateTime.now(CLOCK).withNano(0)));
         tx.executeWithoutResult(status -> jobs.requestRerun(running.getId()));
 
         worker.run(running.getId());
@@ -379,12 +398,50 @@ class PlanRecalculationApiTest {
     }
 
     @Test
+    @DisplayName("계산에 실패했는데 대기 중인 재계산 요청이 있으면 실패로 끝내지 않고 다시 계산해서 완료한다")
+    void failureWithAPendingRerunIsRecomputed() {
+        when(replanner.replan(any())).thenReturn(
+            new RollingPlanResult(false, Map.of(), Map.of(), List.of(), 0, 0, SolverStatus.INFEASIBLE, List.of(),
+                "일시적인 실패"),
+            success(new RemainingAllocation(cardB, SpendingCategory.DINING, 300_000),
+                new RemainingAllocation(cardB, SpendingCategory.CAFE, 100_000)));
+        PlanJob running = jobs.save(PlanJob.startRecalculation(user.getId(), UUID.randomUUID().toString(),
+            MONTH.toString(), 400_000, "DINING:300000,CAFE:100000", "0".repeat(64),
+            PlanChangeReason.TRANSACTION_SYNCED, LocalDateTime.now(CLOCK).withNano(0)));
+        tx.executeWithoutResult(status -> jobs.requestRerun(running.getId()));
+
+        worker.run(running.getId());
+
+        verify(replanner, times(2)).replan(any());
+        PlanJob finished = jobs.findById(running.getId()).orElseThrow();
+        assertThat(finished.getStatus()).isEqualTo(PlanJob.STATUS_COMPLETED);
+        assertThat(finished.isRerunRequested()).isFalse();
+    }
+
+    @Test
+    @DisplayName("계산에 실패했고 대기 중인 요청이 없으면 실패로 기록한다")
+    void failureWithoutAPendingRerunFails() {
+        when(replanner.replan(any())).thenReturn(new RollingPlanResult(false, Map.of(), Map.of(), List.of(), 0, 0,
+            SolverStatus.INFEASIBLE, List.of(), "조건이 충돌합니다."));
+        PlanJob running = jobs.save(PlanJob.startRecalculation(user.getId(), UUID.randomUUID().toString(),
+            MONTH.toString(), 400_000, "DINING:300000,CAFE:100000", "0".repeat(64),
+            PlanChangeReason.TRANSACTION_SYNCED, LocalDateTime.now(CLOCK).withNano(0)));
+
+        worker.run(running.getId());
+
+        verify(replanner, times(1)).replan(any());
+        PlanJob failed = jobs.findById(running.getId()).orElseThrow();
+        assertThat(failed.getStatus()).isEqualTo(PlanJob.STATUS_FAILED);
+        assertThat(failed.getFailureCode()).isEqualTo("SOLVER_FAILED");
+    }
+
+    @Test
     @DisplayName("이미 끝난 작업을 다시 실행해도 아무것도 바꾸지 않는다")
     void finishedJobsAreNotRunAgain() {
         PlanJob finished = jobs.save(PlanJob.startRecalculation(user.getId(), UUID.randomUUID().toString(),
             MONTH.toString(), 400_000, "DINING:300000,CAFE:100000", "0".repeat(64),
-            PlanChangeReason.TRANSACTION_SYNCED, LocalDateTime.now().withNano(0)));
-        tx.executeWithoutResult(status -> jobs.failIfInProgress(finished.getId(), "X", "이미 실패", LocalDateTime.now()));
+            PlanChangeReason.TRANSACTION_SYNCED, LocalDateTime.now(CLOCK).withNano(0)));
+        tx.executeWithoutResult(status -> jobs.failIfInProgress(finished.getId(), "X", "이미 실패", LocalDateTime.now(CLOCK)));
 
         worker.run(finished.getId());
 
@@ -398,7 +455,7 @@ class PlanRecalculationApiTest {
     void planResponseShowsTheRunningRecalculation() throws Exception {
         PlanJob running = jobs.save(PlanJob.startRecalculation(user.getId(), UUID.randomUUID().toString(),
             MONTH.toString(), 400_000, "DINING:300000,CAFE:100000", "0".repeat(64),
-            PlanChangeReason.TRANSACTION_SYNCED, LocalDateTime.now().withNano(0)));
+            PlanChangeReason.TRANSACTION_SYNCED, LocalDateTime.now(CLOCK).withNano(0)));
 
         api(accessToken, "/api/plans?month=" + MONTH).andExpect(jsonPath("$.data.recalculationJobId")
             .value(running.getJobId()));
