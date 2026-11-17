@@ -8,6 +8,7 @@ import com.richreach.plan.dto.PlanCreateRequest;
 import com.richreach.plan.dto.PlanJobStartResponse;
 import com.richreach.plan.dto.PlanJobStatusResponse;
 import com.richreach.plan.dto.PlanResponse;
+import com.richreach.plan.service.PlanBudgetService;
 import com.richreach.plan.service.PlanChangeQueryService;
 import com.richreach.plan.service.PlanGenerationService;
 import com.richreach.plan.service.PlanQueryService;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,6 +33,7 @@ public class PlanController {
     private final PlanGenerationService generationService;
     private final PlanQueryService queryService;
     private final PlanChangeQueryService changeService;
+    private final PlanBudgetService budgetService;
 
     /**
      * 월간 플랜 생성을 시작한다. 계산은 오래 걸릴 수 있어서 작업을 시작하고 바로 {@code jobId}를 돌려주며, 진행 상태는
@@ -48,6 +51,25 @@ public class PlanController {
     public ApiResponse<PlanJobStartResponse> create(@AuthenticationPrincipal AuthenticatedUser user,
                                                     @RequestBody PlanCreateRequest request) {
         return ApiResponse.ok(generationService.start(user.userId(), request));
+    }
+
+    /**
+     * 이번 달 소비예산을 고치고, 새 예산으로 남은 기간의 플랜을 다시 계산하는 작업을 시작한다. 요청 본문은 플랜 생성과 같고 계산은 오래
+     * 걸릴 수 있어서 {@code jobId}를 바로 돌려주며, 진행 상태는 {@code GET /api/plans/jobs/{jobId}}로 조회한다. 이미 쓴 금액은
+     * 그 카드에 고정되고 새 플랜 버전으로 저장되며 변경 기록에 남는다.
+     * <ul>
+     *   <li>400 {@code COMMON-400}: 월이 {@code yyyy-MM} 형식이 아니거나 이번 달이 아님</li>
+     *   <li>400 {@code PLAN-003}: 예산이 올바르지 않음 (총예산 범위, 업종 코드, 중복, 업종 예산의 합이 총예산과 다름)</li>
+     *   <li>400 {@code PLAN-006}: 분석 대상으로 고른 카드가 없음</li>
+     *   <li>404 {@code PLAN-001}: 그 달의 플랜이 없음 (처음 만들 때는 {@code POST /api/plans})</li>
+     *   <li>409 {@code PLAN-005}: 같은 달에 다른 재계산이 진행 중. 같은 예산 수정 요청이 다시 오면 진행 중인 작업의
+     *       {@code jobId}를 그대로 돌려준다.</li>
+     * </ul>
+     */
+    @PutMapping("/budget")
+    public ApiResponse<PlanJobStartResponse> updateBudget(@AuthenticationPrincipal AuthenticatedUser user,
+                                                          @RequestBody PlanCreateRequest request) {
+        return ApiResponse.ok(budgetService.start(user.userId(), request));
     }
 
     /**
