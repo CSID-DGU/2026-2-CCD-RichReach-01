@@ -326,6 +326,10 @@ class _CardBack extends StatelessWidget {
               padding: const EdgeInsets.only(right: 8),
               child: Column(
                 children: [
+                  if (detail.benefits.isEmpty)
+                    Expanded(
+                      child: Center(child: Text('혜택 정보가 없어요', style: muted)),
+                    ),
                   for (final (i, benefit)
                       in detail.benefits.take(3).indexed) ...[
                     if (i > 0) divider,
@@ -334,7 +338,7 @@ class _CardBack extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              benefit.category.label,
+                              benefit.label,
                               style: white.copyWith(
                                 fontWeight: FontWeight.w500,
                               ),
@@ -351,13 +355,13 @@ class _CardBack extends StatelessWidget {
                   const SizedBox(height: 10),
                   _BackRow(
                     label: '전월 실적 기준',
-                    value: formatWon(detail.performanceRequirement),
+                    value: _wonOrDash(detail.performanceRequirement),
                     style: muted,
                   ),
                   const SizedBox(height: 11),
                   _BackRow(
                     label: '월 혜택 한도',
-                    value: formatWon(detail.benefitLimit),
+                    value: _wonOrDash(detail.benefitLimit),
                     style: muted,
                   ),
                 ],
@@ -453,8 +457,8 @@ class _GoalCard extends StatelessWidget {
                 flex: 136,
                 child: stat(
                   '전월 실적 인정액',
-                  '${formatNumber(detail.usedAmount)} / '
-                      '${formatWon(detail.performanceRequirement)}',
+                  '${formatNumber(detail.performanceAmount)} / '
+                      '${_wonOrDash(detail.performanceRequirement)}',
                   size: 10,
                 ),
               ),
@@ -462,21 +466,19 @@ class _GoalCard extends StatelessWidget {
                 flex: 98,
                 child: stat(
                   '남은 혜택 한도',
-                  formatWon(detail.remainingBenefitLimit),
+                  _wonOrDash(detail.remainingBenefitLimit),
                 ),
               ),
               Expanded(
                 flex: 94,
-                child: stat('현재 예상 혜택', formatWon(detail.expectedBenefit)),
+                child: stat('현재 예상 혜택', _wonOrDash(detail.expectedBenefit)),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            '* 총 사용 ${formatWon(detail.totalSpent)} 중 '
-            '실적 제외 ${formatWon(detail.excludedFromPerformance)}',
-            style: label,
-          ),
+          if (_performanceNote(detail) case final note?) ...[
+            const SizedBox(height: 12),
+            Text(note, style: label),
+          ],
         ],
       ),
     );
@@ -551,4 +553,21 @@ class _CategoryUsageCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 금액. 서버가 알 수 없다고 한 값(null)은 0이나 "한도 없음"이 아니라 "-"로 보여준다.
+String _wonOrDash(int? amount) => amount == null ? '-' : formatWon(amount);
+
+/// 목표 사용금액 카드 아래 안내.
+/// - 실적 인정 금액이 정확하면: 총 사용 중 실적에서 빠진 금액
+/// - 정확하지 않으면(서버가 제외 결제를 빼지 못함): 제외 조건이 있을 수 있다는 안내
+String? _performanceNote(CardPlanDetail detail) {
+  if (detail.performanceExact) {
+    return '* 총 사용 ${formatWon(detail.totalSpent)} 중 '
+        '실적 제외 ${formatWon(detail.excludedFromPerformance)}';
+  }
+  return switch (detail.exclusionNotes) {
+    [final first, ...] => '* 실적에서 제외되는 결제가 있을 수 있어요 ($first)',
+    _ => null,
+  };
 }

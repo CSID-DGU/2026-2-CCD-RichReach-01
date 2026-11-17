@@ -62,6 +62,15 @@ abstract final class ApiPaths {
   static String plannedExpense(String id) => '/api/planned-expenses/$id';
   static String planJob(String jobId) => '/api/plans/jobs/$jobId';
   static String planCategories(int planId) => '/api/plans/$planId/categories';
+  static String planCategory(int planId, String category) =>
+      '/api/plans/$planId/categories/$category';
+  static const planBudget = '/api/plans/budget';
+  static String planChanges(int planId) => '/api/plans/$planId/changes';
+  static String planChangeConfirm(int changeId) =>
+      '/api/plans/changes/$changeId/confirm';
+  static String planCardTargets(int planId) =>
+      '/api/plans/$planId/card-targets';
+  static String cardBenefits(int productId) => '/api/cards/$productId/benefits';
 
   static String connectionSyncJob(String jobId) =>
       '/api/connections/sync/${Uri.encodeComponent(jobId)}';

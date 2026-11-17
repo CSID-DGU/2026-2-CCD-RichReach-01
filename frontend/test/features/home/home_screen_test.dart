@@ -70,7 +70,7 @@ void main() {
     expect(findText('GS25'), findsOneWidget);
     expect(findText('KB My WE:SH · 편의·마트'), findsOneWidget);
     expect(findText('8,400원'), findsOneWidget);
-    expect(findText('혜택 420원'), findsOneWidget);
+    expect(findText('예상 혜택 420원'), findsOneWidget);
     expect(findText('스타벅스'), findsOneWidget);
     expect(findText('카카오T'), findsNothing);
   });
