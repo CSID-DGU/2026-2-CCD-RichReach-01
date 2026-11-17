@@ -129,7 +129,16 @@ class PlanRecalculationComputer {
         }
 
         // 예정지출을 얹은 예산으로 계산한다. 저장되는 확정 예산(budget)은 그대로 둔다.
-        PlanBudget planned = PlannedExpenseBudgetOverlay.apply(budget, plannedItems(userId, month));
+        // 이미 쓴 금액은 엔진이 그 카드에 고정하므로, 조정으로 줄일 수 있는 것은 업종별 남은 예산뿐이다.
+        Map<SpendingCategory, Long> spentByCategory = new EnumMap<>(SpendingCategory.class);
+        for (CardState card : cards) {
+            card.approvedSpendByCategory().forEach((category, amount) -> {
+                if (amount > 0) {
+                    spentByCategory.merge(category, amount, Long::sum);
+                }
+            });
+        }
+        PlanBudget planned = PlannedExpenseBudgetOverlay.apply(budget, plannedItems(userId, month), spentByCategory);
 
         RollingPlanResult result;
         try {

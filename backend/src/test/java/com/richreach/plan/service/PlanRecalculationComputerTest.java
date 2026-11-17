@@ -135,6 +135,27 @@ class PlanRecalculationComputerTest {
     }
 
     @Test
+    @DisplayName("조정 예정지출은 이미 쓴 금액을 뺀 남은 예산에서만 줄여서 엔진에 넣는다")
+    void withinBudgetOnlyCutsTheRemainingBudget() {
+        when(ownedCards.list(USER)).thenReturn(List.of(card(10L, 100L, true)));
+        // 외식 예산 30만원 중 25만원을 이미 썼다. 남은 예산은 외식 5만원, 카페 10만원이다.
+        when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(Map.of(
+            10L, Map.of(SpendingCategory.DINING, 250_000L)));
+        when(plannedExpenses.listForBudget(USER, MONTH)).thenReturn(List.of(
+            new PlannedExpenseResponse(2L, "2026-11", "노트북", 30_000, null, 30_000, "SHOPPING", "WITHIN_BUDGET")));
+        when(replanner.replan(any())).thenReturn(success());
+
+        computer.compute(USER, MONTH);
+
+        ArgumentCaptor<RollingPlanInput> input = ArgumentCaptor.forClass(RollingPlanInput.class);
+        verify(replanner).replan(input.capture());
+        // 3만원을 남은 예산(5만:10만)의 비율대로 줄이면 외식 1만원, 카페 2만원이다. 쓴 금액 아래로 내려가지 않는다.
+        assertThat(input.getValue().confirmedBudgetByCategory())
+            .containsEntry(SpendingCategory.DINING, 290_000L).containsEntry(SpendingCategory.CAFE, 80_000L)
+            .containsEntry(SpendingCategory.SHOPPING, 30_000L);
+    }
+
+    @Test
     @DisplayName("카드별 목표는 이미 쓴 금액에 남은 목표를 더한 이번 달 전체 목표이고, 혜택은 그 목표로 카드마다 계산한다")
     void targetsAreApprovedPlusRemaining() {
         when(ownedCards.list(USER)).thenReturn(List.of(card(10L, 100L, true), card(11L, 200L, true)));
