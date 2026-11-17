@@ -1,19 +1,37 @@
 package com.richreach;
 
+import org.springframework.boot.jdbc.autoconfigure.JdbcConnectionDetails;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
-import org.testcontainers.mysql.MySQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
+/**
+ * 통합 테스트의 DB 연결. 컨텍스트마다 MySQL 컨테이너를 따로 띄우지 않고, JVM이 공유하는 컨테이너 안에 이 컨텍스트만의 새 DB를
+ * 만들어 연결한다. ({@link SharedMysql} 참고) Flyway와 JPA, JdbcTemplate은 이 연결 정보로 같은 DB를 쓴다.
+ */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 
-    // 운영 DB와 같은 메이저 버전으로 고정 (latest 사용 금지)
     @Bean
-    @ServiceConnection
-    MySQLContainer mysqlContainer() {
-        return new MySQLContainer(DockerImageName.parse("mysql:8.4"));
+    JdbcConnectionDetails jdbcConnectionDetails() {
+        SharedMysql.Database database = SharedMysql.newDatabase();
+        return new JdbcConnectionDetails() {
+
+            @Override
+            public String getUsername() {
+                return database.username();
+            }
+
+            @Override
+            public String getPassword() {
+                return database.password();
+            }
+
+            @Override
+            public String getJdbcUrl() {
+                return database.jdbcUrl();
+            }
+
+        };
     }
 
 }
