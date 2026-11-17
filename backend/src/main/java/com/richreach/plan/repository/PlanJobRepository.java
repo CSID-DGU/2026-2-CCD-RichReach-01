@@ -20,8 +20,28 @@ public interface PlanJobRepository extends JpaRepository<PlanJob, Long> {
     /** 사용자의 작업. 없거나 다른 사용자의 작업이면 비어 있다. */
     Optional<PlanJob> findByJobIdAndUserId(String jobId, Long userId);
 
-    /** 사용자의 가장 최근 작업 중 주어진 상태인 것. */
-    Optional<PlanJob> findFirstByUserIdAndStatusOrderByIdDesc(Long userId, String status);
+    /** 사용자의 가장 최근 작업 중 주어진 종류와 상태인 것. 플랜 생성 중복 확인은 재계산 작업과 섞이지 않도록 종류를 함께 본다. */
+    Optional<PlanJob> findFirstByUserIdAndJobTypeAndStatusOrderByIdDesc(Long userId, String jobType, String status);
+
+    /** 사용자의 그 달 재계산 작업 중 가장 최근의 주어진 상태인 것. */
+    Optional<PlanJob> findFirstByUserIdAndJobTypeAndPlanMonthAndStatusOrderByIdDesc(Long userId, String jobType,
+                                                                                   String planMonth, String status);
+
+    /** 진행 중인 작업에 "끝나기 전에 한 번 더 계산" 표시를 한다. 이미 끝난 작업이면 0이다. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update PlanJob j set j.rerunRequested = true where j.id = :id and j.status = 'IN_PROGRESS'")
+    int requestRerun(@Param("id") Long id);
+
+    /**
+     * "한 번 더 계산" 표시가 켜져 있으면 끄고 1을 돌려준다. 꺼져 있거나 이미 끝난 작업이면 0이다. 작업이 끝나기 직전에 부르는
+     * 쪽이 1을 받으면 최신 거래로 다시 계산한다.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+        update PlanJob j set j.rerunRequested = false
+        where j.id = :id and j.status = 'IN_PROGRESS' and j.rerunRequested = true
+        """)
+    int consumeRerun(@Param("id") Long id);
 
     /** 진행률을 올린다. 진행 중이고 값이 커질 때만 바뀌며 완료 전에는 99를 넘지 않는다. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
