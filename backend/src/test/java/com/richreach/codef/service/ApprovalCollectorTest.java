@@ -33,6 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 
 /** 승인내역 수집의 월 나누기, 카드 짝짓기, 중간 실패 처리를 DB 없이 확인한다. */
 class ApprovalCollectorTest {
@@ -44,6 +45,7 @@ class ApprovalCollectorTest {
     private CodefApprovalClient approvals;
     private OwnedCardQueryService ownedCards;
     private TransactionStoreService store;
+    private ApplicationEventPublisher events;
     private ApprovalCollector collector;
 
     @BeforeEach
@@ -51,7 +53,8 @@ class ApprovalCollectorTest {
         approvals = mock(CodefApprovalClient.class);
         ownedCards = mock(OwnedCardQueryService.class);
         store = mock(TransactionStoreService.class);
-        collector = new ApprovalCollector(approvals, ownedCards, store, new CodefCollectProperties(6), CLOCK);
+        events = mock(ApplicationEventPublisher.class);
+        collector = new ApprovalCollector(approvals, ownedCards, store, new CodefCollectProperties(6), events, CLOCK);
         when(ownedCards.listForMatching(1L)).thenReturn(List.of(card(10L, CardCompany.KB, "************4001"),
             card(11L, CardCompany.KB, "************4002"), card(12L, CardCompany.SHINHAN, "************4001")));
         when(store.saveCollected(anyLong(), anyLong(), anyList())).thenReturn(new SaveResult(1, 0, 0, 0));
@@ -220,6 +223,38 @@ class ApprovalCollectorTest {
         assertThat(ApprovalCollector.isCompatible("************4001", "")).isTrue();
         // 앞쪽 숫자가 보이는 번호는 앞쪽도 비교한다. (끝 4자리가 우연히 같아도 앞이 다르면 다른 카드)
         assertThat(ApprovalCollector.isCompatible("1234********4001", "9999********4001")).isFalse();
+    }
+
+    // ---- 플랜 재계산 알림 ----
+
+    @Test
+    @DisplayName("거래를 새로 저장하거나 갱신했으면 이번 달 플랜 재계산을 위한 알림을 한 번 보낸다")
+    void publishesAChangeEventWhenTransactionsWereSaved() {
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(
+            ok(approval("A", "1111-22**-****-4001")), ok());
+
+        collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
+
+        ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
+        verify(events, times(1)).publishEvent(event.capture());
+        assertThat(event.getValue()).isEqualTo(new com.richreach.global.event.TransactionsChangedEvent(1L,
+            java.time.YearMonth.of(2026, 11), com.richreach.global.event.TransactionsChangedEvent.Reason.SYNCED));
+    }
+
+    @Test
+    @DisplayName("저장한 거래가 없으면(새 거래 없음, 카드를 못 찾음, 수집 실패) 알림을 보내지 않는다")
+    void publishesNothingWhenNothingWasSaved() {
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok());
+        collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
+
+        when(store.saveCollected(anyLong(), anyLong(), anyList())).thenReturn(new SaveResult(0, 0, 3, 0));
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ok(approval("A", "1111-22**-****-4001")));
+        collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
+
+        when(approvals.fetchApprovals(any(), any(), any(), any())).thenReturn(ApprovalListResult.failure("CF-09999"));
+        collector.collect(1L, CardCompany.KB, "cid", "0301", null, FAR);
+
+        verify(events, never()).publishEvent(any(Object.class));
     }
 
     // ---- 수집 범위 기록과 증분 수집 ----
