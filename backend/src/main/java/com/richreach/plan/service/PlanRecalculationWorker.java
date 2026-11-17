@@ -32,6 +32,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class PlanRecalculationWorker {
 
     static final String CODE_INTERNAL_ERROR = "INTERNAL_ERROR";
+    static final String CODE_BUSY = "BUSY";
     static final String CODE_TIMEOUT = "TIMEOUT";
     static final String CODE_TOO_MANY_RERUNS = "TOO_MANY_RERUNS";
     static final String TIMEOUT_REASON = "플랜을 다시 계산하는 데 시간이 너무 오래 걸렸습니다.";
@@ -59,6 +60,11 @@ public class PlanRecalculationWorker {
         }
     }
 
+    /** 실행기가 가득 차 시작하지 못한 작업을 실패로 기록한다. */
+    public void markRejected(long id) {
+        fail(id, CODE_BUSY, "요청이 많아 플랜을 다시 계산하지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+    }
+
     private void execute(long id) {
         PlanJob job = transaction.execute(status -> jobs.findById(id).orElse(null));
         if (job == null || !job.isInProgress()) {
@@ -71,10 +77,13 @@ public class PlanRecalculationWorker {
         long userId = job.getUserId();
         YearMonth month = YearMonth.parse(job.getPlanMonth());
         PlanChangeReason reason = PlanChangeReason.valueOf(job.getRecalcReason());
+        // 예산 수정 작업은 요청한 예산으로 계산한다. 거래 반영 작업은 지금 플랜의 확정 예산을 쓴다.
+        PlanBudget budgetOverride = reason == PlanChangeReason.BUDGET_CHANGED
+            ? PlanBudget.decode(month, job.getBudgetTotal(), job.getBudgetEncoded()) : null;
 
         for (int run = 1; run <= MAX_RUNS; run++) {
             progress(id, 10);
-            Computation computation = computer.compute(userId, month);
+            Computation computation = computer.compute(userId, month, budgetOverride);
             if (!computation.success()) {
                 log.info("플랜 재계산 실패: id={}, code={}", id, computation.failureCode());
                 // 실패로 끝내기 전에 대기 중인 재계산 요청이 있는지 본다. 있으면 그 요청의 거래를 반영해 다시 계산한다.

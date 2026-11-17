@@ -30,7 +30,8 @@ import org.springframework.stereotype.Component;
  * 호출하는 쪽이 DB 트랜잭션을 열지 않은 상태에서 불러야 한다.
  *
  * <ul>
- *   <li>확정 예산은 지금 보여주는 플랜의 소비 프로필에서 읽는다. 예산을 혜택을 위해 늘리지 않는다.</li>
+ *   <li>확정 예산은 지금 보여주는 플랜의 소비 프로필에서 읽는다. 사용자가 예산을 새로 정했으면(예산 수정) 그 예산을 쓴다.
+ *       어느 쪽이든 예산을 혜택을 위해 늘리지 않는다.</li>
  *   <li>이미 쓴 금액(취소·환불을 뺀 카드×업종 금액)은 그 카드에 고정하고 남은 예산만 다시 배분한다. 이 스냅샷은 이번 달 거래
  *       전체라서 새 거래를 더하는 것이 아니라 통째로 다시 읽은 값이다.</li>
  *   <li>분석 대상으로 고른 카드는 앞으로의 배분에 쓰고, 분석 대상이 아니지만 이미 쓴 카드는 쓴 금액만 고정한다.</li>
@@ -65,23 +66,31 @@ class PlanRecalculationComputer {
      * @param benefits 보유카드별·업종별 예상 혜택(원). {@code targets}의 칸마다 있다.
      */
     record Computation(boolean success, String failureCode, String failureReason, Baseline baseline,
-                       Map<Long, Map<SpendingCategory, Long>> targets,
+                       PlanBudget budget, Map<Long, Map<SpendingCategory, Long>> targets,
                        Map<Long, Map<SpendingCategory, Long>> benefits, long totalSpend, long totalBenefit,
                        SolverStatus solverStatus) {
 
         static Computation failure(String code, String reason) {
-            return new Computation(false, code, reason, null, Map.of(), Map.of(), 0, 0, null);
+            return new Computation(false, code, reason, null, null, Map.of(), Map.of(), 0, 0, null);
         }
 
     }
 
     Computation compute(long userId, YearMonth month) {
+        return compute(userId, month, null);
+    }
+
+    /**
+     * @param budgetOverride 사용자가 새로 정한 예산. 있으면 지금 플랜의 예산 대신 이 예산으로 계산한다. 없으면 지금 플랜의 확정 예산을 쓴다.
+     */
+    Computation compute(long userId, YearMonth month, PlanBudget budgetOverride) {
         Optional<Baseline> found = baselines.read(userId, month);
         if (found.isEmpty()) {
             return Computation.failure(CODE_NO_PLAN, "다시 계산할 플랜이 없습니다.");
         }
         Baseline baseline = found.get();
-        if (baseline.budget().byCategory().isEmpty()) {
+        PlanBudget budget = budgetOverride != null ? budgetOverride : baseline.budget();
+        if (budget.byCategory().isEmpty()) {
             return Computation.failure(CODE_NO_BUDGET, "플랜의 확정 예산을 읽을 수 없습니다.");
         }
 
@@ -113,7 +122,7 @@ class PlanRecalculationComputer {
 
         RollingPlanResult result;
         try {
-            result = replanner.replan(new RollingPlanInput(userId, month, baseline.budget().byCategory(), cards,
+            result = replanner.replan(new RollingPlanInput(userId, month, budget.byCategory(), cards,
                 properties.strategyTimeLimit()));
         } catch (RuntimeException e) {
             // 메시지에 금액이 섞일 수 있어서 종류만 남긴다.
@@ -154,7 +163,7 @@ class PlanRecalculationComputer {
             benefits.put(entry.getKey(), perCategory);
             totalBenefit += benefit.totalBenefit();
         }
-        return new Computation(true, null, null, baseline, targets, benefits, totalSpend, totalBenefit,
+        return new Computation(true, null, null, baseline, budget, targets, benefits, totalSpend, totalBenefit,
             result.solverStatus());
     }
 
