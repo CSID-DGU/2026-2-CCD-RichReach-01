@@ -107,6 +107,47 @@ docker compose up -d mysql  # .env의 새 값으로 다시 생성
 
 > ⚠️ `-v`는 **DB 데이터를 모두 삭제**한다. 지워도 되는 개발용 데이터일 때만 실행한다.
 
+## 개발 서버(AWS) 배포
+
+공용 개발 서버는 **EC2(Docker) + RDS MySQL 8.4**로 띄운다. 앱은 `dev` 프로파일([application-dev.yml](src/main/resources/application-dev.yml))로 실행하고, 모든 설정은 환경변수로만 넣는다. 로컬 개발(`local` 프로파일)과 달리 이 프로파일에서는 시연 데이터 생성과 비밀번호 재설정 인증번호 노출이 **아예 꺼져 있고**, 필수 값이 빠지면 앱이 시작되지 않는다.
+
+### 환경변수
+
+| 이름 | 필수 | 설명 |
+|---|---|---|
+| `DB_HOST` | ✅ | RDS 엔드포인트 (`DB_PORT` 기본 3306, `MYSQL_DATABASE` 기본 `richreach`, `MYSQL_USER` 기본 `richreach`) |
+| `MYSQL_PASSWORD` | ✅ | DB 비밀번호 |
+| `DATA_ENCRYPTION_KEY` | ✅ | AES-256 키(Base64, 32바이트). `openssl rand -base64 32`. **한 번 정하면 바꾸거나 잃어버리지 않는다.** 바뀌면 저장된 암호화 데이터(CODEF connectedId 등)를 읽을 수 없다. 안전한 곳에 백업한다. |
+| `JWT_SECRET` | ✅ | 로그인 토큰 서명 키(32바이트 이상). `openssl rand -base64 48`. 비어 있으면 앱이 시작되지 않는다. 바꾸면 모든 로그인이 풀린다. |
+| `CORS_ALLOWED_ORIGINS` | ✅ | 허용할 웹 origin(쉼표로 구분). 모바일 앱만 쓰면 임의의 값을 넣어도 된다. |
+| `CODEF_CLIENT_ID`, `CODEF_CLIENT_SECRET`, `CODEF_PUBLIC_KEY` | | 카드사 연동. 비어 있으면 CODEF 호출 때 안내 오류가 난다. |
+| `DB_SSL_MODE` | | 기본 `REQUIRED`. RDS 인증서를 검증하려면 `VERIFY_CA` |
+| `SWAGGER_ENABLED` | | 기본 `true`. API 문서를 외부에 숨기려면 `false` |
+| `BENEFIT_RULE_SELECTION` | | 기본 `READY_ONLY`. 시연용으로만 `ALL` |
+| `OPENAI_API_KEY` | | 월 예산 대화 미리보기. 없으면 해당 기능만 쓸 수 없다. |
+
+값은 서버의 `.env.dev` 파일(커밋되지 않는다) 또는 AWS Systems Manager Parameter Store에서 읽어 넣는다. **저장소, 이미지, 채팅, PR에는 값을 남기지 않는다.**
+
+### 실행
+
+```bash
+# EC2에서 저장소 루트
+docker compose -f docker-compose.dev.yml up -d --build
+docker logs -f richreach-backend
+curl -fs http://localhost:8080/actuator/health        # {"status":"UP"}
+```
+
+- 앱은 서버 안(`127.0.0.1:8080`)에서만 열린다. 바깥에는 앞단(ALB 또는 nginx)에서 HTTPS로 받아 넘긴다.
+- 처음 켜면 Flyway가 빈 DB에 V1부터 마이그레이션을 적용해서 1~3분 걸린다. (이미 DB 담당이 구조를 관리하는 공용 DB에 붙일 때는 `SPRING_FLYWAY_ENABLED=false`)
+- 코드를 바꾼 뒤에는 `git pull --no-rebase` 후 같은 명령을 다시 실행한다. DB 데이터는 RDS에 있어 컨테이너를 다시 만들어도 유지된다.
+
+### 보안 설정 체크리스트
+
+- RDS 보안 그룹은 **EC2의 보안 그룹에서 오는 3306만** 허용한다. (퍼블릭 액세스 끔)
+- EC2 보안 그룹은 80/443(앞단)과 관리용 22(내 IP만)만 연다. 8080은 열지 않는다.
+- RDS 자동 백업을 켜고, `DATA_ENCRYPTION_KEY`는 DB 백업과 따로 보관한다.
+- 시연 데이터(`DEMO_SEED_*`)는 `dev`에서 동작하지 않고, 공용 DB에는 어떤 경우에도 만들지 않는다.
+
 ## 테스트
 
 ```bash
