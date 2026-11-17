@@ -26,7 +26,7 @@
 | 플랜 | ONB-07A 플랜 생성 중 | `POST /api/plans`, `GET /api/plans/jobs/{jobId}` | ✅ #204 | ✅ | ✅ (실제 계정, CP-SAT) |
 | 플랜 | ONB-07B 플랜 생성 완료 | `GET /api/plans?month=` | ✅ #212 | ✅ | ✅ |
 | 플랜 | **PLAN-01 월간 플랜** | `GET /api/plans?month=`, `GET /api/plans/{planId}/categories`, `GET /api/transactions/summary?month=` + `GET /api/plans/{planId}/changes`(#271, 머지 후), 예산 재계산 (API 없음, Q17) | 🟡 대부분 | 🟡 변경 이력·재계산 외 연동 | ✅ (실제 계정) |
-| 플랜 | PLAN-02·03 카드별·업종별 상세 | PLAN-01과 같은 데이터 + 카드 실적·한도·혜택 (API 없음) | 🟡 일부 | 🟡 목표·사용 금액만 실제, 실적·한도·혜택은 가짜 기본값 | - |
+| 플랜 | PLAN-02·03 카드별·업종별 상세 | `GET /api/plans/{planId}/card-targets`, `GET /api/plans/{planId}/categories/{category}`, `GET /api/cards/{카드상품ID}/benefits` | ✅ (#273) | ✅ 연동 (#293) | - |
 | 공통 | 로그인 후 시작 화면 (Q8) | `GET /api/connections`, `GET /api/plans?month=` | ✅ | ⬜ | - |
 | 홈 | **HOME-01 홈** | PLAN-01과 같은 플랜·월 요약 + `GET /api/transactions` (최근 사용 내역) | 🟡 거래별 혜택은 #270 머지 후 (Q16) | 🟡 혜택 외 연동 (#252), 빠른 실행 "예정지출 관리" → HOME-07 (#258) | - |
 | 홈 | **HOME-03~05 거래내역** (전체·카드별·카테고리) | `GET /api/transactions/summary?month=`, `GET /api/transactions` + 월 목록 조회 (Q19) | 🟡 월 목록은 #269 머지 후, 혜택 없음 (Q16) | 🟡 혜택 외 연동 (#252, 월 목록은 앱에서 거름) | - |
@@ -697,7 +697,16 @@ API가 있는 부분은 연동했고(#223, #237), 없는 부분은 화면을 그
 ### PLAN-02·03 카드별·업종별 상세
 
 - 카드 이미지, 목표 사용금액, 이번 달 사용 금액, 업종별 목표는 PLAN-01과 같은 데이터(플랜·업종별 사용계획·월 요약)로 채웁니다.
-- 카드의 전월 실적 기준, 혜택 한도·남은 한도, 예상 혜택, 업종별 사용 금액은 `GET /api/plans/{planId}/card-targets`(#273, 머지 후)로 채웁니다. 혜택 요약(카드 뒷면)은 이미 있는 `GET /api/cards/{카드상품ID}/benefits`를 씁니다.
+- 카드의 전월 실적 기준, 혜택 한도·남은 한도, 예상 혜택, 업종별 사용 금액은 `GET /api/plans/{planId}/card-targets`(#273)로 채웁니다. 혜택 요약(카드 뒷면)은 이미 있는 `GET /api/cards/{카드상품ID}/benefits`를 씁니다. (프론트 #293)
+- **앱의 표시 방법** (프론트 #293)
+  - 목표 사용금액 게이지: `targetAmount`, `spentAmount`
+  - "전월 실적 인정액 `currentMonthAmount` / 실적 기준": 실적 기준은 `performance.tiers`의 가장 낮은 구간입니다. 카드 뒷면 "전월 실적 기준"과 SETTINGS-03 "실적 기준"도 같은 값입니다.
+  - "남은 혜택 한도" = `benefitLimit.remainingAmount`, 카드 뒷면 "월 혜택 한도" = `benefitLimit.monthlyLimit`, "현재 예상 혜택" = `currentBenefit`
+  - **`null`(알 수 없음)은 "-"로 보여줍니다.** 0원이나 "한도 없음"으로 바꾸지 않습니다.
+  - `currentMonthAmountExact=false`이면 "총 사용 중 실적 제외" 대신 "* 실적에서 제외되는 결제가 있을 수 있어요 (`exclusionNotes`의 첫 문장)"을 보여주고, 제외 조건이 없으면 안내를 뺍니다.
+  - 권장 사용 업종: `categories`에서 목표나 사용 금액이 있는 업종, 목표가 큰 순
+  - 카드 뒷면 혜택 요약: 카드 혜택 API의 `benefits`에서 계산에 쓰는 혜택(`includedInCalculation`)을 먼저, 3개까지. 분류는 `categoryName`, 내용은 `ratePercent`(없으면 `rateMaxPercent`)나 `amount`와 `benefitType`(할인·적립·캐시백 등)으로 만들고, 비율·금액이 없는 혜택은 뺍니다. 카드 상품을 모르거나 혜택이 없으면 "혜택 정보가 없어요"
+  - PLAN-03: 업종 목표·사용 금액과 카드별 금액은 업종별 상세 API, 카드 옆 혜택은 그 업종의 카드별 `expectedBenefit`("예상 혜택 N원", 0이면 뺌)입니다. 우선 카드 이유는 혜택(그 업종 예상 혜택), 실적(`shortfallToNextTier`로 "다음 실적 구간까지 N원 남음", 다 채웠으면 "실적 기준을 이미 채웠어요"), 한도(`remainingAmount`, 모르면 "혜택 한도를 확인할 수 없어요")로 만듭니다.
 
 **카드별 상세** `GET /api/plans/{planId}/card-targets` (PLAN-02)
 
@@ -752,7 +761,7 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 | 화면 요소 | 필요한 데이터 | API | 상태 |
 |---|---|---|---|
 | 카드 이미지, 혜택 요약 보기 | PLAN-02와 같음 | PLAN-02와 같음 | 🟡 PLAN-02와 같음 |
-| 카드 정보: 실적 기준, 이번 달 인정금액 | 카드 전월 실적 기준, 이번 달 실적 인정 금액 | `GET /api/plans/{planId}/card-targets`의 `performance` (#273, 인정 금액은 정확하지 않음) | 🟡 머지 후 연동 |
+| 카드 정보: 실적 기준, 이번 달 인정금액 | 카드 전월 실적 기준, 이번 달 실적 인정 금액 | `GET /api/plans/{planId}/card-targets`의 `performance` (#273, 인정 금액은 정확하지 않음) | ✅ 연동 (#293, 모르면 "-") |
 | 카드 정보: 결제일, 이용기간, 연결 계정 | 결제일(예: 매월 14일), 실적 이용기간(전월 1일~말일), 가린 카드사 아이디 | 없음 (Q22) | ⬜ 실제 서버에서는 "-" |
 | 거래내역 자동 동기화 (토글) | 하루 한 번 동기화 설정 | 없음 (Q22) | ⬜ 화면 안에서만 바뀜 |
 | 플랜 분석에 포함 (토글) | 분석 대상 카드 여부 | `GET /api/cards` → `selected`, `PUT /api/cards/selection` | ✅ 연동됨 (실패하면 되돌리고 안내) |

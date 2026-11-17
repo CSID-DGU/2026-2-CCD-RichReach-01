@@ -27,9 +27,10 @@ class CategoryUsage {
 
 /// 카드 혜택 한 줄 (예: 외식 · 10% 할인).
 class CardBenefit {
-  const CardBenefit({required this.category, required this.description});
+  const CardBenefit({required this.label, required this.description});
 
-  final SpendingCategory category;
+  /// 혜택 분류 (예: "외식", "커피")
+  final String label;
 
   /// 혜택 내용 (예: "10% 할인", "3% 적립")
   final String description;
@@ -41,6 +42,7 @@ class CardPlanDetail {
     required this.card,
     required this.targetAmount,
     required this.usedAmount,
+    required this.performanceAmount,
     required this.performanceRequirement,
     required this.benefitLimit,
     required this.remainingBenefitLimit,
@@ -48,6 +50,8 @@ class CardPlanDetail {
     required this.totalSpent,
     required this.benefits,
     required this.categoryUsages,
+    this.performanceExact = true,
+    this.exclusionNotes = const [],
   });
 
   final OwnedCard card;
@@ -55,18 +59,27 @@ class CardPlanDetail {
   /// 원 단위 이번 달 목표 사용금액
   final int targetAmount;
 
-  /// 원 단위 이번 달 실적으로 인정된 사용금액
+  /// 원 단위 이번 달 사용금액 (목표 대비 사용률에 쓴다)
   final int usedAmount;
 
-  /// 원 단위 혜택을 받기 위한 전월 실적 기준
-  final int performanceRequirement;
+  /// 원 단위 이번 달 실적 인정 금액 (다음 달 혜택 구간을 정한다)
+  final int performanceAmount;
 
-  /// 원 단위 월 혜택 한도와 남은 한도
-  final int benefitLimit;
-  final int remainingBenefitLimit;
+  /// 원 단위 혜택을 받기 위한 실적 기준 (가장 낮은 구간). 알 수 없으면 null.
+  final int? performanceRequirement;
 
-  /// 원 단위 지금까지 쓴 금액으로 받을 예상 혜택
-  final int expectedBenefit;
+  /// 원 단위 월 혜택 한도와 남은 한도. 알 수 없으면 null (한도 없음이 아니다).
+  final int? benefitLimit;
+  final int? remainingBenefitLimit;
+
+  /// 원 단위 지금까지 쓴 금액으로 받을 예상 혜택. 알 수 없으면 null.
+  final int? expectedBenefit;
+
+  /// 실적 인정 금액이 정확한지. 서버가 실적 제외 결제를 금액에서 빼지 못하면 false.
+  final bool performanceExact;
+
+  /// 실적에서 빠지는 결제 조건 (예: "상품권 구입액은 실적에서 제외")
+  final List<String> exclusionNotes;
 
   /// 원 단위 실적 제외 금액을 포함한 이번 달 총 사용금액
   final int totalSpent;
@@ -84,7 +97,7 @@ class CardPlanDetail {
 
   /// 실적에서 빠진 금액 (예: 상품권·공과금)
   int get excludedFromPerformance =>
-      totalSpent > usedAmount ? totalSpent - usedAmount : 0;
+      totalSpent > performanceAmount ? totalSpent - performanceAmount : 0;
 }
 
 /// 업종 상세의 카드 한 장: 권장 금액, 사용금액, 그 업종 혜택.
