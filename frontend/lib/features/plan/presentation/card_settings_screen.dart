@@ -162,11 +162,11 @@ class _CardSettingsContentState extends ConsumerState<_CardSettingsContent> {
             children: [
               _InfoRow('결제일', info.paymentDay),
               _InfoRow('이용기간', info.usagePeriod),
-              _InfoRow(
-                '실적 기준',
-                '월 ${formatWon(detail.performanceRequirement)}',
-              ),
-              _InfoRow('이번 달 인정금액', formatWon(detail.usedAmount)),
+              _InfoRow('실적 기준', switch (detail.performanceRequirement) {
+                final amount? => '월 ${formatWon(amount)}',
+                null => null,
+              }),
+              _InfoRow('이번 달 인정금액', formatWon(detail.performanceAmount)),
               _InfoRow('연결 계정', info.account),
             ],
           ),

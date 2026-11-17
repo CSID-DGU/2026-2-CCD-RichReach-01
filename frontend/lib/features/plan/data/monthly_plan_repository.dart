@@ -42,7 +42,11 @@ abstract interface class MonthlyPlanRepository {
 /// 아직 API가 없는 부분은 화면을 그대로 두고 아래처럼 채운다.
 /// - 플랜 변경 안내: 서버에 변경 내역이 없어 보여줄 변경이 없다.
 /// - 소비예산 수정: 서버에 저장하지 않고 이 객체 안에서만 비율대로 다시 나눈다. ([FakeMonthlyPlanRepository.rescale])
-/// - 카드별·업종별 상세(PLAN-02·03)의 실적·한도·혜택: 가짜 기본값을 쓴다.
+/// - 카드별 상세(PLAN-02): `GET /api/plans/{planId}/card-targets` (실적·한도·예상 혜택·업종별 사용 금액),
+///   카드 뒷면 혜택 요약은 `GET /api/cards/{카드상품ID}/benefits` (백엔드 #273)
+/// - 업종별 상세(PLAN-03): `GET /api/plans/{planId}/categories/{category}` + 우선 카드의 실적·한도
+///
+/// 서버가 알 수 없다고 준 값(`null`)은 0이나 "한도 없음"으로 바꾸지 않고 null로 둔다.
 class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
   ApiMonthlyPlanRepository(this._api, this._cards, {DateTime Function()? now})
     : _now = now ?? appNow;
@@ -56,6 +60,9 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
 
   /// 예산을 다시 나눈 결과처럼 서버에 저장하지 않은 플랜. 달별로 기억한다.
   final _localPlans = <DateTime, MonthlyPlan>{};
+
+  /// 달별로 마지막에 불러온 플랜 ID (상세 API 경로에 쓴다)
+  final _planIds = <DateTime, int>{};
 
   static DateTime _key(DateTime month) => DateTime(month.year, month.month);
 
@@ -77,6 +84,7 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
       if (error.code == planNotFoundCode) return null;
       rethrow;
     }
+    _planIds[_key(month)] = plan.planId;
     final (categories, cards, spent) = await (
       _api.get(
         ApiPaths.planCategories(plan.planId),
@@ -138,9 +146,59 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
   @override
   Future<CardPlanDetail?> fetchCardPlan(DateTime month, String cardId) async {
     final plan = await fetchPlan(month);
-    return plan == null
-        ? null
-        : FakeMonthlyPlanRepository.cardPlanDetail(plan, cardId);
+    final planId = _planIds[_key(month)];
+    if (plan == null || planId == null) return null;
+    final cardPlan = plan.cardPlans
+        .where((p) => p.card.id == cardId)
+        .firstOrNull;
+    if (cardPlan == null) return null;
+
+    final productId = cardPlan.card.productId;
+    final (targets, benefits) = await (
+      _api.get(ApiPaths.planCardTargets(planId), parse: _CardTargetJson.listOf),
+      productId == null
+          ? Future.value(const <CardBenefit>[])
+          : _fetchBenefits(productId),
+    ).wait;
+    final target = targets.where((t) => t.cardId == cardId).firstOrNull;
+    if (target == null) return null;
+    final performance = target.performance;
+
+    return CardPlanDetail(
+      card: cardPlan.card,
+      targetAmount: target.targetAmount,
+      usedAmount: target.spentAmount,
+      performanceAmount: performance?.currentMonthAmount ?? target.spentAmount,
+      performanceRequirement: performance?.requirement,
+      benefitLimit: target.monthlyLimit,
+      remainingBenefitLimit: target.remainingLimit,
+      expectedBenefit: target.currentBenefit,
+      totalSpent: target.spentAmount,
+      performanceExact: performance?.exact ?? true,
+      exclusionNotes: performance?.exclusionNotes ?? const [],
+      benefits: benefits,
+      categoryUsages: [
+        for (final c in target.categories)
+          if (c.targetAmount > 0 || c.spentAmount > 0)
+            CategoryUsage(
+              category: c.category,
+              usedAmount: c.spentAmount,
+              targetAmount: c.targetAmount,
+            ),
+      ]..sort((a, b) => b.targetAmount.compareTo(a.targetAmount)),
+    );
+  }
+
+  /// 카드 상품의 주요 혜택 (카드 뒷면). 불러오지 못하면 빈 목록으로 두고 화면은 계속 보여준다.
+  Future<List<CardBenefit>> _fetchBenefits(int productId) async {
+    try {
+      return await _api.get(
+        ApiPaths.cardBenefits(productId),
+        parse: _benefitsOf,
+      );
+    } on ApiException {
+      return const [];
+    }
   }
 
   @override
@@ -149,18 +207,240 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
     SpendingCategory category,
   ) async {
     final plan = await fetchPlan(month);
-    return plan == null
+    final planId = _planIds[_key(month)];
+    if (plan == null || planId == null) return null;
+
+    final (detail, targets) = await (
+      _api.get(
+        ApiPaths.planCategory(planId, category.code),
+        parse: (data) => _CategoryJson.fromJson(data as Map),
+      ),
+      _api.get(ApiPaths.planCardTargets(planId), parse: _CardTargetJson.listOf),
+    ).wait;
+    final cardsById = {for (final c in plan.cardPlans) c.card.id: c.card};
+    final cards = [
+      for (final item in detail.cards)
+        if (cardsById[item.cardId] case final card?)
+          CategoryCardPlan(
+            card: card,
+            usedAmount: item.spentAmount,
+            targetAmount: item.amount,
+            benefit: item.expectedBenefit > 0
+                ? '예상 혜택 ${formatWon(item.expectedBenefit)}'
+                : null,
+          ),
+    ];
+    final priority = cards.firstOrNull;
+    final priorityTarget = priority == null
         ? null
-        : FakeMonthlyPlanRepository.categoryPlanDetail(plan, category);
+        : targets.where((t) => t.cardId == priority.card.id).firstOrNull;
+
+    return CategoryPlanDetail(
+      category: category,
+      budget: detail.targetAmount,
+      spentAmount: detail.spentAmount,
+      priorityCard: priority,
+      reasons: priority == null
+          ? const []
+          : _reasonsFor(category, priority, priorityTarget),
+      alternativeCards: cards.skip(1).toList(),
+    );
+  }
+
+  /// 우선 카드를 고른 이유: 혜택(이 업종 예상 혜택), 실적(다음 구간까지), 한도(남은 혜택 한도).
+  static List<PlanReason> _reasonsFor(
+    SpendingCategory category,
+    CategoryCardPlan priority,
+    _CardTargetJson? target,
+  ) {
+    final performance = target?.performance;
+    final shortfall = performance?.shortfallToNextTier;
+    final remainingLimit = target?.remainingLimit;
+    return [
+      PlanReason(
+        label: '혜택',
+        text: switch (priority.benefit) {
+          final benefit? => '${category.label} $benefit',
+          null => '${category.label} 사용으로 실적을 채우기 좋아요',
+        },
+      ),
+      PlanReason(
+        label: '실적',
+        text: switch ((shortfall, performance?.achievedTier)) {
+          (final left?, _) when left > 0 => '다음 실적 구간까지 ${formatWon(left)} 남음',
+          (_, final _?) => '실적 기준을 이미 채웠어요',
+          _ => '실적 조건을 확인할 수 없어요',
+        },
+      ),
+      PlanReason(
+        label: '한도',
+        text: switch (remainingLimit) {
+          null => '혜택 한도를 확인할 수 없어요',
+          > 0 => '이번 달 혜택 한도 ${formatWon(remainingLimit)} 남음',
+          _ => '이번 달 혜택 한도를 다 썼어요',
+        },
+      ),
+    ];
+  }
+
+  /// `GET /api/cards/{카드상품ID}/benefits`의 혜택을 카드 뒷면 한 줄로 바꾼다.
+  /// 계산에 쓰는 혜택을 먼저 보여주고, 분류는 `categoryName`(없으면 `category`)이다.
+  static List<CardBenefit> _benefitsOf(Object? data) {
+    final benefits =
+        [
+          for (final item in (data as Map)['benefits'] as List? ?? const [])
+            item as Map,
+        ]..sort((a, b) {
+          int rank(Map b) => b['includedInCalculation'] == true ? 0 : 1;
+          return rank(a).compareTo(rank(b));
+        });
+    return [
+      for (final b in benefits)
+        if (_describe(b) case final description?)
+          CardBenefit(
+            label: (b['categoryName'] ?? b['category'] ?? '기타') as String,
+            description: description,
+          ),
+    ];
+  }
+
+  /// 혜택 내용 (예: "10% 할인", "1,000원 캐시백"). 비율·금액을 모르면 null.
+  static String? _describe(Map benefit) {
+    final type = switch (benefit['benefitType']) {
+      'DISCOUNT' => '할인',
+      'POINT' => '적립',
+      'CASHBACK' => '캐시백',
+      'MILEAGE' => '마일리지',
+      'FEE_WAIVER' => '면제',
+      _ => '혜택',
+    };
+    final rate = benefit['ratePercent'] ?? benefit['rateMaxPercent'];
+    if (rate is num) {
+      final text = rate == rate.roundToDouble()
+          ? '${rate.round()}'
+          : rate.toStringAsFixed(1);
+      return '$text% $type';
+    }
+    if (benefit['amount'] case final int amount when amount > 0) {
+      return '${formatWon(amount)} $type';
+    }
+    return null;
   }
 }
 
+/// `GET /api/plans/{planId}/card-targets`의 카드 한 장.
+class _CardTargetJson {
+  const _CardTargetJson({
+    required this.cardId,
+    required this.targetAmount,
+    required this.spentAmount,
+    required this.currentBenefit,
+    required this.monthlyLimit,
+    required this.remainingLimit,
+    required this.performance,
+    required this.categories,
+  });
+
+  final String cardId;
+  final int targetAmount;
+  final int spentAmount;
+
+  /// 지금까지 쓴 금액 기준 예상 혜택. 알 수 없으면 null.
+  final int? currentBenefit;
+
+  /// 월 혜택 한도(추정)와 남은 한도. 알 수 없으면 null.
+  final int? monthlyLimit;
+  final int? remainingLimit;
+  final _PerformanceJson? performance;
+  final List<({SpendingCategory category, int targetAmount, int spentAmount})>
+  categories;
+
+  static final _categories = {
+    for (final c in SpendingCategory.values) c.code: c,
+  };
+
+  static List<_CardTargetJson> listOf(Object? data) => [
+    for (final item in (data as Map)['cards'] as List? ?? const [])
+      _CardTargetJson.fromJson(item as Map),
+  ];
+
+  static _CardTargetJson fromJson(Map json) {
+    final limit = json['benefitLimit'] as Map?;
+    return _CardTargetJson(
+      cardId: '${json['cardId']}',
+      targetAmount: json['targetAmount'] as int? ?? 0,
+      spentAmount: json['spentAmount'] as int? ?? 0,
+      currentBenefit: json['currentBenefit'] as int?,
+      monthlyLimit: limit?['monthlyLimit'] as int?,
+      remainingLimit: limit?['remainingAmount'] as int?,
+      performance: switch (json['performance']) {
+        final Map performance => _PerformanceJson.fromJson(performance),
+        _ => null,
+      },
+      categories: [
+        for (final item in json['categories'] as List? ?? const [])
+          if (_categories[(item as Map)['category']] case final category?)
+            (
+              category: category,
+              targetAmount: item['targetAmount'] as int? ?? 0,
+              spentAmount: item['spentAmount'] as int? ?? 0,
+            ),
+      ],
+    );
+  }
+}
+
+/// card-targets의 `performance` (전월 실적 기준과 이번 달 실적).
+class _PerformanceJson {
+  const _PerformanceJson({
+    required this.tiers,
+    required this.currentMonthAmount,
+    required this.exact,
+    required this.achievedTier,
+    required this.shortfallToNextTier,
+    required this.exclusionNotes,
+  });
+
+  /// 전월실적 구간 하한 목록 (작은 것부터)
+  final List<int> tiers;
+  final int? currentMonthAmount;
+  final bool exact;
+  final int? achievedTier;
+  final int? shortfallToNextTier;
+  final List<String> exclusionNotes;
+
+  /// 혜택을 받기 위한 가장 낮은 실적 기준. 구간이 없으면 null.
+  int? get requirement => tiers.firstOrNull;
+
+  static _PerformanceJson fromJson(Map json) => _PerformanceJson(
+    tiers: [for (final tier in json['tiers'] as List? ?? const []) tier as int]
+      ..sort(),
+    currentMonthAmount: json['currentMonthAmount'] as int?,
+    exact: json['currentMonthAmountExact'] as bool? ?? true,
+    achievedTier: json['achievedTier'] as int?,
+    shortfallToNextTier: json['shortfallToNextTier'] as int?,
+    exclusionNotes: [
+      for (final note in json['exclusionNotes'] as List? ?? const []) '$note',
+    ],
+  );
+}
+
 /// 카드 한 장의 목표 금액 (`cardTargets` 항목, 업종별 `cards` 항목).
-typedef _CardAmountJson = ({String cardId, int amount});
+typedef _CardAmountJson = ({
+  String cardId,
+  int amount,
+  int spentAmount,
+  int expectedBenefit,
+});
 
 _CardAmountJson _cardAmount(Object? item) {
   final json = item as Map;
-  return (cardId: '${json['cardId']}', amount: json['targetAmount'] as int);
+  return (
+    cardId: '${json['cardId']}',
+    amount: json['targetAmount'] as int,
+    spentAmount: json['spentAmount'] as int? ?? 0,
+    expectedBenefit: json['expectedBenefit'] as int? ?? 0,
+  );
 }
 
 /// `GET /api/transactions/summary?month=` 응답 중 사용 금액.
@@ -213,9 +493,18 @@ class _PlanJson {
 
 /// `GET /api/plans/{planId}/categories`의 업종 하나.
 class _CategoryJson {
-  const _CategoryJson({required this.category, required this.cards});
+  const _CategoryJson({
+    required this.category,
+    required this.cards,
+    this.targetAmount = 0,
+    this.spentAmount = 0,
+  });
 
   final SpendingCategory category;
+
+  /// 업종 목표와 이번 달 사용 금액 (업종별 상세 응답)
+  final int targetAmount;
+  final int spentAmount;
 
   /// 금액이 큰 카드부터
   final List<_CardAmountJson> cards;
@@ -223,6 +512,16 @@ class _CategoryJson {
   static final _categories = {
     for (final c in SpendingCategory.values) c.code: c,
   };
+
+  /// 업종 하나 (`GET /api/plans/{planId}/categories/{category}`). 모르는 업종은 기타.
+  static _CategoryJson fromJson(Map json) => _CategoryJson(
+    category: _categories[json['category']] ?? SpendingCategory.etc,
+    targetAmount: json['targetAmount'] as int? ?? 0,
+    spentAmount: json['spentAmount'] as int? ?? 0,
+    cards: [
+      for (final card in json['cards'] as List? ?? const []) _cardAmount(card),
+    ],
+  );
 
   /// 앱이 모르는 업종은 건너뛴다.
   static List<_CategoryJson> listFromJson(Object? data) => [
@@ -405,6 +704,7 @@ class FakeMonthlyPlanRepository implements MonthlyPlanRepository {
       card: cardPlan.card,
       targetAmount: cardPlan.targetAmount,
       usedAmount: cardPlan.usedAmount,
+      performanceAmount: cardPlan.usedAmount,
       performanceRequirement: terms.performanceRequirement,
       benefitLimit: terms.benefitLimit,
       remainingBenefitLimit: terms.remainingBenefitLimit,
@@ -413,7 +713,7 @@ class FakeMonthlyPlanRepository implements MonthlyPlanRepository {
       benefits: [
         for (final MapEntry(key: category, value: description)
             in terms.benefits.entries)
-          CardBenefit(category: category, description: description),
+          CardBenefit(label: category.label, description: description),
       ],
       categoryUsages: [
         for (final MapEntry(key: category, value: items)
