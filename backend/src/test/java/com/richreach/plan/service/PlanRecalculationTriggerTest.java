@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.richreach.global.event.PlannedExpensesChangedEvent;
 import com.richreach.global.event.TransactionsChangedEvent;
 import com.richreach.global.event.TransactionsChangedEvent.Reason;
 import com.richreach.plan.entity.PlanChangeReason;
@@ -32,6 +33,16 @@ class PlanRecalculationTriggerTest {
 
         verify(service).requestAndRun(1L, MONTH, PlanChangeReason.TRANSACTION_SYNCED);
         verify(service).requestAndRun(2L, MONTH, PlanChangeReason.CATEGORY_EDITED);
+    }
+
+    @Test
+    @DisplayName("예정지출 변경 알림은 PLANNED_EXPENSE_CHANGED 원인으로 재계산을 요청한다")
+    void plannedExpenseChanged() {
+        PlanRecalculationTrigger trigger = new PlanRecalculationTrigger(service, Runnable::run);
+
+        trigger.on(new PlannedExpensesChangedEvent(3L, MONTH));
+
+        verify(service).requestAndRun(3L, MONTH, PlanChangeReason.PLANNED_EXPENSE_CHANGED);
     }
 
     @Test

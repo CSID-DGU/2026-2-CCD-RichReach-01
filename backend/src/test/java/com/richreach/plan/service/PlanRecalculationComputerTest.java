@@ -23,6 +23,8 @@ import com.richreach.plan.optimizer.RollingPlanResult;
 import com.richreach.plan.optimizer.RollingPlanResult.RemainingAllocation;
 import com.richreach.plan.service.PlanBaselineReader.Baseline;
 import com.richreach.plan.service.PlanRecalculationComputer.Computation;
+import com.richreach.plannedexpense.dto.PlannedExpenseResponse;
+import com.richreach.plannedexpense.service.PlannedExpenseService;
 import com.richreach.transaction.service.TransactionSummaryService;
 import java.time.Duration;
 import java.time.YearMonth;
@@ -46,6 +48,7 @@ class PlanRecalculationComputerTest {
     private TransactionSummaryService transactions;
     private RollingPlanReplanner replanner;
     private BenefitCalculator calculator;
+    private PlannedExpenseService plannedExpenses;
     private PlanRecalculationComputer computer;
 
     @BeforeEach
@@ -55,8 +58,9 @@ class PlanRecalculationComputerTest {
         transactions = mock(TransactionSummaryService.class);
         replanner = mock(RollingPlanReplanner.class);
         calculator = mock(BenefitCalculator.class);
+        plannedExpenses = mock(PlannedExpenseService.class);
         computer = new PlanRecalculationComputer(baselines, ownedCards, transactions, replanner, calculator,
-            new PlanProperties(Duration.ofMinutes(5), Duration.ofSeconds(10)));
+            new PlanProperties(Duration.ofMinutes(5), Duration.ofSeconds(10)), plannedExpenses);
         when(baselines.read(USER, MONTH)).thenReturn(Optional.of(baseline(Map.of(SpendingCategory.DINING, 300_000L,
             SpendingCategory.CAFE, 100_000L))));
         when(transactions.cardSpend(USER, MONTH.minusMonths(1))).thenReturn(Map.of(10L, 700_000L));
@@ -107,6 +111,27 @@ class PlanRecalculationComputerTest {
         assertThat(input.getValue().cards().get(0).previousMonthSpend()).isEqualTo(700_000L);
         assertThat(input.getValue().cards().get(2).approvedSpendByCategory()).containsEntry(SpendingCategory.CAFE, 20_000L);
         assertThat(input.getValue().timeLimit()).isEqualTo(Duration.ofSeconds(10));
+    }
+
+    @Test
+    @DisplayName("예정지출은 확정 예산에 얹어 엔진에 넣고, 결과에 담는 확정 예산은 얹기 전 그대로다")
+    void overlaysPlannedExpensesOnTheInput() {
+        when(ownedCards.list(USER)).thenReturn(List.of(card(10L, 100L, true)));
+        when(plannedExpenses.listForBudget(USER, MONTH)).thenReturn(List.of(
+            new PlannedExpenseResponse(1L, "2026-11", "제주도 숙소", 300_000, null, 300_000, "CULTURE_TRAVEL", "EXTRA"),
+            new PlannedExpenseResponse(2L, "2026-11", "노트북", 400_000, 4, 100_000, "SHOPPING", "WITHIN_BUDGET")));
+        when(replanner.replan(any())).thenReturn(success());
+
+        Computation result = computer.compute(USER, MONTH);
+
+        ArgumentCaptor<RollingPlanInput> input = ArgumentCaptor.forClass(RollingPlanInput.class);
+        verify(replanner).replan(input.capture());
+        // 조정 10만원은 외식 30만원·카페 10만원에서 7만5천원·2만5천원 줄고, 추가 30만원은 총예산에 더해진다.
+        assertThat(input.getValue().confirmedBudgetByCategory())
+            .containsEntry(SpendingCategory.DINING, 225_000L).containsEntry(SpendingCategory.CAFE, 75_000L)
+            .containsEntry(SpendingCategory.SHOPPING, 100_000L).containsEntry(SpendingCategory.CULTURE_TRAVEL, 300_000L);
+        assertThat(result.budget().total()).isEqualTo(400_000L);
+        assertThat(result.budget().byCategory()).containsOnlyKeys(SpendingCategory.DINING, SpendingCategory.CAFE);
     }
 
     @Test

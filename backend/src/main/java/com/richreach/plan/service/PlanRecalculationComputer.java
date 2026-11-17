@@ -13,6 +13,8 @@ import com.richreach.plan.optimizer.RollingPlanInput.CardState;
 import com.richreach.plan.optimizer.RollingPlanReplanner;
 import com.richreach.plan.optimizer.RollingPlanResult;
 import com.richreach.plan.service.PlanBaselineReader.Baseline;
+import com.richreach.plannedexpense.dto.PlannedExpenseResponse;
+import com.richreach.plannedexpense.service.PlannedExpenseService;
 import com.richreach.transaction.service.TransactionSummaryService;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -32,6 +34,8 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>확정 예산은 지금 보여주는 플랜의 소비 프로필에서 읽는다. 사용자가 예산을 새로 정했으면(예산 수정) 그 예산을 쓴다.
  *       어느 쪽이든 예산을 혜택을 위해 늘리지 않는다.</li>
+ *   <li>이번 달 예정지출은 그 예산에 얹어서({@link PlannedExpenseBudgetOverlay}) 엔진에 넣는다. 결과의 {@code budget}은 얹기 전의
+ *       확정 예산 그대로라서, 예정지출을 고치거나 지워도 같은 예정지출이 두 번 더해지지 않는다.</li>
  *   <li>이미 쓴 금액(취소·환불을 뺀 카드×업종 금액)은 그 카드에 고정하고 남은 예산만 다시 배분한다. 이 스냅샷은 이번 달 거래
  *       전체라서 새 거래를 더하는 것이 아니라 통째로 다시 읽은 값이다.</li>
  *   <li>분석 대상으로 고른 카드는 앞으로의 배분에 쓰고, 분석 대상이 아니지만 이미 쓴 카드는 쓴 금액만 고정한다.</li>
@@ -52,12 +56,16 @@ class PlanRecalculationComputer {
     static final String CODE_SOLVER_FAILED = "SOLVER_FAILED";
     static final String CODE_SOLVER_ERROR = "SOLVER_ERROR";
 
+    /** 예산 밖 추가 지출의 반영 방식 코드. (예정지출 도메인의 열거형을 직접 참조하지 않는다) */
+    private static final String EXTRA = "EXTRA";
+
     private final PlanBaselineReader baselines;
     private final OwnedCardQueryService ownedCards;
     private final TransactionSummaryService transactions;
     private final RollingPlanReplanner replanner;
     private final BenefitCalculator benefitCalculator;
     private final PlanProperties properties;
+    private final PlannedExpenseService plannedExpenses;
 
     /**
      * 계산 결과. 성공이면 출발점 플랜과 바뀐 뒤의 목표·혜택을, 실패면 코드와 이유를 가진다.
@@ -120,9 +128,12 @@ class PlanRecalculationComputer {
             return Computation.failure(CODE_NO_ANALYSIS_CARD, "분석 대상으로 고른 카드가 없습니다.");
         }
 
+        // 예정지출을 얹은 예산으로 계산한다. 저장되는 확정 예산(budget)은 그대로 둔다.
+        PlanBudget planned = PlannedExpenseBudgetOverlay.apply(budget, plannedItems(userId, month));
+
         RollingPlanResult result;
         try {
-            result = replanner.replan(new RollingPlanInput(userId, month, budget.byCategory(), cards,
+            result = replanner.replan(new RollingPlanInput(userId, month, planned.byCategory(), cards,
                 properties.strategyTimeLimit()));
         } catch (RuntimeException e) {
             // 메시지에 금액이 섞일 수 있어서 종류만 남긴다.
@@ -165,6 +176,19 @@ class PlanRecalculationComputer {
         }
         return new Computation(true, null, null, baseline, budget, targets, benefits, totalSpend, totalBenefit,
             result.solverStatus());
+    }
+
+    /** 그 달의 예정지출을 예산에 얹을 항목으로 바꾼다. */
+    private List<PlannedExpenseBudgetOverlay.Item> plannedItems(long userId, YearMonth month) {
+        List<PlannedExpenseBudgetOverlay.Item> items = new ArrayList<>();
+        for (PlannedExpenseResponse expense : plannedExpenses.listForBudget(userId, month)) {
+            SpendingCategory category = SpendingCategory.fromCode(expense.category()).orElse(null);
+            if (category != null && expense.monthlyAmount() > 0) {
+                items.add(new PlannedExpenseBudgetOverlay.Item(category, expense.monthlyAmount(),
+                    EXTRA.equals(expense.budgetMethod())));
+            }
+        }
+        return items;
     }
 
 }
