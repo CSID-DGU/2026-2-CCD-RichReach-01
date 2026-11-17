@@ -25,7 +25,7 @@
 | 분석 | ONB-06 소비패턴·월간 예산 | `GET /api/plans/analysis` | ✅ #192·#207 | ✅ | ✅ (실제 계정) |
 | 플랜 | ONB-07A 플랜 생성 중 | `POST /api/plans`, `GET /api/plans/jobs/{jobId}` | ✅ #204 | ✅ | ✅ (실제 계정, CP-SAT) |
 | 플랜 | ONB-07B 플랜 생성 완료 | `GET /api/plans?month=` | ✅ #212 | ✅ | ✅ |
-| 플랜 | **PLAN-01 월간 플랜** | `GET /api/plans?month=`, `GET /api/plans/{planId}/categories`, `GET /api/transactions/summary?month=` + `GET /api/plans/{planId}/changes`(#271, 머지 후), 예산 재계산 (API 없음, Q17) | 🟡 대부분 | 🟡 변경 이력·재계산 외 연동 | ✅ (실제 계정) |
+| 플랜 | **PLAN-01 월간 플랜** | `GET /api/plans?month=`, `GET /api/plans/{planId}/categories`, `GET /api/transactions/summary?month=`, `GET /api/plans/{planId}/changes`, `PUT /api/plans/budget` | ✅ (#271, #272) | ✅ 변경 안내·예산 재계산까지 연동 (#295) | ✅ (실제 계정, 변경 안내·재계산은 미확인) |
 | 플랜 | PLAN-02·03 카드별·업종별 상세 | `GET /api/plans/{planId}/card-targets`, `GET /api/plans/{planId}/categories/{category}`, `GET /api/cards/{카드상품ID}/benefits` | ✅ (#273) | ✅ 연동 (#293) | - |
 | 공통 | 로그인 후 시작 화면 (Q8) | `GET /api/connections`, `GET /api/plans?month=` | ✅ | ⬜ | - |
 | 홈 | **HOME-01 홈** | PLAN-01과 같은 플랜·월 요약 + `GET /api/transactions` (최근 사용 내역) | ✅ (#270) | ✅ 예상 혜택까지 연동 (#252, #289), 빠른 실행 "예정지출 관리" → HOME-07 (#258) | - |
@@ -571,8 +571,9 @@ ONB-04에서 고른 **분석 대상 카드**의 거래를 보여줍니다. 요�
 API가 있는 부분은 연동했고(#223, #237), 없는 부분은 화면을 그대로 두고 아래처럼 채웁니다.
 
 - 이번 달 사용 금액·사용률: 거래 요약의 월 조회(`GET /api/transactions/summary?month=`, 백엔드 #231)로 채웁니다. 플랜과 같은 달을 조회하고, 합계는 `totalAmount`(분석 대상으로 고른 카드의 합), 카드별 금액은 `cards[].amount`를 `cardId`로 맞춥니다. (프론트 #237)
-- 플랜 변경 안내: `GET /api/plans/{planId}/changes` (#271, 머지 후)
-- 소비예산 수정: `PUT /api/plans/budget` (#272, 머지 후). 그 전에는 서버에 저장하지 않고 앱 안에서만 비율대로 다시 나눔
+- 플랜 변경 안내: `GET /api/plans/{planId}/changes`에서 확인하지 않은 가장 최근 변경을 안내 띠·변경 내용 시트로 보여주고, 시트의 확인 버튼은 `PATCH /api/plans/changes/{changeId}/confirm` (#271, 프론트 #295)
+- 소비예산 수정: `PUT /api/plans/budget` → 작업 상태 폴링(1.5초) → 완료되면 플랜 다시 조회 (#272, 프론트 #295). 업종별 예산은 지금 플랜의 업종별 금액 비율대로 만 원 단위로 나누고 남는 금액은 기타에 둡니다. 실패하면 서버 이유(`failureReason`)나 오류 안내를 보여주고 이전 플랜을 그대로 둡니다.
+- 서버 자동 재계산 중(`recalculationJobId`가 있음)이면 앱은 지금 플랜을 보여주면서 작업이 끝날 때까지 기다렸다가 플랜을 다시 불러옵니다. (프론트 #295)
 - 카드별·업종별 상세(PLAN-02·03)의 실적·한도·혜택: 가짜 기본값
 
 | 화면 요소 | 필요한 데이터 | API | 상태 |
@@ -584,8 +585,8 @@ API가 있는 부분은 연동했고(#223, #237), 없는 부분은 화면을 그
 | 카드별 목표 사용금액 | 카드별 목표 금액 | `cardTargets` | ✅ 있음 |
 | 카드별 사용 금액·남은 금액 (`238,000 / 350,000원`) | 카드별 이번 달 사용 금액 | 거래 요약의 월 조회 → `cards[].amount` | ✅ 있음 (#231, Q15) |
 | 업종별 권장 사용 (11개 탭, 카드 순위) | 업종별 카드 배분 | `GET /api/plans/{planId}/categories` | ✅ 있음 |
-| 플랜 변경 안내 ("○○ 플랜이 변경됐어요") | 플랜 변경 내역 | `GET /api/plans/{planId}/changes` (#271) | 🟡 머지 후 연동 |
-| 소비예산 수정 (연필) | 예산 변경 후 플랜 다시 만들기 | `PUT /api/plans/budget` (#272) | 🟡 머지 후 연동 (그 전에는 앱 안에서만 비율대로 다시 나눔) |
+| 플랜 변경 안내 ("○○ 플랜이 변경됐어요") | 플랜 변경 내역 | `GET /api/plans/{planId}/changes` (#271) | ✅ 연동 (#295) |
+| 소비예산 수정 (연필) | 예산 변경 후 플랜 다시 만들기 | `PUT /api/plans/budget` (#272) | ✅ 연동 (#295) |
 
 **업종별 사용계획** `GET /api/plans/{planId}/categories`
 
@@ -649,6 +650,7 @@ API가 있는 부분은 연동했고(#223, #237), 없는 부분은 화면을 그
 - `reasonCode`: `TRANSACTION_SYNCED`(새 거래 반영), `CATEGORY_EDITED`(업종 수정). **`reasonText`는 서버가 정한 고정 문구**라 그대로 보여주면 됩니다. (AI가 만들지 않아요)
 - `confirmed`: 사용자가 변경 내용을 확인했는지. 홈 배너는 `confirmed=false`인 가장 최근 기록이 있을 때 보여주면 됩니다.
 - `cardName`은 카드가 활성일 때만 있고, 사라진 카드는 null이에요.
+- **앱의 표시 방법** (프론트 #295): 안내 띠 문구는 바뀐 업종 이름 2개까지("음식·배달, 편의·마트 플랜이 변경됐어요", 3개 이상이면 "… 등", 항목이 없으면 "플랜이 변경됐어요"). 변경 내용 시트는 `PRIORITY`는 "이전 카드 → 새 카드", `AMOUNT`는 카드 이름과 금액 전후, 예상 혜택이 바뀌었으면 마지막에 "이번 달 예상 혜택" 전후, 아래에 `reasonText`를 보여줍니다. 카드 이름이 null이면 "카드 정보 없음"입니다.
 - 없거나 다른 사용자의 플랜이면 404 `PLAN-001`입니다.
 
 **확인 처리** `PATCH /api/plans/changes/{changeId}/confirm` ("변경된 플랜 확인" 버튼): 그 기록의 `confirmed`가 true가 된 기록을 돌려줍니다. 다시 눌러도 같은 결과예요. 없거나 다른 사용자의 기록이면 404 `PLAN-009`입니다.

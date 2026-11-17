@@ -36,6 +36,11 @@ class DemoFixtureAdapter implements HttpClientAdapter {
   final _jobs = <String, Stopwatch>{};
 
   static final _categoriesPath = RegExp(r'^/api/plans/\d+/categories$');
+  static final _categoryPath = RegExp(
+    r'^/api/plans/\d+/categories/([A-Za-z_]+)$',
+  );
+  static final _changesPath = RegExp(r'^/api/plans/\d+/changes$');
+  static final _cardTargetsPath = RegExp(r'^/api/plans/\d+/card-targets$');
   static final _jobPath = RegExp(r'^/api/plans/jobs/([^/]+)$');
   static final _syncJobPath = RegExp(r'^/api/connections/sync/[^/]+$');
 
@@ -131,10 +136,76 @@ class DemoFixtureAdapter implements HttpClientAdapter {
       ('GET', _) when _categoriesPath.hasMatch(path) => _ok(
         fixture.planCategories,
       ),
+      // 시연 플랜은 바뀐 적이 없다.
+      ('GET', _) when _changesPath.hasMatch(path) => _ok({
+        'planId': fixture.plan['planId'],
+        'changes': const [],
+      }),
+      ('GET', _) when _categoryPath.hasMatch(path) => _ok(
+        _category(_categoryPath.firstMatch(path)!.group(1)!.toUpperCase()),
+      ),
+      ('GET', _) when _cardTargetsPath.hasMatch(path) => _ok(_cardTargets()),
       ('GET', _) when _jobPath.hasMatch(path) => _job(
         _jobPath.firstMatch(path)!.group(1)!,
       ),
       _ => null,
+    };
+  }
+
+  /// 업종 하나 (PLAN-03). 시연 기준일은 월초라 사용 금액은 0원이다.
+  Map<String, Object?> _category(String code) {
+    final categories =
+        fixture.planCategories['categories'] as List? ?? const [];
+    final found = categories
+        .cast<Map>()
+        .where((c) => c['category'] == code)
+        .firstOrNull;
+    return {
+      'category': code,
+      'targetAmount': found?['targetAmount'] ?? 0,
+      'spentAmount': 0,
+      'expectedBenefit': found?['expectedBenefit'] ?? 0,
+      'cards': [
+        for (final card in (found?['cards'] as List? ?? const []).cast<Map>())
+          {...card.cast<String, Object?>(), 'spentAmount': 0},
+      ],
+    };
+  }
+
+  /// 카드별 상세 (PLAN-02). 플랜의 카드별 목표와 업종별 목표만 있고,
+  /// 실적·한도·예상 혜택은 시연 자료에 없어 알 수 없음(null)이다.
+  Map<String, Object?> _cardTargets() {
+    final categories =
+        (fixture.planCategories['categories'] as List? ?? const []).cast<Map>();
+    return {
+      'planId': fixture.plan['planId'],
+      'month': fixture.plan['month'],
+      'cards': [
+        for (final target
+            in (fixture.plan['cardTargets'] as List? ?? const []).cast<Map>())
+          {
+            'cardId': target['cardId'],
+            'cardName': target['cardName'],
+            'targetAmount': target['targetAmount'],
+            'spentAmount': 0,
+            'remainingTarget': target['targetAmount'],
+            'expectedBenefit': null,
+            'currentBenefit': null,
+            'performance': null,
+            'benefitLimit': null,
+            'categories': [
+              for (final category in categories)
+                for (final card in (category['cards'] as List).cast<Map>())
+                  if (card['cardId'] == target['cardId'])
+                    {
+                      'category': category['category'],
+                      'targetAmount': card['targetAmount'],
+                      'spentAmount': 0,
+                      'expectedBenefit': card['expectedBenefit'] ?? 0,
+                    },
+            ],
+          },
+      ],
     };
   }
 
