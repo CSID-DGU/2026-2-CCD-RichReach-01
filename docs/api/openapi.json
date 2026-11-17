@@ -803,6 +803,68 @@
         }
       }
     },
+    "/api/plans/{planId}/changes": {
+      "get": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "changes",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanChangesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/changes/{changeId}/confirm": {
+      "patch": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "confirmChange",
+        "parameters": [
+          {
+            "name": "changeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseChange"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/plans/jobs/{jobId}": {
       "get": {
         "tags": [
@@ -1982,6 +2044,142 @@
             "items": {
               "$ref": "#/components/schemas/CardTarget"
             }
+          },
+          "recalculationJobId": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponsePlanChangesResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlanChangesResponse"
+          }
+        }
+      },
+      "ApiResponseChange": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Change"
+          }
+        }
+      },
+      "PlanChangesResponse": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "month": {
+            "type": "string"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Change"
+            }
+          }
+        }
+      },
+      "Change": {
+        "type": "object",
+        "properties": {
+          "changeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "planId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "previousPlanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "reasonText": {
+            "type": "string"
+          },
+          "previousBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "benefitDelta": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmed": {
+            "type": "boolean"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          }
+        }
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "cardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "previousCardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "previousCardName": {
+            "type": "string"
+          },
+          "previousAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentAmount": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

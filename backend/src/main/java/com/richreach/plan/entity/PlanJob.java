@@ -28,6 +28,11 @@ import org.hibernate.annotations.DynamicUpdate;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PlanJob extends BaseEntity {
 
+    /** 작업 종류: 월간 플랜 생성 */
+    public static final String TYPE_GENERATE = "GENERATE";
+    /** 작업 종류: 승인 거래를 반영한 플랜 재계산 */
+    public static final String TYPE_RECALCULATE = "RECALCULATE";
+
     public static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
     public static final String STATUS_COMPLETED = "COMPLETED";
     public static final String STATUS_FAILED = "FAILED";
@@ -58,6 +63,18 @@ public class PlanJob extends BaseEntity {
 
     @Column(name = "request_hash", nullable = false, updatable = false, length = 64, columnDefinition = "CHAR(64)")
     private String requestHash;
+
+    /** GENERATE(플랜 생성), RECALCULATE(승인 거래 반영 재계산) */
+    @Column(name = "job_type", nullable = false, updatable = false, length = 20)
+    private String jobType;
+
+    /** 재계산 중에 거래가 또 바뀌어, 끝나기 전에 한 번 더 계산해야 하는지 */
+    @Column(name = "rerun_requested", nullable = false)
+    private boolean rerunRequested;
+
+    /** 재계산을 시작한 원인. 플랜 생성 작업이면 null이다. */
+    @Column(name = "recalc_reason", updatable = false, length = 30)
+    private String recalcReason;
 
     @Column(nullable = false, length = 20)
     private String status;
@@ -90,9 +107,22 @@ public class PlanJob extends BaseEntity {
         job.budgetTotal = budgetTotal;
         job.budgetEncoded = budgetEncoded;
         job.requestHash = requestHash;
+        job.jobType = TYPE_GENERATE;
         job.status = STATUS_IN_PROGRESS;
         job.progress = 0;
         job.startedAt = now;
+        return job;
+    }
+
+    /**
+     * 막 시작한 재계산 작업. 확정 예산은 작업 기록에 남기지만, 재계산은 실행할 때 플랜에서 예산을 다시 읽는다.
+     */
+    public static PlanJob startRecalculation(long userId, String jobId, String planMonth, long budgetTotal,
+                                             String budgetEncoded, String requestHash, PlanChangeReason reason,
+                                             LocalDateTime now) {
+        PlanJob job = start(userId, jobId, planMonth, budgetTotal, budgetEncoded, requestHash, now);
+        job.jobType = TYPE_RECALCULATE;
+        job.recalcReason = reason.name();
         return job;
     }
 

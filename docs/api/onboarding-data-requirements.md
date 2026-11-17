@@ -25,7 +25,7 @@
 | 분석 | ONB-06 소비패턴·월간 예산 | `GET /api/plans/analysis` | ✅ #192·#207 | ✅ | ✅ (실제 계정) |
 | 플랜 | ONB-07A 플랜 생성 중 | `POST /api/plans`, `GET /api/plans/jobs/{jobId}` | ✅ #204 | ✅ | ✅ (실제 계정, CP-SAT) |
 | 플랜 | ONB-07B 플랜 생성 완료 | `GET /api/plans?month=` | ✅ #212 | ✅ | ✅ |
-| 플랜 | **PLAN-01 월간 플랜** | `GET /api/plans?month=`, `GET /api/plans/{planId}/categories`, `GET /api/transactions/summary?month=` + 플랜 변경 이력·예산 재계산 (API 없음, Q17) | 🟡 대부분 | 🟡 변경 이력·재계산 외 연동 | ✅ (실제 계정) |
+| 플랜 | **PLAN-01 월간 플랜** | `GET /api/plans?month=`, `GET /api/plans/{planId}/categories`, `GET /api/transactions/summary?month=` + `GET /api/plans/{planId}/changes`(#271, 머지 후), 예산 재계산 (API 없음, Q17) | 🟡 대부분 | 🟡 변경 이력·재계산 외 연동 | ✅ (실제 계정) |
 | 플랜 | PLAN-02·03 카드별·업종별 상세 | PLAN-01과 같은 데이터 + 카드 실적·한도·혜택 (API 없음) | 🟡 일부 | 🟡 목표·사용 금액만 실제, 실적·한도·혜택은 가짜 기본값 | - |
 | 공통 | 로그인 후 시작 화면 (Q8) | `GET /api/connections`, `GET /api/plans?month=` | ✅ | ⬜ | - |
 | 홈 | **HOME-01 홈** | PLAN-01과 같은 플랜·월 요약 + `GET /api/transactions` (최근 사용 내역) | 🟡 거래별 혜택은 #270 머지 후 (Q16) | 🟡 혜택 외 연동 (#252), 빠른 실행 "예정지출 관리" → HOME-07 (#258) | - |
@@ -613,6 +613,51 @@ API가 있는 부분은 연동했고(#223, #237), 없는 부분은 화면을 그
 - 카드별 목표 사용금액의 카드 이름은 한 줄(길면 말줄임)이고, 카드사가 붙인 발급사 꼬리(`이지캐시백 카드(체크)|IBK기업은행`의 `|` 뒤)는 떼고 보여줍니다. 목표보다 많이 쓰면 "N원 초과"를 빨간 글씨로 보여줍니다. (프론트 #242)
 - 같은 달 플랜이 서버에 두 개(`CP_SAT` 결과와 `EVEN_SPLIT` 기준안) 저장되지만, 월 조회는 화면에 보여줄 플랜 하나만 줍니다.
 
+### PLAN-01 플랜 변경 안내와 재계산 (#271, HOME-02)
+
+카드 동기화로 새 거래가 들어오거나 거래 업종을 고치면, 서버가 **이번 달 플랜의 남은 기간**을 자동으로 다시 계산합니다. 이미 쓴 금액은 그 카드에 고정하고 남은 예산만 다시 나눠요. 앱이 요청할 필요는 없습니다.
+
+- **새 플랜 버전**: 바뀐 결과는 새 플랜(`planId`가 달라짐)로 저장되고, `GET /api/plans?month=`는 항상 최신 플랜을 줍니다. 이전 플랜은 지워지지 않아요. 배분이 이전과 같으면 새 플랜을 만들지 않습니다.
+- `cardTargets`와 업종별 상세의 금액은 **이번 달 전체 목표**(이미 쓴 금액 + 남은 목표)입니다. 의미는 그대로예요.
+- **이번 달 플랜만** 다시 계산합니다. 지난 달 거래가 늦게 들어와도 끝난 달의 플랜은 바뀌지 않아요.
+- **재계산 중 표시**: `GET /api/plans?month=` 응답의 `recalculationJobId`가 null이 아니면 다시 계산하는 중입니다. `GET /api/plans/jobs/{jobId}`로 `status`(`IN_PROGRESS`, `COMPLETED`, `FAILED`)를 보다가 `COMPLETED`가 되면 플랜을 다시 조회하세요. 실패해도 이전 플랜은 그대로예요.
+
+**변경 기록** `GET /api/plans/{planId}/changes` ("○○ 플랜이 변경됐어요" 안내와 HOME-02 변경 내용 확인창)
+
+```json
+{
+  "planId": 14,
+  "month": "2026-11",
+  "changes": [
+    {
+      "changeId": 3, "planId": 14, "previousPlanId": 12,
+      "reasonCode": "TRANSACTION_SYNCED",
+      "reasonText": "새로 반영된 거래를 기준으로 남은 기간의 카드 사용 계획을 다시 계산했어요.",
+      "previousBenefit": 31600, "currentBenefit": 32400, "benefitDelta": 800,
+      "confirmed": false, "changedAt": "2026-11-21T14:30:00",
+      "items": [
+        { "type": "PRIORITY", "category": "CONVENIENCE", "cardId": 7, "cardName": "KB My WE:SH", "previousCardId": 5, "previousCardName": "우리 카드의 정석", "previousAmount": 60000, "currentAmount": 70000 },
+        { "type": "AMOUNT", "category": "DINING", "cardId": 3, "cardName": "신한 Deep Dream", "previousCardId": null, "previousCardName": null, "previousAmount": 150000, "currentAmount": 130000 }
+      ]
+    }
+  ]
+}
+```
+
+- `changes`는 그 달의 변경 기록이고 **가장 최근 것이 먼저**입니다. 바뀐 적이 없으면 빈 목록이에요. 위 숫자와 이름은 형식을 보여주는 예시입니다.
+- `items[].type`: `AMOUNT`(카드·업종별 목표 금액이 바뀜: `previousAmount` → `currentAmount`), `PRIORITY`(업종의 우선 카드, 즉 목표 금액이 가장 큰 카드가 바뀜: `previousCardId` → `cardId`). 같은 업종에서는 `PRIORITY`가 먼저 나옵니다.
+- `reasonCode`: `TRANSACTION_SYNCED`(새 거래 반영), `CATEGORY_EDITED`(업종 수정). **`reasonText`는 서버가 정한 고정 문구**라 그대로 보여주면 됩니다. (AI가 만들지 않아요)
+- `confirmed`: 사용자가 변경 내용을 확인했는지. 홈 배너는 `confirmed=false`인 가장 최근 기록이 있을 때 보여주면 됩니다.
+- `cardName`은 카드가 활성일 때만 있고, 사라진 카드는 null이에요.
+- 없거나 다른 사용자의 플랜이면 404 `PLAN-001`입니다.
+
+**확인 처리** `PATCH /api/plans/changes/{changeId}/confirm` ("변경된 플랜 확인" 버튼): 그 기록의 `confirmed`가 true가 된 기록을 돌려줍니다. 다시 눌러도 같은 결과예요. 없거나 다른 사용자의 기록이면 404 `PLAN-009`입니다.
+
+**한계**
+- 카드 상품과 매칭되지 않은 카드로 쓴 금액은 재계산에서 빠집니다. (재계산 엔진이 카드 상품을 요구해요)
+- 변경 원인은 위 2가지 코드와 고정 문구입니다. 원인을 더 세분화할지는 기획 확인이 필요해요.
+- 예산(소비예산)을 고친 뒤 플랜을 다시 만드는 API는 아직 없습니다. (Q17의 뒷부분)
+
 ### PLAN-02·03 카드별·업종별 상세
 
 - 카드 이미지, 목표 사용금액, 이번 달 사용 금액, 업종별 목표는 PLAN-01과 같은 데이터(플랜·업종별 사용계획·월 요약)로 채웁니다.
@@ -698,7 +743,7 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 |---|---|---|---|
 | Q15 | 거래 요약을 **월 단위(1일~말일)** 로 조회할 수 있나요? (`month=2026-11` 등) PLAN-01의 현재 사용 금액·사용률과 카드별 사용 금액에 필요합니다. 요약의 `cards`도 같은 기간으로 주면 카드별 사용 금액까지 한 번에 됩니다. | PLAN-01, HOME | **답변: 됩니다 (#231).** `GET /api/transactions/summary?month=2026-11`로 그달 1일~말일(이번 달은 오늘까지)을 조회하고, `cards`도 같은 기간입니다. 응답은 월 조회일 때 `period`가 `null`이고 `month`가 채워집니다. |
 | Q16 | 거래별 혜택 금액을 내려줄 예정인가요? 홈 최근 사용 내역의 "혜택 420원", 거래내역의 거래별 "+420원"과 **이번 달 받은 혜택 합계**("받은 혜택 +18,600원")에 필요합니다. 거래 목록 응답에 `benefitAmount`, 월 요약에 `benefitAmount` 합계가 있으면 됩니다. 실제 지급액이 아니라 예상 혜택이어도 됩니다(그렇다면 화면 문구를 "예상 혜택"으로 바꿈). | HOME-01, HOME-03~05 | **답변: 됩니다 (#270).** 거래 목록·상세·업종 수정 응답에 `benefitAmount`(예상 혜택, 원)가 있고, 월 요약(`summary?month=`)에 이번 달 `benefitAmount` 합계가 있습니다. 카드사가 지급한 금액이 아니라 규칙으로 계산한 예상 혜택이니 화면 문구를 "예상 혜택"으로 써 주세요. 계산할 수 없는 거래(카드 상품과 매칭되지 않은 카드)는 `null`, 혜택이 없으면 `0`입니다. (머지 후 사용 가능) |
-| Q17 | 플랜 변경 안내와 예산 수정 후 플랜 다시 만들기 API 계획이 있나요? | PLAN-01 | 답변 대기 (지금은 변경 안내가 나오지 않고, 예산 수정은 앱 안에서만 다시 나눔) |
+| Q17 | 플랜 변경 안내와 예산 수정 후 플랜 다시 만들기 API 계획이 있나요? | PLAN-01 | **일부 답변 (#271).** ① 변경 안내: 됩니다. 거래가 반영되면 서버가 남은 기간의 플랜을 자동으로 다시 계산하고, `GET /api/plans/{planId}/changes`로 변경 내용(업종·카드별 금액 전후, 우선 카드, 예상 혜택 변화, 고정 문구)을, `PATCH /api/plans/changes/{changeId}/confirm`으로 확인 처리를 합니다. 재계산 중에는 `GET /api/plans?month=`의 `recalculationJobId`가 채워집니다. (머지 후 사용 가능) ② 예산 수정 후 플랜 다시 만들기: 계획은 있으나 아직 구현하지 않았습니다. 지금은 앱 안에서만 다시 나눠 주세요. |
 | Q18 | `partial=true`(수집 기간 부족)일 때 화면에 안내가 필요한가요? **현재 동작**: 서버가 카드사에서 거래 수집을 마친 기간을 기록해서 `partial`을 판단합니다. 소비가 늦게 시작해 앞쪽 달에 거래가 없는 경우는 수집을 마쳤으므로 `partial=false`이고, 수집하지 못한 기간이 있으면 `true`입니다. `collectedFrom`은 모든 카드사 중 가장 늦은 수집 시작일입니다. **한계**: 수집 기록이 없는 카드사(수집 기능 이전에 연결했거나 아직 수집하지 못한 카드사)가 하나라도 있으면 이전처럼 가장 오래된 거래의 날짜로 추정하고, 다시 동기화하면 기록이 생깁니다. | ONB-05, 06 | 기획 확인 필요 |
 | Q19 | 거래 목록(`GET /api/transactions`)도 요약처럼 **`month=yyyy-MM`(그달 1일~말일, 이번 달은 오늘까지)** 로 조회할 수 있나요? 거래내역(HOME-03~05)은 이번 달 거래만 보여주는데, 지금은 `period`(최근 N개월)만 있어 요약과 목록의 기간이 맞지 않습니다. `month`와 `period`의 우선순위·오류 규칙은 요약과 같으면 됩니다. | HOME-03~05 | **답변: 됩니다 (#269).** `GET /api/transactions?month=2026-11`로 그달 1일~말일(이번 달은 오늘까지, 승인일 기준)을 조회합니다. 요약과 같은 규칙이라 `month`가 있으면 `period`는 무시하고, 형식이 틀리거나 아직 오지 않은 월이면 400(`COMMON-400`)입니다. `cardId`, `cardScope`, `category`, `includeCanceled`, `page`, `size`와 함께 쓸 수 있습니다. (머지 후 사용 가능) |
 | Q20 | 홈과 거래내역은 **분석 대상 카드(`SELECTED`, 기본값)** 와 **모든 카드(`ALL`)** 중 어느 카드의 거래를 보여줘야 하나요? 월간 플랜은 분석 대상 카드 기준이라, 홈의 계획 요약과 맞추려면 `SELECTED`, 실제 사용 내역 전체를 보려면 `ALL`입니다. | HOME-01, HOME-03~05 | 기획 확인 필요 (프론트 제안: `SELECTED`, 플랜 숫자와 맞춤) |
