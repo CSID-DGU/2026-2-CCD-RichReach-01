@@ -31,7 +31,7 @@ class JwtTokenProviderTest {
     }
 
     private static JwtTokenProvider providerWith(String secret, String issuer, MutableClock clock) {
-        JwtProperties properties = new JwtProperties(issuer, ACCESS_TTL, REFRESH_TTL, secret);
+        JwtProperties properties = new JwtProperties(issuer, ACCESS_TTL, REFRESH_TTL, secret, false);
         JwtSigningKey key = new JwtSigningKey(properties);
         SecurityConfig config = new SecurityConfig();
         return new JwtTokenProvider(config.jwtEncoder(key), config.jwtDecoder(key, properties), properties, clock);
@@ -179,11 +179,31 @@ class JwtTokenProviderTest {
     @Test
     @DisplayName("서명 키가 32바이트보다 짧으면 앱이 시작되지 않는다")
     void rejectsShortSecret() {
-        JwtProperties properties = new JwtProperties("richreach", ACCESS_TTL, REFRESH_TTL, "too-short");
+        JwtProperties properties = new JwtProperties("richreach", ACCESS_TTL, REFRESH_TTL, "too-short", false);
 
         assertThatThrownBy(() -> new JwtSigningKey(properties))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("32");
+    }
+
+    @Test
+    @DisplayName("서명 키가 필수인 환경(dev)에서는 키가 비어 있으면 임시 키를 만들지 않고 앱이 시작되지 않는다")
+    void requiredSecretMustBePresent() {
+        assertThatThrownBy(() -> new JwtSigningKey(new JwtProperties("richreach", ACCESS_TTL, REFRESH_TTL, "", true)))
+            .isInstanceOf(IllegalStateException.class).hasMessageContaining("JWT_SECRET");
+        assertThatThrownBy(() -> new JwtSigningKey(new JwtProperties("richreach", ACCESS_TTL, REFRESH_TTL, null, true)))
+            .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> new JwtSigningKey(new JwtProperties("richreach", ACCESS_TTL, REFRESH_TTL, "  ", true)))
+            .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("서명 키가 필수인 환경에서도 충분히 긴 키가 있으면 정상 시작한다")
+    void requiredSecretWorksWhenPresent() {
+        JwtSigningKey key = new JwtSigningKey(new JwtProperties("richreach", ACCESS_TTL, REFRESH_TTL,
+            "x".repeat(32), true));
+
+        assertThat(key.secretKey()).isNotNull();
     }
 
     @Test

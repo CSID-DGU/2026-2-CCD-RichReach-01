@@ -11,11 +11,13 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param accessTokenTtl  access 토큰 유효 시간
  * @param refreshTokenTtl refresh 토큰 유효 시간
  * @param secret          서명 키(32바이트 이상). 비어 있으면 실행 때마다 임시 키를 만든다. ({@link JwtSigningKey})
+ * @param requireSecret   true면 서명 키가 비어 있을 때 임시 키를 만들지 않고 시작을 중단한다. (공용 서버용)
  */
 @ConfigurationProperties("app.jwt")
 public record JwtProperties(
     @DefaultValue("richreach") String issuer,
     @DefaultValue("30m") Duration accessTokenTtl,
     @DefaultValue("14d") Duration refreshTokenTtl,
-    String secret) {
+    String secret,
+    @DefaultValue("false") boolean requireSecret) {
 }
