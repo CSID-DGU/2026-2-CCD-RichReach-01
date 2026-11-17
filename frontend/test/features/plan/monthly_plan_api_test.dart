@@ -12,6 +12,7 @@ import 'package:frontend/features/onboarding/domain/card_company.dart';
 import 'package:frontend/features/onboarding/domain/owned_card.dart';
 import 'package:frontend/features/onboarding/domain/transaction.dart';
 import 'package:frontend/features/plan/data/monthly_plan_repository.dart';
+import 'package:frontend/features/plan/domain/monthly_plan.dart';
 
 /// 요청을 기록하고, [respond]가 돌려준 (상태 코드, 본문)으로 응답하는 가짜 서버.
 class _FakeServer implements HttpClientAdapter {
@@ -76,6 +77,42 @@ final _cards = [
     productId: 101,
   ),
 ];
+
+/// 소비예산 수정 뒤의 변경 기록 (백엔드 #271·#272)
+final _budgetChange = {
+  'changeId': 31,
+  'planId': 7,
+  'previousPlanId': 6,
+  'reasonCode': 'BUDGET_CHANGED',
+  'reasonText': '소비예산이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요.',
+  'previousBenefit': 31600,
+  'currentBenefit': 32400,
+  'benefitDelta': 800,
+  'confirmed': false,
+  'changedAt': '2026-11-21T14:30:00',
+  'items': [
+    {
+      'type': 'PRIORITY',
+      'category': 'DINING',
+      'cardId': 4,
+      'cardName': '신한',
+      'previousCardId': 3,
+      'previousCardName': 'KB',
+      'previousAmount': 150000,
+      'currentAmount': 300000,
+    },
+    {
+      'type': 'AMOUNT',
+      'category': 'DINING',
+      'cardId': 4,
+      'cardName': '신한',
+      'previousCardId': null,
+      'previousCardName': null,
+      'previousAmount': 150000,
+      'currentAmount': 300000,
+    },
+  ],
+};
 
 /// `GET /api/plans/7/card-targets` (백엔드 #273)
 final _cardTargets = _ok({
@@ -282,7 +319,7 @@ void main() {
       ApiMonthlyPlanRepository(
         api,
         _Cards(_cards),
-        now: () => DateTime(2026, 11, 10, 9),
+        pollInterval: Duration.zero,
       ),
       server,
     );
@@ -295,6 +332,7 @@ void main() {
         '/api/plans/7/card-targets' => _cardTargets,
         '/api/plans/7/categories/DINING' => _dining,
         '/api/cards/101/benefits' => _benefits,
+        '/api/plans/7/changes' => _ok({'planId': 7, 'changes': const []}),
         _ => _categories,
       };
 
@@ -376,22 +414,127 @@ void main() {
     );
   });
 
-  test('소비예산을 바꾸면 서버에 저장하지 않고 비율대로 다시 나눈 플랜을 기억한다', () async {
-    final (repo, server) = repository(planServer);
+  test(
+    '소비예산을 바꾸면 PUT /api/plans/budget으로 다시 계산하고, 끝나면 새 플랜과 변경 안내를 돌려준다',
+    () async {
+      var recalculated = false;
+      var jobPolls = 0;
+      final (repo, server) = repository(
+        (options) => switch ((options.method, options.path)) {
+          ('PUT', ApiPaths.planBudget) => () {
+            recalculated = true;
+            return _ok({'jobId': 'job-1'});
+          }(),
+          ('GET', '/api/plans/jobs/job-1') => _ok({
+            'jobId': 'job-1',
+            'status': ++jobPolls < 2 ? 'IN_PROGRESS' : 'COMPLETED',
+            'progress': jobPolls < 2 ? 50 : 100,
+          }),
+          ('GET', '/api/plans/7/changes') => _ok({
+            'planId': 7,
+            'changes': recalculated ? [_budgetChange] : const [],
+          }),
+          ('PATCH', '/api/plans/changes/31/confirm') => _ok({
+            ..._budgetChange,
+            'confirmed': true,
+          }),
+          _ => planServer(options),
+        },
+      );
 
-    final changed = await repo.recalculate(DateTime(2026, 11), budget: 1640000);
-    final requestCount = server.requests.length;
-    final again = await repo.fetchPlan(DateTime(2026, 11));
+      final changed = await repo.recalculate(
+        DateTime(2026, 11),
+        budget: 1640000,
+      );
 
-    expect(changed.budget, 1640000);
-    expect(changed.cardPlans.first.targetAmount, 1000000);
-    expect(changed.change, isNotNull);
-    // 다시 불러와도 바꾼 플랜을 보여준다 (서버에 다시 묻지 않음).
-    expect(again!.budget, 1640000);
-    expect(server.requests.length, requestCount);
+      final put = server.requests.firstWhere((r) => r.method == 'PUT');
+      final body = put.data as Map;
+      expect(body['month'], '2026-11');
+      final budget = body['budget'] as Map;
+      expect(budget['total'], 1640000);
+      // 업종별 예산은 지금 플랜의 업종별 금액 비율로 나누고, 합은 총예산과 같다.
+      final byCategory = {
+        for (final item in budget['byCategory'] as List)
+          (item as Map)['category']: item['amount'],
+      };
+      expect(
+        byCategory.values.fold<int>(0, (sum, a) => sum + (a as int)),
+        1640000,
+      );
+      expect(byCategory['DINING'], greaterThan(0));
+      // 작업이 끝날 때까지 상태를 다시 조회했다.
+      expect(jobPolls, 2);
 
-    await repo.confirmChange(DateTime(2026, 11));
-    expect((await repo.fetchPlan(DateTime(2026, 11)))!.change, isNull);
+      final change = changed.change!;
+      expect(change.summary, '음식·배달 플랜이 변경됐어요');
+      expect(change.reason, '소비예산이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요.');
+      expect(change.items.first, isA<PriorityChange>());
+      expect((change.items.first as PriorityChange).toCardName, '신한');
+      final amount = change.items[1] as AmountChange;
+      expect(
+        (amount.before, amount.after, amount.cardName),
+        (150000, 300000, '신한'),
+      );
+      final benefit = change.items.last as AmountChange;
+      expect((benefit.title, benefit.difference), ('이번 달 예상 혜택', 800));
+
+      await repo.confirmChange(DateTime(2026, 11));
+      expect(
+        server.requests.any(
+          (r) =>
+              r.method == 'PATCH' && r.path == '/api/plans/changes/31/confirm',
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test('재계산 작업이 실패하면 서버 이유로 실패를 알린다', () async {
+    final (repo, _) = repository(
+      (options) => switch ((options.method, options.path)) {
+        ('PUT', ApiPaths.planBudget) => _ok({'jobId': 'job-2'}),
+        ('GET', '/api/plans/jobs/job-2') => _ok({
+          'jobId': 'job-2',
+          'status': 'FAILED',
+          'failureReason': '카드 사용 계획을 다시 계산하지 못했어요.',
+        }),
+        _ => planServer(options),
+      },
+    );
+
+    await expectLater(
+      repo.recalculate(DateTime(2026, 11), budget: 1000000),
+      throwsA(
+        isA<PlanRecalculationFailure>().having(
+          (e) => e.message,
+          'message',
+          '카드 사용 계획을 다시 계산하지 못했어요.',
+        ),
+      ),
+    );
+  });
+
+  test('확인한 변경은 안내하지 않고, 재계산 중이면 작업 ID를 알려준다', () async {
+    final (repo, _) = repository(
+      (options) => switch (options.path) {
+        ApiPaths.plans => _ok({
+          ...(_plan.$2['data'] as Map),
+          'recalculationJobId': 'job-9',
+        }),
+        '/api/plans/7/changes' => _ok({
+          'planId': 7,
+          'changes': [
+            {..._budgetChange, 'confirmed': true},
+          ],
+        }),
+        _ => planServer(options),
+      },
+    );
+
+    final plan = await repo.fetchPlan(DateTime(2026, 11));
+
+    expect(plan!.change, isNull);
+    expect(plan.recalculationJobId, 'job-9');
   });
 
   test('카드별 상세는 card-targets와 카드 혜택으로 만들고, 알 수 없는 값은 null로 둔다', () async {

@@ -1,9 +1,10 @@
-import '../../../core/demo/app_clock.dart';
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_config.dart';
 import '../../../core/network/api_exception.dart';
 import '../../onboarding/data/card_repository.dart';
+import '../../onboarding/data/plan_repository.dart';
+import '../../onboarding/domain/budget.dart';
 import '../../onboarding/domain/card_company.dart';
 import '../../onboarding/domain/owned_card.dart';
 import '../../onboarding/domain/transaction.dart';
@@ -21,6 +22,9 @@ abstract interface class MonthlyPlanRepository {
 
   /// [month] 플랜의 최근 변경을 확인 처리한다. 이후 조회에서는 변경 안내가 없다.
   Future<void> confirmChange(DateTime month);
+
+  /// 서버의 재계산 작업([jobId])이 끝날 때까지 기다린다. 실패해도 오류 없이 끝난다.
+  Future<void> waitForRecalculation(String jobId);
 
   /// [month] 플랜에서 카드 한 장의 상세 (PLAN-02). 플랜이나 카드가 없으면 null.
   Future<CardPlanDetail?> fetchCardPlan(DateTime month, String cardId);
@@ -41,28 +45,38 @@ abstract interface class MonthlyPlanRepository {
 ///
 /// 아직 API가 없는 부분은 화면을 그대로 두고 아래처럼 채운다.
 /// - 플랜 변경 안내: 서버에 변경 내역이 없어 보여줄 변경이 없다.
-/// - 소비예산 수정: 서버에 저장하지 않고 이 객체 안에서만 비율대로 다시 나눈다. ([FakeMonthlyPlanRepository.rescale])
+/// - 플랜 변경 안내: `GET /api/plans/{planId}/changes`에서 확인하지 않은 가장 최근 변경,
+///   확인은 `PATCH /api/plans/changes/{changeId}/confirm` (백엔드 #271)
+/// - 소비예산 수정: `PUT /api/plans/budget` → `GET /api/plans/jobs/{jobId}` 폴링 → 플랜 다시 조회 (백엔드 #272)
+/// - 서버 자동 재계산 중이면 `recalculationJobId`가 있고, 끝날 때까지 [waitForRecalculation]으로 기다린다.
 /// - 카드별 상세(PLAN-02): `GET /api/plans/{planId}/card-targets` (실적·한도·예상 혜택·업종별 사용 금액),
 ///   카드 뒷면 혜택 요약은 `GET /api/cards/{카드상품ID}/benefits` (백엔드 #273)
 /// - 업종별 상세(PLAN-03): `GET /api/plans/{planId}/categories/{category}` + 우선 카드의 실적·한도
 ///
 /// 서버가 알 수 없다고 준 값(`null`)은 0이나 "한도 없음"으로 바꾸지 않고 null로 둔다.
 class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
-  ApiMonthlyPlanRepository(this._api, this._cards, {DateTime Function()? now})
-    : _now = now ?? appNow;
+  ApiMonthlyPlanRepository(
+    this._api,
+    this._cards, {
+    this.pollInterval = const Duration(milliseconds: 1500),
+    this.maxWait = const Duration(minutes: 6),
+  });
 
   final ApiClient _api;
   final CardRepository _cards;
-  final DateTime Function() _now;
+
+  /// 재계산 작업 상태를 조회하는 간격과 최대로 기다리는 시간
+  final Duration pollInterval;
+  final Duration maxWait;
 
   /// 그 달의 플랜이 없음 (404)
   static const planNotFoundCode = 'PLAN-001';
 
-  /// 예산을 다시 나눈 결과처럼 서버에 저장하지 않은 플랜. 달별로 기억한다.
-  final _localPlans = <DateTime, MonthlyPlan>{};
-
   /// 달별로 마지막에 불러온 플랜 ID (상세 API 경로에 쓴다)
   final _planIds = <DateTime, int>{};
+
+  /// 달별로 안내 중인(확인하지 않은) 플랜 변경 ID
+  final _changeIds = <DateTime, int>{};
 
   static DateTime _key(DateTime month) => DateTime(month.year, month.month);
 
@@ -71,8 +85,6 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
 
   @override
   Future<MonthlyPlan?> fetchPlan(DateTime month) async {
-    if (_localPlans[_key(month)] case final local?) return local;
-
     final _PlanJson plan;
     try {
       plan = await _api.get(
@@ -85,7 +97,7 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
       rethrow;
     }
     _planIds[_key(month)] = plan.planId;
-    final (categories, cards, spent) = await (
+    final (categories, cards, spent, changes) = await (
       _api.get(
         ApiPaths.planCategories(plan.planId),
         parse: _CategoryJson.listFromJson,
@@ -96,7 +108,15 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
         query: {'month': _monthCode(month)},
         parse: _SpentJson.fromJson,
       ),
+      _api.get(ApiPaths.planChanges(plan.planId), parse: _ChangeJson.listOf),
     ).wait;
+    // 확인하지 않은 가장 최근 변경만 안내한다 (최근 것이 먼저 온다).
+    final change = changes.where((c) => !c.confirmed).firstOrNull;
+    if (change == null) {
+      _changeIds.remove(_key(month));
+    } else {
+      _changeIds[_key(month)] = change.changeId;
+    }
 
     // 보유카드 목록에 없는 카드(삭제된 카드 등)는 이미지·카드사를 알 수 없어 화면에서 뺀다.
     final cardsById = {for (final card in cards) card.id: card};
@@ -122,25 +142,78 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
                 CategoryCardAmount(card: card, amount: target.amount),
           ],
       },
+      change: change?.toPlanChange(),
+      recalculationJobId: plan.recalculationJobId,
     );
   }
 
+  /// 업종별 예산을 지금 플랜의 업종별 금액 비율대로 [budget]에 맞춰
+  /// `PUT /api/plans/budget`으로 보내고, 재계산이 끝나면 새 플랜을 돌려준다.
+  /// 재계산이 실패하면 [PlanRecalculationFailure]를 던진다 (서버의 이전 플랜과 예산은 그대로).
   @override
   Future<MonthlyPlan> recalculate(DateTime month, {required int budget}) async {
     final current = await fetchPlan(month);
     if (current == null) throw StateError('플랜이 없는 달은 다시 계산할 수 없어요.');
-    // TODO: 예산을 바꿔 플랜을 다시 만드는 API가 생기면 서버에 요청한다.
-    return _localPlans[_key(month)] = FakeMonthlyPlanRepository.rescale(
-      current,
-      budget: budget,
-      updatedAt: _now(),
+
+    final next = MonthlyBudget(
+      month: _key(month),
+      total: current.budget,
+      byCategory: {
+        for (final MapEntry(key: category, value: items)
+            in current.categoryPlans.entries)
+          category: items.fold(0, (sum, item) => sum + item.amount),
+      },
+    ).withTotal(budget);
+    final jobId = await _api.put(
+      ApiPaths.planBudget,
+      body: ApiPlanRepository.requestBody(next),
+      parse: (data) => '${(data as Map)['jobId']}',
     );
+    final job = await _waitForJob(jobId);
+    if (job.status != 'COMPLETED') {
+      throw PlanRecalculationFailure(
+        job.failureReason ?? '플랜을 다시 계산하지 못했어요. 잠시 후 다시 시도해 주세요.',
+      );
+    }
+    final plan = await fetchPlan(month);
+    if (plan == null) throw StateError('다시 계산한 플랜을 찾지 못했어요.');
+    return plan;
   }
 
   @override
   Future<void> confirmChange(DateTime month) async {
-    final plan = _localPlans[_key(month)];
-    if (plan != null) _localPlans[_key(month)] = plan.withoutChange();
+    final changeId = _changeIds[_key(month)];
+    if (changeId == null) return;
+    await _api.patch(ApiPaths.planChangeConfirm(changeId), parse: (_) {});
+    _changeIds.remove(_key(month));
+  }
+
+  @override
+  Future<void> waitForRecalculation(String jobId) async {
+    try {
+      await _waitForJob(jobId);
+    } on ApiException {
+      // 작업을 조회하지 못해도 플랜을 다시 불러오면 된다.
+    }
+  }
+
+  /// 작업이 끝나거나(`COMPLETED`·`FAILED`) [maxWait]가 지날 때까지 [pollInterval]마다 조회한다.
+  Future<_JobJson> _waitForJob(String jobId) async {
+    final watch = Stopwatch()..start();
+    while (true) {
+      final job = await _api.get(
+        ApiPaths.planJob(jobId),
+        parse: _JobJson.fromJson,
+      );
+      if (job.status == 'COMPLETED' || job.status == 'FAILED') return job;
+      if (watch.elapsed >= maxWait) {
+        return const _JobJson(
+          status: 'FAILED',
+          failureReason: '플랜을 다시 계산하는 데 시간이 오래 걸리고 있어요. 잠시 후 다시 확인해 주세요.',
+        );
+      }
+      await Future<void>.delayed(pollInterval);
+    }
   }
 
   @override
@@ -471,10 +544,14 @@ class _PlanJson {
     required this.planId,
     required this.expectedBenefit,
     required this.targets,
+    this.recalculationJobId,
   });
 
   final int planId;
   final int expectedBenefit;
+
+  /// 서버가 다시 계산하는 중이면 작업 ID
+  final String? recalculationJobId;
 
   /// 목표 금액이 큰 카드부터
   final List<_CardAmountJson> targets;
@@ -484,8 +561,122 @@ class _PlanJson {
     return _PlanJson(
       planId: json['planId'] as int,
       expectedBenefit: json['expectedBenefit'] as int,
+      recalculationJobId: switch (json['recalculationJobId']) {
+        null => null,
+        final id => '$id',
+      },
       targets: [
         for (final item in json['cardTargets'] as List) _cardAmount(item),
+      ],
+    );
+  }
+}
+
+/// 소비예산 수정 재계산이 실패했다. 서버의 이전 플랜과 예산은 그대로다.
+class PlanRecalculationFailure implements Exception {
+  const PlanRecalculationFailure(this.message);
+
+  /// 화면에 보여줄 이유
+  final String message;
+
+  @override
+  String toString() => 'PlanRecalculationFailure($message)';
+}
+
+/// `GET /api/plans/jobs/{jobId}` 응답 중 상태.
+class _JobJson {
+  const _JobJson({required this.status, this.failureReason});
+
+  final String status;
+  final String? failureReason;
+
+  static _JobJson fromJson(Object? data) {
+    final json = data as Map;
+    return _JobJson(
+      status: '${json['status']}',
+      failureReason: json['failureReason'] as String?,
+    );
+  }
+}
+
+/// `GET /api/plans/{planId}/changes`의 변경 기록 하나 (백엔드 #271).
+class _ChangeJson {
+  const _ChangeJson({
+    required this.changeId,
+    required this.reasonText,
+    required this.previousBenefit,
+    required this.currentBenefit,
+    required this.confirmed,
+    required this.changedAt,
+    required this.items,
+  });
+
+  final int changeId;
+  final String reasonText;
+  final int? previousBenefit;
+  final int? currentBenefit;
+  final bool confirmed;
+  final DateTime changedAt;
+  final List<Map> items;
+
+  static final _categories = {
+    for (final c in SpendingCategory.values) c.code: c,
+  };
+
+  static List<_ChangeJson> listOf(Object? data) => [
+    for (final item in (data as Map)['changes'] as List? ?? const [])
+      _ChangeJson.fromJson(item as Map),
+  ];
+
+  static _ChangeJson fromJson(Map json) => _ChangeJson(
+    changeId: json['changeId'] as int,
+    reasonText: json['reasonText'] as String? ?? '',
+    previousBenefit: json['previousBenefit'] as int?,
+    currentBenefit: json['currentBenefit'] as int?,
+    confirmed: json['confirmed'] as bool? ?? false,
+    changedAt: DateTime.parse(json['changedAt'] as String),
+    items: [for (final item in json['items'] as List? ?? const []) item as Map],
+  );
+
+  static String _label(Object? code) => _categories[code]?.label ?? '기타';
+
+  static const _unknownCard = '카드 정보 없음';
+
+  /// 앱의 변경 안내로 바꾼다. 안내 띠 문구는 바뀐 업종 이름(2개까지)으로 만든다.
+  PlanChange toPlanChange() {
+    final categories = <String>[];
+    for (final item in items) {
+      final label = _label(item['category']);
+      if (!categories.contains(label)) categories.add(label);
+    }
+    final summary = switch (categories) {
+      [] => '플랜이 변경됐어요',
+      [final one] => '$one 플랜이 변경됐어요',
+      [final a, final b] => '$a, $b 플랜이 변경됐어요',
+      [final a, final b, ...] => '$a, $b 등 플랜이 변경됐어요',
+    };
+    return PlanChange(
+      updatedAt: changedAt,
+      summary: summary,
+      reason: reasonText,
+      items: [
+        for (final item in items)
+          if (item['type'] == 'PRIORITY')
+            PriorityChange(
+              title: _label(item['category']),
+              fromCardName: item['previousCardName'] as String? ?? _unknownCard,
+              toCardName: item['cardName'] as String? ?? _unknownCard,
+            )
+          else
+            AmountChange(
+              title: _label(item['category']),
+              cardName: item['cardName'] as String? ?? _unknownCard,
+              before: item['previousAmount'] as int? ?? 0,
+              after: item['currentAmount'] as int? ?? 0,
+            ),
+        if ((previousBenefit, currentBenefit) case (final before?, final after?)
+            when before != after)
+          AmountChange(title: '이번 달 예상 혜택', before: before, after: after),
       ],
     );
   }
@@ -597,6 +788,10 @@ class FakeMonthlyPlanRepository implements MonthlyPlanRepository {
     final plan = _plan;
     if (_isCurrent(month) && plan != null) _plan = plan.withoutChange();
   }
+
+  /// 가짜 데이터에는 서버 재계산 작업이 없다.
+  @override
+  Future<void> waitForRecalculation(String jobId) async {}
 
   @override
   Future<CardPlanDetail?> fetchCardPlan(DateTime month, String cardId) async {

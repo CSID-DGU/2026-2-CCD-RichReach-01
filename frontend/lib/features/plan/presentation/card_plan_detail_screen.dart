@@ -328,9 +328,7 @@ class _CardBack extends StatelessWidget {
                 children: [
                   if (detail.benefits.isEmpty)
                     Expanded(
-                      child: Center(
-                        child: Text('혜택 정보가 없어요', style: muted),
-                      ),
+                      child: Center(child: Text('혜택 정보가 없어요', style: muted)),
                     ),
                   for (final (i, benefit)
                       in detail.benefits.take(3).indexed) ...[

@@ -108,6 +108,7 @@ class MonthlyPlan {
     required this.cardPlans,
     required this.categoryPlans,
     this.change,
+    this.recalculationJobId,
   });
 
   /// 계획 월 (일은 1일로 둔다)
@@ -131,6 +132,9 @@ class MonthlyPlan {
   /// 사용자가 아직 확인하지 않은 최근 플랜 변경. 없으면 null.
   final PlanChange? change;
 
+  /// 서버가 이 달 플랜을 다시 계산하는 중이면 그 작업 ID. 아니면 null.
+  final String? recalculationJobId;
+
   /// 예산 대비 사용률 (0 이상, 예산을 넘으면 1보다 크다)
   double get usageRatio => budget == 0 ? 0 : spentAmount / budget;
 
@@ -142,5 +146,6 @@ class MonthlyPlan {
     expectedBenefit: expectedBenefit,
     cardPlans: cardPlans,
     categoryPlans: categoryPlans,
+    recalculationJobId: recalculationJobId,
   );
 }

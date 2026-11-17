@@ -25,6 +25,9 @@ class _FailingMonthlyPlanRepository implements MonthlyPlanRepository {
   Future<void> confirmChange(DateTime month) => throw UnimplementedError();
 
   @override
+  Future<void> waitForRecalculation(String jobId) async {}
+
+  @override
   Future<CardPlanDetail?> fetchCardPlan(DateTime month, String cardId) =>
       throw UnimplementedError();
 

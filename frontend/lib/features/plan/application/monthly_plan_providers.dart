@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/demo/app_clock.dart';
@@ -59,8 +61,19 @@ class MonthlyPlanNotifier extends AsyncNotifier<MonthlyPlan?> {
       ref.read(monthlyPlanRepositoryProvider);
 
   @override
-  Future<MonthlyPlan?> build() =>
-      ref.watch(monthlyPlanRepositoryProvider).fetchPlan(month);
+  Future<MonthlyPlan?> build() async {
+    final repository = ref.watch(monthlyPlanRepositoryProvider);
+    final plan = await repository.fetchPlan(month);
+    // 서버가 새 거래·예정지출을 반영해 다시 계산하는 중이면, 끝난 뒤 새 플랜을 불러온다.
+    if (plan?.recalculationJobId case final jobId?) {
+      unawaited(
+        repository.waitForRecalculation(jobId).then((_) {
+          if (ref.mounted) ref.invalidateSelf();
+        }),
+      );
+    }
+    return plan;
+  }
 
   /// 소비예산을 [budget]으로 바꿔 플랜을 다시 계산하고, 바뀐 플랜을 돌려준다.
   /// 계산하는 동안에도 지금 플랜을 그대로 보여준다.
