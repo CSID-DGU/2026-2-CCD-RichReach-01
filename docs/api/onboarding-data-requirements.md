@@ -27,7 +27,7 @@
 | 플랜 | ONB-07B 플랜 생성 완료 | `GET /api/plans?month=` | ✅ #212 | ✅ | ✅ |
 | 플랜 | **PLAN-01 월간 플랜** | `GET /api/plans?month=`, `GET /api/plans/{planId}/categories`, `GET /api/transactions/summary?month=`, `GET /api/plans/{planId}/changes`, `PUT /api/plans/budget` | ✅ (#271, #272) | ✅ 변경 안내·예산 재계산까지 연동 (#295) | ✅ (실제 계정, 변경 안내·재계산은 미확인) |
 | 플랜 | PLAN-02·03 카드별·업종별 상세 | `GET /api/plans/{planId}/card-targets`, `GET /api/plans/{planId}/categories/{category}`, `GET /api/cards/{카드상품ID}/benefits` | ✅ (#273) | ✅ 연동 (#293) | - |
-| 공통 | 로그인 후 시작 화면 (Q8) | `GET /api/connections`, `GET /api/plans?month=` | ✅ | ⬜ | - |
+| 공통 | 로그인 후 시작 화면 (Q8) | `GET /api/connections`, `GET /api/plans?month=` | ✅ | ✅ (#297) | - |
 | 홈 | **HOME-01 홈** | PLAN-01과 같은 플랜·월 요약 + `GET /api/transactions` (최근 사용 내역) | ✅ (#270) | ✅ 예상 혜택까지 연동 (#252, #289), 빠른 실행 "예정지출 관리" → HOME-07 (#258) | - |
 | 홈 | **HOME-03~05 거래내역** (전체·카드별·카테고리) | `GET /api/transactions/summary?month=`, `GET /api/transactions?month=` | ✅ (#269, #270) | ✅ 월 조회·예상 혜택 연동 (#252, #289) | - |
 | 홈 | **HOME-06~10 예정지출** (추가·관리·수정·삭제) | `GET·POST /api/planned-expenses`, `PUT·DELETE /api/planned-expenses/{expenseId}` (Q21) | ✅ (#274) | ✅ 서버 API 연동 (#258·#262·#291) | - |
@@ -909,7 +909,7 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 | Q5 | 업종 분류 개수 | 화면용 11개 (#190) |
 | Q6 | 예산 총액 수정 시 다시 나누기 | 프론트가 나누고, 서버는 플랜 생성 때 검증 (`PLAN-003`) |
 | Q7 | 카드별 막대의 의미 | 카드별 비중. `targetAmount`로 프론트가 계산 |
-| Q8 | 온보딩 중간에 그만두면 | 진행 단계 칼럼 없이 처리: 로그인 후 `GET /api/connections`가 비면 ONB-01, 플랜이 없으면 ONB-04, `GET /api/plans?month=`에 플랜이 있으면 홈 |
+| Q8 | 온보딩 중간에 그만두면 | 진행 단계 칼럼 없이 처리: 로그인 후 `GET /api/connections`가 비면 ONB-01, 플랜이 없으면 ONB-04, `GET /api/plans?month=`에 플랜이 있으면 홈. **앱 구현 (#297)**: 로그인 성공 후와, 저장된 로그인 정보가 있을 때 앱을 켜면(스플래시) 이 규칙으로 이동합니다. 시작 화면을 정하지 못하면 로그인 후에는 ONB-01, 스플래시에서는 로그인 화면으로 가고, 로그인 정보가 만료됐으면 세션 만료 화면(AUTH-04)입니다. |
 | Q9 | 인증 경로 | `/api/auth/...` |
 | Q10 | 로그인 방식, 전화번호 | 이메일 + 비밀번호. 전화번호는 하이픈 없이 받음 |
 | Q11 | 아이디 중복 확인 | `POST /api/auth/check-id` 본문 |
