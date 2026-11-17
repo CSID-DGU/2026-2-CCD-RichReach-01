@@ -17,10 +17,11 @@ public record PlanCategoriesResponse(long planId, String month, List<CategoryPla
      *
      * @param category        업종
      * @param targetAmount    이 업종의 목표 소비 금액(카드별 금액의 합)
+     * @param spentAmount     이번 달 이 업종에서 이 카드들로 실제로 쓴 금액(카드별 사용 금액의 합, 취소·환불 제외)
      * @param expectedBenefit 이 업종에서 기대하는 혜택(카드별 혜택의 합)
      * @param cards           이 업종을 쓸 카드와 금액. 금액이 큰 카드부터이다.
      */
-    public record CategoryPlan(SpendingCategory category, long targetAmount, long expectedBenefit,
+    public record CategoryPlan(SpendingCategory category, long targetAmount, long spentAmount, long expectedBenefit,
                                List<CardAmount> cards) {
 
     }
@@ -31,9 +32,10 @@ public record PlanCategoriesResponse(long planId, String month, List<CategoryPla
      * @param cardId          보유카드 ID
      * @param cardName        카드 이름. 카드가 삭제되어 찾을 수 없으면 {@code null}이다.
      * @param targetAmount    이 카드로 이 업종에서 쓸 금액
+     * @param spentAmount     이번 달 이 카드로 이 업종에서 쓴 금액(취소·환불 제외)
      * @param expectedBenefit 그때 기대하는 혜택
      */
-    public record CardAmount(long cardId, String cardName, long targetAmount, long expectedBenefit) {
+    public record CardAmount(long cardId, String cardName, long targetAmount, long spentAmount, long expectedBenefit) {
 
     }
 
