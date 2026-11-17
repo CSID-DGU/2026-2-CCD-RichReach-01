@@ -803,6 +803,36 @@
         }
       }
     },
+    "/api/plans/budget": {
+      "put": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "updateBudget",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanJobStartResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/plans/{planId}/changes": {
       "get": {
         "tags": [
