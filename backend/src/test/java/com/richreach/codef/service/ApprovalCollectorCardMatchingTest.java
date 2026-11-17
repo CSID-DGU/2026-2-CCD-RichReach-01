@@ -31,6 +31,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -55,7 +56,7 @@ class ApprovalCollectorCardMatchingTest {
         store = mock(TransactionStoreService.class);
         when(store.saveCollected(anyLong(), anyLong(), anyList())).thenReturn(new SaveResult(1, 0, 0, 0));
         collector = new ApprovalCollector(approvals, new OwnedCardQueryService(repository), store,
-            new CodefCollectProperties(1), CLOCK);
+            new CodefCollectProperties(1), mock(ApplicationEventPublisher.class), CLOCK);
     }
 
     /** 동기화가 저장하는 방식(가림 처리)으로 보유카드를 만든다. */
