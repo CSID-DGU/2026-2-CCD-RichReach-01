@@ -12,6 +12,8 @@ import java.util.List;
  *                          (0으로 내리면 "추가 혜택 전부"로 잘못 보이기 때문이다.)
  * @param additionalBenefit {@code expectedBenefit - baselineBenefit}. 비교할 기준이 없으면 {@code null}이다.
  * @param cardTargets       카드별 목표 사용금액. 금액이 큰 카드부터이고, 카드 번호는 담지 않는다.
+ * @param recalculationJobId 승인 거래를 반영해 남은 기간의 플랜을 다시 계산하는 중이면 그 작업 ID. 아니면 null이다.
+ *                          화면은 {@code GET /api/plans/jobs/{jobId}}로 진행 상태를 보고, 끝나면 플랜을 다시 조회한다.
  */
 public record PlanResponse(
     long planId,
@@ -19,7 +21,8 @@ public record PlanResponse(
     long expectedBenefit,
     Long baselineBenefit,
     Long additionalBenefit,
-    List<CardTarget> cardTargets) {
+    List<CardTarget> cardTargets,
+    String recalculationJobId) {
 
     /**
      * 카드 한 장의 목표 사용금액.

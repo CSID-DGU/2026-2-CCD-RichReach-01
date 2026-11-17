@@ -3,15 +3,18 @@ package com.richreach.plan.controller;
 import com.richreach.global.response.ApiResponse;
 import com.richreach.global.security.AuthenticatedUser;
 import com.richreach.plan.dto.PlanCategoriesResponse;
+import com.richreach.plan.dto.PlanChangesResponse;
 import com.richreach.plan.dto.PlanCreateRequest;
 import com.richreach.plan.dto.PlanJobStartResponse;
 import com.richreach.plan.dto.PlanJobStatusResponse;
 import com.richreach.plan.dto.PlanResponse;
+import com.richreach.plan.service.PlanChangeQueryService;
 import com.richreach.plan.service.PlanGenerationService;
 import com.richreach.plan.service.PlanQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,6 +30,7 @@ public class PlanController {
 
     private final PlanGenerationService generationService;
     private final PlanQueryService queryService;
+    private final PlanChangeQueryService changeService;
 
     /**
      * 월간 플랜 생성을 시작한다. 계산은 오래 걸릴 수 있어서 작업을 시작하고 바로 {@code jobId}를 돌려주며, 진행 상태는
@@ -67,7 +71,24 @@ public class PlanController {
     }
 
     /**
-     * 플랜 생성 진행 상태. 화면은 {@code status}가 {@code IN_PROGRESS}가 아닐 때까지 1~2초마다 조회한다.
+     * 플랜의 변경 기록. 거래가 반영되어 남은 기간의 플랜이 다시 계산될 때마다 하나씩 쌓이고, 가장 최근 것이 먼저다. 없거나 다른
+     * 사용자의 플랜이면 404({@code PLAN-001})이다.
+     */
+    @GetMapping("/{planId}/changes")
+    public ApiResponse<PlanChangesResponse> changes(@AuthenticationPrincipal AuthenticatedUser user,
+                                                    @PathVariable long planId) {
+        return ApiResponse.ok(changeService.list(user.userId(), planId));
+    }
+
+    /** 변경 내용을 확인한 것으로 표시하고 그 기록을 돌려준다. 없거나 다른 사용자의 기록이면 404({@code PLAN-009})이다. */
+    @PatchMapping("/changes/{changeId}/confirm")
+    public ApiResponse<PlanChangesResponse.Change> confirmChange(@AuthenticationPrincipal AuthenticatedUser user,
+                                                                @PathVariable long changeId) {
+        return ApiResponse.ok(changeService.confirm(user.userId(), changeId));
+    }
+
+    /**
+     * 플랜 생성 또는 승인 거래 반영 재계산의 진행 상태. 화면은 {@code status}가 {@code IN_PROGRESS}가 아닐 때까지 1~2초마다 조회한다.
      * 없거나 다른 사용자의 {@code jobId}면 404({@code PLAN-002})이다.
      */
     @GetMapping("/jobs/{jobId}")

@@ -67,6 +67,7 @@ public enum ErrorCode {
     PLAN_NO_ANALYSIS_CARD(HttpStatus.BAD_REQUEST, "PLAN-006", "분석 대상으로 고른 카드가 없어 플랜을 만들 수 없습니다."),
     PLAN_CHAT_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "PLAN-007", "대화 서비스를 일시적으로 사용할 수 없습니다."),
     PLAN_CHAT_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "PLAN-008", "대화 응답 시간이 초과되었습니다. 다시 시도해 주세요."),
+    PLAN_CHANGE_NOT_FOUND(HttpStatus.NOT_FOUND, "PLAN-009", "플랜 변경 기록을 찾을 수 없습니다."),
 
     // 추천
     INSUFFICIENT_RECOMMENDATION_INPUT(HttpStatus.BAD_REQUEST, "RECOMMEND-001", "추천에 필요한 정보가 부족합니다."),
