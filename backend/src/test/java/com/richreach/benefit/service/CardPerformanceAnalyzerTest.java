@@ -70,6 +70,29 @@ class CardPerformanceAnalyzerTest {
     }
 
     @Test
+    @DisplayName("묶음의 규칙마다 월 한도가 있으면 규칙별 한도의 합과 공유 한도 중 작은 값을 쓴다")
+    void groupLimitIsTheSmallerOfRuleLimitsAndTheSharedLimit() {
+        // 규칙별 5천원 2개(합 1만원)와 공유 한도 2만원 -> 1만원
+        List<CalculationRule> sumBelowShared = List.of(rule(5_000L, "G1", 20_000L, null, null, true),
+            rule(5_000L, "G1", 20_000L, null, null, true));
+        assertThat(CardPerformanceAnalyzer.monthlyLimit(sumBelowShared, 0)).hasValue(10_000);
+
+        // 규칙별 15,000원 2개(합 3만원)와 공유 한도 2만원 -> 2만원
+        List<CalculationRule> sumAboveShared = List.of(rule(15_000L, "G1", 20_000L, null, null, true),
+            rule(15_000L, "G1", 20_000L, null, null, true));
+        assertThat(CardPerformanceAnalyzer.monthlyLimit(sumAboveShared, 0)).hasValue(20_000);
+    }
+
+    @Test
+    @DisplayName("묶음 안에 월 한도가 없는 규칙이 있으면 규칙별 상한이 없어 공유 한도만 쓴다")
+    void groupWithARuleWithoutALimitUsesTheSharedLimit() {
+        List<CalculationRule> rules = List.of(rule(5_000L, "G1", 20_000L, null, null, true),
+            rule(null, "G1", 20_000L, null, null, true));
+
+        assertThat(CardPerformanceAnalyzer.monthlyLimit(rules, 0)).hasValue(20_000);
+    }
+
+    @Test
     @DisplayName("한도가 없거나 미확인인 규칙이 하나라도 있으면 한도를 알 수 없어 비어 있다")
     void unknownLimitMakesTheTotalUnknown() {
         List<CalculationRule> rules = List.of(limited(5_000, null), rule(null, null, null, null, null, true));

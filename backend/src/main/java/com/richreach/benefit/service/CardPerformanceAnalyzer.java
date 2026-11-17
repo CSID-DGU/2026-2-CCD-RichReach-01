@@ -35,7 +35,8 @@ public final class CardPerformanceAnalyzer {
      *
      * <ul>
      *   <li>전월실적 조건(이상, 미만)을 채운 규칙만 센다.</li>
-     *   <li>규칙마다 월 한도를 더하고, 같은 한도 묶음({@code capGroupId})은 공유 한도를 한 번만 더한다.</li>
+     *   <li>규칙마다 월 한도를 더한다. 같은 한도 묶음({@code capGroupId})은 한 번만 세고, 묶음의 한도는 규칙별 월 한도의 합과
+     *       공유 한도 중 작은 값이다. (묶음 안에 월 한도가 없는 규칙이 있으면 공유 한도만 쓴다)</li>
      *   <li>센 규칙 중 월 한도도 공유 한도도 없는 규칙이 하나라도 있으면 한도를 알 수 없어서(없거나 미확인) 비어 있다.</li>
      *   <li>센 규칙이 하나도 없어도 비어 있다.</li>
      * </ul>
@@ -51,18 +52,33 @@ public final class CardPerformanceAnalyzer {
             return OptionalLong.empty();
         }
         long total = 0;
-        // 같은 묶음의 공유 한도는 묶음당 한 번만 더한다. 묶음 안에서 가장 작은 공유 한도를 쓴다.
+        // 같은 한도 묶음은 한 번만 센다. 혜택 계산과 같은 순서로 규칙별 월 한도를 먼저 적용하고 그다음 묶음의 공유 한도를
+        // 적용하므로, 묶음의 한도는 min(규칙별 한도의 합, 공유 한도)이다. 묶음 안에 월 한도가 없는 규칙이 있으면 규칙별 상한이
+        // 없어서 공유 한도만 쓴다.
         Map<String, Long> sharedByGroup = new HashMap<>();
+        Map<String, Long> ruleLimitsByGroup = new HashMap<>();
+        Map<String, Boolean> groupHasRuleWithoutLimit = new HashMap<>();
         for (CalculationRule rule : applicable) {
             if (rule.capGroupId() != null && rule.sharedMonthlyLimit() != null) {
-                sharedByGroup.merge(rule.capGroupId(), rule.sharedMonthlyLimit(), Math::min);
+                String group = rule.capGroupId();
+                sharedByGroup.merge(group, rule.sharedMonthlyLimit(), Math::min);
+                if (rule.monthlyLimit() == null) {
+                    groupHasRuleWithoutLimit.put(group, true);
+                } else {
+                    ruleLimitsByGroup.merge(group, rule.monthlyLimit(), Math::addExact);
+                }
             } else if (rule.monthlyLimit() != null) {
                 total = Math.addExact(total, rule.monthlyLimit());
             } else {
                 return OptionalLong.empty();
             }
         }
-        total = Math.addExact(total, sharedByGroup.values().stream().mapToLong(Long::longValue).sum());
+        for (Map.Entry<String, Long> group : sharedByGroup.entrySet()) {
+            long shared = group.getValue();
+            boolean capped = !groupHasRuleWithoutLimit.getOrDefault(group.getKey(), false);
+            long groupLimit = capped ? Math.min(shared, ruleLimitsByGroup.getOrDefault(group.getKey(), 0L)) : shared;
+            total = Math.addExact(total, groupLimit);
+        }
         return OptionalLong.of(total);
     }
 

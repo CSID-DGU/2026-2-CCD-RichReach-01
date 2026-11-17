@@ -2374,7 +2374,7 @@
           "categories": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CategoryAmount"
+              "$ref": "#/components/schemas/CardCategoryAmount"
             }
           }
         }
@@ -2441,7 +2441,7 @@
           }
         }
       },
-      "CategoryAmount": {
+      "CardCategoryAmount": {
         "type": "object",
         "properties": {
           "category": {

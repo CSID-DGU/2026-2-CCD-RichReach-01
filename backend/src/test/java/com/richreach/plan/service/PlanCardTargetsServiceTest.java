@@ -114,9 +114,9 @@ class PlanCardTargetsServiceTest {
         assertThat(card.remainingTarget()).isEqualTo(200_000);
         assertThat(card.expectedBenefit()).isEqualTo(7_500);
         // 목표가 있거나 쓴 업종을 업종 고정 순서로 모은다. 목표가 없는 업종은 목표와 혜택이 0이다.
-        assertThat(card.categories()).extracting(PlanCardTargetsResponse.CategoryAmount::category)
+        assertThat(card.categories()).extracting(PlanCardTargetsResponse.CardCategoryAmount::category)
             .containsExactlyInAnyOrder(SpendingCategory.DINING, SpendingCategory.CAFE, SpendingCategory.TRANSPORT);
-        PlanCardTargetsResponse.CategoryAmount transport = card.categories().stream()
+        PlanCardTargetsResponse.CardCategoryAmount transport = card.categories().stream()
             .filter(c -> c.category() == SpendingCategory.TRANSPORT).findFirst().orElseThrow();
         assertThat(transport.targetAmount()).isZero();
         assertThat(transport.spentAmount()).isEqualTo(30_000);
@@ -140,6 +140,7 @@ class PlanCardTargetsServiceTest {
         when(ownedCards.list(USER)).thenReturn(List.of(card(10, 100L, "카드A")));
         when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(Map.of(10L, Map.of(SpendingCategory.DINING, 120_000L)));
         when(transactions.cardSpend(USER, MONTH.minusMonths(1))).thenReturn(Map.of(10L, 700_000L));
+        when(rules.findForCalculation(100L)).thenReturn(List.of(rule(5_000L, null)));
         when(calculator.calculate(any())).thenReturn(new BenefitResult(2_400, Map.of(SpendingCategory.DINING, 2_400L),
             true, List.of()));
 
@@ -205,6 +206,23 @@ class PlanCardTargetsServiceTest {
             true, List.of()));
 
         assertThat(onlyCard().benefitLimit().remainingAmount()).isZero();
+    }
+
+    @Test
+    @DisplayName("카드 상품에는 매칭됐지만 혜택 규칙이 없는 카드는 혜택을 0이 아니라 null로 내려주고 계산기를 부르지 않는다")
+    void matchedCardWithoutRulesHasUnknownBenefit() {
+        when(allocations.findByPlanId(PLAN)).thenReturn(List.of(allocation(10, SpendingCategory.DINING, 300_000, 0)));
+        when(ownedCards.list(USER)).thenReturn(List.of(card(10, 100L, "카드A")));
+        when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(Map.of(10L, Map.of(SpendingCategory.DINING, 120_000L)));
+        when(rules.findForCalculation(100L)).thenReturn(List.of());
+
+        CardDetail card = onlyCard();
+
+        assertThat(card.currentBenefit()).isNull();
+        assertThat(card.benefitLimit().usedAmount()).isNull();
+        assertThat(card.benefitLimit().monthlyLimit()).isNull();
+        assertThat(card.benefitLimit().remainingAmount()).isNull();
+        verify(calculator, never()).calculate(any());
     }
 
     @Test

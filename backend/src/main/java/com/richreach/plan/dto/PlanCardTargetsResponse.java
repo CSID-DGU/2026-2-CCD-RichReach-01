@@ -26,7 +26,7 @@ public record PlanCardTargetsResponse(long planId, String month, List<CardDetail
      * @param spentAmount        이번 달 사용 금액. 취소·환불을 뺀 값이다.
      * @param remainingTarget    남은 목표 금액({@code max(0, targetAmount - spentAmount)})
      * @param expectedBenefit    플랜대로 쓸 때 기대하는 예상 혜택
-     * @param currentBenefit     지금까지 쓴 금액만으로 계산한 예상 혜택. 카드 상품과 매칭되지 않았으면 null
+     * @param currentBenefit     지금까지 쓴 금액만으로 계산한 예상 혜택. 카드 상품과 매칭되지 않았거나 혜택 규칙이 없으면 null
      * @param performance        전월실적 구간과 이번 달 실적
      * @param benefitLimit       월 혜택 한도
      * @param categories         업종별 목표와 사용 금액. 목표가 있거나 이번 달에 쓴 업종이고 업종 고정 순서이다.
@@ -41,7 +41,7 @@ public record PlanCardTargetsResponse(long planId, String month, List<CardDetail
         Long currentBenefit,
         Performance performance,
         BenefitLimit benefitLimit,
-        List<CategoryAmount> categories) {
+        List<CardCategoryAmount> categories) {
 
     }
 
@@ -84,14 +84,14 @@ public record PlanCardTargetsResponse(long planId, String month, List<CardDetail
     }
 
     /**
-     * 카드 안에서 업종 하나의 목표와 사용 금액.
+     * 카드 안에서 업종 하나의 목표와 사용 금액. (예산 추천 응답의 업종별 금액과 구분하려고 이름이 다르다)
      *
      * @param category        업종
      * @param targetAmount    이 카드로 이 업종에서 쓸 목표 금액. 목표가 없는 업종이면 0
      * @param spentAmount     이번 달 이 카드로 이 업종에서 쓴 금액(취소·환불 제외)
      * @param expectedBenefit 목표대로 쓸 때 기대하는 혜택. 목표가 없는 업종이면 0
      */
-    public record CategoryAmount(SpendingCategory category, long targetAmount, long spentAmount, long expectedBenefit) {
+    public record CardCategoryAmount(SpendingCategory category, long targetAmount, long spentAmount, long expectedBenefit) {
 
     }
 

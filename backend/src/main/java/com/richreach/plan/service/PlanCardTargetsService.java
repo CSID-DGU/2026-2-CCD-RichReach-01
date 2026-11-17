@@ -14,7 +14,7 @@ import com.richreach.global.exception.ErrorCode;
 import com.richreach.plan.dto.PlanCardTargetsResponse;
 import com.richreach.plan.dto.PlanCardTargetsResponse.BenefitLimit;
 import com.richreach.plan.dto.PlanCardTargetsResponse.CardDetail;
-import com.richreach.plan.dto.PlanCardTargetsResponse.CategoryAmount;
+import com.richreach.plan.dto.PlanCardTargetsResponse.CardCategoryAmount;
 import com.richreach.plan.dto.PlanCardTargetsResponse.Performance;
 import com.richreach.plan.entity.MonthlyPlan;
 import com.richreach.plan.entity.PlanCardAllocation;
@@ -42,7 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>플랜에 배분이 있는 카드만 나온다. 목표 금액이 큰 카드부터이고, 같으면 카드 ID가 작은 쪽이 먼저다.</li>
  *   <li>이번 달 사용 금액은 승인일 기준으로 취소·환불을 뺀 값이고, 업종은 사용자가 고친 값이 먼저다.</li>
  *   <li>혜택, 구간, 한도는 카드의 혜택 규칙으로 계산한 <b>추정</b>이다. 카드 상품과 매칭되지 않은 카드나 규칙이 없는 카드는
- *       {@code null} 또는 빈 목록으로 내려가며 0이나 "한도 없음"이 아니다.</li>
+ *       {@code null} 또는 빈 목록으로 내려가며 0이나 "한도 없음"이 아니다. (혜택 규칙이 없는 카드의 혜택도 0이 아니라 null이다)</li>
  *   <li>실적 제외 조건은 문장으로만 있어서 금액에서 뺄 수 없다. 그래서 이번 달 실적은 사용 금액 그대로이고 제외 조건은 안내
  *       문구로만 내려준다.</li>
  * </ul>
@@ -96,7 +96,8 @@ public class PlanCardTargetsService {
         Long productId = card == null ? null : card.cardProductId();
 
         List<CalculationRule> cardRules = productId == null ? List.of() : rules.findForCalculation(productId);
-        Long currentBenefit = productId == null ? null : calculator
+        // 카드 상품과 매칭되지 않았거나 혜택 규칙이 없으면 혜택을 알 수 없다. 계산기는 이때 0을 돌려주므로 부르지 않는다.
+        Long currentBenefit = cardRules.isEmpty() ? null : calculator
             .calculate(new BenefitQuery(productId, spentByCategory, previousMonthSpend)).totalBenefit();
 
         return new CardDetail(cardId, card == null ? null : card.cardName(), target, spent,
@@ -127,7 +128,7 @@ public class PlanCardTargetsService {
     }
 
     /** 목표나 사용이 있는 업종을 업종 고정 순서로 모은다. */
-    private static List<CategoryAmount> categories(List<PlanCardAllocation> planned,
+    private static List<CardCategoryAmount> categories(List<PlanCardAllocation> planned,
                                                    Map<SpendingCategory, Long> spentByCategory) {
         Map<SpendingCategory, long[]> merged = new EnumMap<>(SpendingCategory.class);
         for (PlanCardAllocation allocation : planned) {
@@ -136,7 +137,7 @@ public class PlanCardTargetsService {
             values[2] += allocation.getExpectedBenefit();
         }
         spentByCategory.forEach((category, amount) -> merged.computeIfAbsent(category, key -> new long[3])[1] += amount);
-        return merged.entrySet().stream().map(entry -> new CategoryAmount(entry.getKey(), entry.getValue()[0],
+        return merged.entrySet().stream().map(entry -> new CardCategoryAmount(entry.getKey(), entry.getValue()[0],
             entry.getValue()[1], entry.getValue()[2])).toList();
     }
 
