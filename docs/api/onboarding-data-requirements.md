@@ -661,7 +661,53 @@ API가 있는 부분은 연동했고(#223, #237), 없는 부분은 화면을 그
 ### PLAN-02·03 카드별·업종별 상세
 
 - 카드 이미지, 목표 사용금액, 이번 달 사용 금액, 업종별 목표는 PLAN-01과 같은 데이터(플랜·업종별 사용계획·월 요약)로 채웁니다.
-- 카드의 전월 실적 기준, 혜택 한도·남은 한도, 예상 혜택, 혜택 요약(카드 뒷면), 업종별 사용 금액은 API가 없어 가짜 기본값입니다.
+- 카드의 전월 실적 기준, 혜택 한도·남은 한도, 예상 혜택, 업종별 사용 금액은 `GET /api/plans/{planId}/card-targets`(#273, 머지 후)로 채웁니다. 혜택 요약(카드 뒷면)은 이미 있는 `GET /api/cards/{카드상품ID}/benefits`를 씁니다.
+
+**카드별 상세** `GET /api/plans/{planId}/card-targets` (PLAN-02)
+
+```json
+{
+  "planId": 14,
+  "month": "2026-11",
+  "cards": [
+    {
+      "cardId": 3, "cardName": "신한 Deep Dream",
+      "targetAmount": 350000, "spentAmount": 238000, "remainingTarget": 112000,
+      "expectedBenefit": 14500, "currentBenefit": 9800,
+      "performance": {
+        "tiers": [300000, 700000], "previousMonthSpend": 310000, "appliedTier": 300000,
+        "currentMonthAmount": 238000, "currentMonthAmountExact": false,
+        "achievedTier": null, "nextTier": 300000, "shortfallToNextTier": 62000,
+        "exclusionNotes": ["상품권 구입액은 실적에서 제외"]
+      },
+      "benefitLimit": { "monthlyLimit": 15000, "usedAmount": 9800, "remainingAmount": 5200 },
+      "categories": [
+        { "category": "DINING", "targetAmount": 300000, "spentAmount": 120000, "expectedBenefit": 6000 }
+      ]
+    }
+  ]
+}
+```
+
+위 숫자와 이름은 형식을 보여주는 예시입니다. **`null`은 "알 수 없음"이고 0이나 "한도 없음"이 아니에요.** 화면은 `null`을 숫자 0이나 "무제한"으로 보여주면 안 됩니다.
+
+- **카드와 순서**: 플랜에 배분이 있는 카드만 나오고 목표 금액이 큰 카드부터입니다. `cardName`은 카드가 삭제됐으면 null이에요.
+- **`targetAmount`/`spentAmount`/`remainingTarget`**: 이번 달 목표, 이번 달 사용 금액(취소·환불 제외), 남은 목표(`max(0, 목표 - 사용)`). 사용 금액은 플랜의 월 기준이에요.
+- **`expectedBenefit`**: 플랜대로 쓸 때의 예상 혜택. **`currentBenefit`**: 지금까지 쓴 금액만으로 계산한 예상 혜택입니다. 카드 상품과 매칭되지 않은 카드는 null이에요.
+- **`performance`** (전월 실적 기준과 이번 달 실적)
+  - `tiers`: 혜택 규칙의 전월실적 구간 하한(원) 목록, 작은 것부터. 혜택마다 구간이 달라 여러 개일 수 있고, 규칙이 없으면 빈 목록이에요.
+  - `previousMonthSpend`: 전월 사용 금액. **이번 달 혜택의 구간**을 정하는 값이고, `appliedTier`는 그 금액이 채운 가장 높은 구간(없으면 null)입니다.
+  - `currentMonthAmount`: 이번 달 사용 금액. **다음 달 혜택의 구간**을 정하는 값이고, `achievedTier`(채운 가장 높은 구간), `nextTier`(아직 못 채운 가장 낮은 구간), `shortfallToNextTier`(다음 구간까지 남은 금액)가 따라옵니다.
+  - **`currentMonthAmountExact`는 항상 `false`입니다.** 실적에서 빠지는 결제(상품권, 세금 등)가 DB에 **문장으로만** 있어서 금액에서 뺄 수 없어요. 그래서 "이번 달 실적 인정 금액"은 사용 금액 그대로이고 카드사 실적과 다를 수 있습니다. `exclusionNotes`(제외 조건 원문, 최대 5개)를 "제외되는 결제가 있을 수 있어요" 같은 안내로 함께 보여 주세요.
+- **`benefitLimit`**: `monthlyLimit`는 전월 실적 조건을 채운 혜택들의 월 한도를 합친 **추정값**입니다(같은 한도 묶음은 한 번만 셈). **한도가 없거나 확인되지 않은 혜택이 하나라도 있으면 null**이고, 그럴 때 "한도 없음"으로 보이면 안 돼요. `usedAmount`는 `currentBenefit`와 같고, `remainingAmount`는 `max(0, 한도 - 사용)`이며 둘 중 하나라도 null이면 null입니다.
+- **`categories`**: 목표가 있거나 이번 달에 쓴 업종이고 업종 고정 순서입니다. 목표가 없는 업종은 `targetAmount`와 `expectedBenefit`가 0이에요.
+- 확인된 혜택 규칙만 구간과 한도에 쓰고, 확인 전 규칙은 쓰지 않습니다. 없거나 다른 사용자의 플랜이면 404 `PLAN-001`입니다.
+
+**업종별 상세** `GET /api/plans/{planId}/categories/{category}` (PLAN-03)
+
+- 명세의 URI입니다. `category`는 11개 업종 코드(대소문자 무시)이고, 아니면 400 `COMMON-400`이에요.
+- 응답은 `GET /api/plans/{planId}/categories`의 업종 한 줄(`category`, `targetAmount`, `spentAmount`, `expectedBenefit`, `cards[]`)과 같습니다. 플랜에 그 업종의 배분이 없어도 오류가 아니라 목표와 혜택이 0이고 `cards`가 빈 응답이에요(Empty 상태).
+- 기존 목록(`/categories`)에도 `spentAmount`(이번 달 사용 금액)를 추가했습니다. 업종 한 줄과 `cards[]` 각 줄에 있고, 기존 필드는 그대로예요.
 
 ### SETTINGS-03 카드 정보 및 연결 관리
 
@@ -670,7 +716,7 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 | 화면 요소 | 필요한 데이터 | API | 상태 |
 |---|---|---|---|
 | 카드 이미지, 혜택 요약 보기 | PLAN-02와 같음 | PLAN-02와 같음 | 🟡 PLAN-02와 같음 |
-| 카드 정보: 실적 기준, 이번 달 인정금액 | 카드 전월 실적 기준, 이번 달 실적 인정 금액 | 없음 (PLAN-02의 가짜 기본값·사용 금액을 씀) | 🟡 |
+| 카드 정보: 실적 기준, 이번 달 인정금액 | 카드 전월 실적 기준, 이번 달 실적 인정 금액 | `GET /api/plans/{planId}/card-targets`의 `performance` (#273, 인정 금액은 정확하지 않음) | 🟡 머지 후 연동 |
 | 카드 정보: 결제일, 이용기간, 연결 계정 | 결제일(예: 매월 14일), 실적 이용기간(전월 1일~말일), 가린 카드사 아이디 | 없음 (Q22) | ⬜ 실제 서버에서는 "-" |
 | 거래내역 자동 동기화 (토글) | 하루 한 번 동기화 설정 | 없음 (Q22) | ⬜ 화면 안에서만 바뀜 |
 | 플랜 분석에 포함 (토글) | 분석 대상 카드 여부 | `GET /api/cards` → `selected`, `PUT /api/cards/selection` | ✅ 연동됨 (실패하면 되돌리고 안내) |

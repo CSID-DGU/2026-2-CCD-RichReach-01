@@ -772,6 +772,76 @@
         }
       }
     },
+    "/api/plans/{planId}/categories/{category}": {
+      "get": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "category",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCategoryPlan"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{planId}/card-targets": {
+      "get": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "cardTargets",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanCardTargetsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/plans/{planId}/categories": {
       "get": {
         "tags": [
@@ -2183,6 +2253,184 @@
           }
         }
       },
+      "ApiResponseCategoryPlan": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CategoryPlan"
+          }
+        }
+      },
+      "ApiResponsePlanCardTargetsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlanCardTargetsResponse"
+          }
+        }
+      },
+      "PlanCardTargetsResponse": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "month": {
+            "type": "string"
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardDetail"
+            }
+          }
+        }
+      },
+      "CardDetail": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "targetAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "spentAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "remainingTarget": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "performance": {
+            "$ref": "#/components/schemas/Performance"
+          },
+          "benefitLimit": {
+            "$ref": "#/components/schemas/BenefitLimit"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryAmount"
+            }
+          }
+        }
+      },
+      "Performance": {
+        "type": "object",
+        "properties": {
+          "tiers": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "previousMonthSpend": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "appliedTier": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentMonthAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentMonthAmountExact": {
+            "type": "boolean"
+          },
+          "achievedTier": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nextTier": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "shortfallToNextTier": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "exclusionNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "BenefitLimit": {
+        "type": "object",
+        "properties": {
+          "monthlyLimit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "usedAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "remainingAmount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CategoryAmount": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "targetAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "spentAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedBenefit": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ApiResponsePlanCategoriesResponse": {
         "type": "object",
         "properties": {
@@ -2214,6 +2462,10 @@
             "type": "integer",
             "format": "int64"
           },
+          "spentAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
           "expectedBenefit": {
             "type": "integer",
             "format": "int64"
@@ -2240,6 +2492,10 @@
             ]
           },
           "targetAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "spentAmount": {
             "type": "integer",
             "format": "int64"
           },
