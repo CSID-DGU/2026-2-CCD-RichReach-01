@@ -78,6 +78,20 @@ public interface CardTransactionRepository extends JpaRepository<CardTransaction
                                   @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
     /**
+     * 사용자의 거래를 보유카드와 업종별로 모은 금액. 기간과 금액 규칙은 {@link #sumByCategory}와 같다. 월간 플랜 재계산이
+     * 이미 승인된 소비를 카드·업종별로 고정할 때 쓴다.
+     */
+    @Query("""
+        select new com.richreach.transaction.repository.CardCategoryTotal(
+            t.userCardId, coalesce(t.categoryOverride, t.category), sum(t.amount - t.canceledAmount))
+        from CardTransaction t
+        where t.userId = :userId and t.approvedAt >= :from and t.approvedAt < :to
+        group by t.userCardId, coalesce(t.categoryOverride, t.category)
+        """)
+    List<CardCategoryTotal> sumByCardAndCategory(@Param("userId") Long userId, @Param("from") LocalDateTime from,
+                                                 @Param("to") LocalDateTime to);
+
+    /**
      * 사용자의 거래 중 가장 오래된 승인일시. 거래가 없으면 null.
      * {@code allCards}가 false이면 {@code cardIds}에 든 카드의 거래만 본다. ({@code cardIds}는 비어 있으면 안 된다.)
      */

@@ -7,6 +7,7 @@ import com.richreach.codef.client.CodefApprovalClient.ApprovalListResult;
 import com.richreach.codef.client.CodefApprovalClient.CodefApproval;
 import com.richreach.codef.config.CodefCollectProperties;
 import com.richreach.codef.entity.CardCompany;
+import com.richreach.global.event.TransactionsChangedEvent;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.transaction.dto.CollectedTransaction;
 import com.richreach.transaction.service.TransactionStoreService;
@@ -22,6 +23,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
@@ -61,6 +63,7 @@ public class ApprovalCollector {
     private final OwnedCardQueryService ownedCards;
     private final TransactionStoreService store;
     private final CodefCollectProperties properties;
+    private final ApplicationEventPublisher events;
     private final Clock clock;
 
     /**
@@ -180,6 +183,11 @@ public class ApprovalCollector {
 
         String status = succeeded == 0 ? FAILED : succeeded >= expected ? SUCCESS : PARTIAL;
         Range range = rangeAfter(today, coveredOldest, usable, refreshMonth, cardIds);
+        if (saved > 0) {
+            // 거래가 새로 저장되거나 갱신되었으니 이번 달 플랜이 있으면 남은 기간을 다시 계산하도록 알린다.
+            events.publishEvent(new TransactionsChangedEvent(userId, YearMonth.from(today),
+                TransactionsChangedEvent.Reason.SYNCED));
+        }
         // 건수만 남긴다.
         log.info("승인내역 수집: 상태={}, 수집한 달={}/{}, 건너뜀={}, 저장={}건, 카드 못 찾음={}건", status, succeeded, expected,
             skipped, saved, unmatched);

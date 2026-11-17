@@ -3,6 +3,7 @@ package com.richreach.transaction.service;
 import com.richreach.card.dto.OwnedCardResponse;
 import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.codef.service.CollectionRangeQueryService;
+import com.richreach.global.category.SpendingCategory;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
 import com.richreach.transaction.dto.CardScope;
@@ -10,6 +11,7 @@ import com.richreach.transaction.dto.SummaryMonth;
 import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionSummaryResponse;
 import com.richreach.transaction.dto.TransactionSummaryResponse.CardSummary;
+import com.richreach.transaction.repository.CardCategoryTotal;
 import com.richreach.transaction.repository.CardTotal;
 import com.richreach.transaction.repository.CardTransactionRepository;
 import com.richreach.transaction.repository.CategoryTotal;
@@ -134,6 +136,27 @@ public class TransactionSummaryService {
         LocalDateTime end = month.plusMonths(1).atDay(1).atStartOfDay();
         return transactions.sumByCard(userId, start, end).stream()
             .collect(Collectors.toMap(CardTotal::userCardId, total -> valueOf(total.netAmount())));
+    }
+
+    /**
+     * 한 달(달력 기준, 승인일) 동안 보유카드와 업종별로 쓴 금액(원). 취소·환불을 뺀 값이고 업종은 사용자가 고친 값이 먼저다.
+     * 11개 업종이 아니거나 분류 전인 거래는 기타({@code ETC})로 모은다. 소비가 없는 카드와 업종은 결과에 없다.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, Map<SpendingCategory, Long>> cardCategorySpend(long userId, YearMonth month) {
+        LocalDateTime start = month.atDay(1).atStartOfDay();
+        LocalDateTime end = month.plusMonths(1).atDay(1).atStartOfDay();
+        Map<Long, Map<SpendingCategory, Long>> result = new java.util.HashMap<>();
+        for (CardCategoryTotal total : transactions.sumByCardAndCategory(userId, start, end)) {
+            long amount = valueOf(total.netAmount());
+            if (amount <= 0) {
+                continue;
+            }
+            SpendingCategory category = SpendingCategory.fromCode(total.category()).orElse(SpendingCategory.ETC);
+            result.computeIfAbsent(total.userCardId(), id -> new java.util.EnumMap<>(SpendingCategory.class))
+                .merge(category, amount, Long::sum);
+        }
+        return result;
     }
 
     private static long valueOf(Long value) {

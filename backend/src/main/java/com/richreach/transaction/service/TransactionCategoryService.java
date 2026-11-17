@@ -2,12 +2,15 @@ package com.richreach.transaction.service;
 
 import com.richreach.global.category.SpendingCategory;
 import com.richreach.global.exception.BusinessException;
+import com.richreach.global.event.TransactionsChangedEvent;
 import com.richreach.global.exception.ErrorCode;
 import com.richreach.transaction.dto.TransactionResponse;
 import com.richreach.transaction.entity.CardTransaction;
 import com.richreach.transaction.repository.CardTransactionRepository;
+import java.time.YearMonth;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,11 +26,13 @@ public class TransactionCategoryService {
 
     private final CardTransactionRepository transactions;
     private final TransactionBenefitService benefits;
+    private final ApplicationEventPublisher events;
 
     @Transactional
     public TransactionResponse change(long userId, long transactionId, SpendingCategory category) {
         CardTransaction transaction = find(userId, transactionId);
         transaction.overrideCategory(category.name());
+        publishChanged(userId, transaction);
         return withBenefit(userId, TransactionResponse.from(transaction));
     }
 
@@ -36,7 +41,14 @@ public class TransactionCategoryService {
     public TransactionResponse reset(long userId, long transactionId) {
         CardTransaction transaction = find(userId, transactionId);
         transaction.overrideCategory(null);
+        publishChanged(userId, transaction);
         return withBenefit(userId, TransactionResponse.from(transaction));
+    }
+
+    /** 업종이 바뀌면 그달의 카드·업종별 소비가 달라지므로, 플랜 쪽이 남은 기간을 다시 계산하도록 알린다. (커밋된 뒤에 처리된다) */
+    private void publishChanged(long userId, CardTransaction transaction) {
+        events.publishEvent(new TransactionsChangedEvent(userId, YearMonth.from(transaction.getApprovedAt()),
+            TransactionsChangedEvent.Reason.CATEGORY_EDITED));
     }
 
     /** 업종이 바뀌면 혜택도 달라질 수 있어서, 고친 뒤의 예상 혜택을 함께 돌려준다. */
