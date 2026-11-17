@@ -69,6 +69,11 @@ public enum ErrorCode {
     PLAN_CHAT_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "PLAN-008", "대화 응답 시간이 초과되었습니다. 다시 시도해 주세요."),
     PLAN_CHANGE_NOT_FOUND(HttpStatus.NOT_FOUND, "PLAN-009", "플랜 변경 기록을 찾을 수 없습니다."),
 
+    // 예정지출
+    EXPENSE_NOT_FOUND(HttpStatus.NOT_FOUND, "EXPENSE-001", "예정지출을 찾을 수 없습니다."),
+    INVALID_EXPENSE(HttpStatus.BAD_REQUEST, "EXPENSE-002", "예정지출 정보가 올바르지 않습니다."),
+    EXPENSE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "EXPENSE-003", "한 달에 등록할 수 있는 예정지출 개수를 넘었습니다."),
+
     // 추천
     INSUFFICIENT_RECOMMENDATION_INPUT(HttpStatus.BAD_REQUEST, "RECOMMEND-001", "추천에 필요한 정보가 부족합니다."),
     RECOMMENDATION_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "RECOMMEND-002", "추천 계산 시간이 초과되었습니다. 다시 시도해 주세요."),
