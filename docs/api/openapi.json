@@ -17,6 +17,106 @@
     }
   ],
   "paths": {
+    "/api/plans/budget": {
+      "put": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "updateBudget",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanJobStartResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/planned-expenses/{expenseId}": {
+      "put": {
+        "tags": [
+          "planned-expense-controller"
+        ],
+        "operationId": "updatePlannedExpense",
+        "parameters": [
+          {
+            "name": "expenseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlannedExpenseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlannedExpenseResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "planned-expense-controller"
+        ],
+        "operationId": "deletePlannedExpense",
+        "parameters": [
+          {
+            "name": "expenseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/cards/selection": {
       "put": {
         "tags": [
@@ -98,6 +198,94 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePlanJobStartResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/chat/preview": {
+      "post": {
+        "tags": [
+          "plan-chat-controller"
+        ],
+        "operationId": "preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/planned-expenses": {
+      "get": {
+        "tags": [
+          "planned-expense-controller"
+        ],
+        "operationId": "listPlannedExpenses",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlannedExpensesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "planned-expense-controller"
+        ],
+        "operationId": "createPlannedExpense",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlannedExpenseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlannedExpenseResponse"
                 }
               }
             }
@@ -571,6 +759,37 @@
         }
       }
     },
+    "/api/plans/changes/{changeId}/confirm": {
+      "patch": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "confirmChange",
+        "parameters": [
+          {
+            "name": "changeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseChange"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/password": {
       "patch": {
         "tags": [
@@ -744,7 +963,6 @@
             "name": "month",
             "in": "query",
             "required": false,
-            "description": "월 조회(yyyy-MM). 있으면 period보다 우선하고 그달 1일~말일(이번 달은 오늘까지)을 집계한다. 형식 오류와 아직 오지 않은 월은 400 COMMON-400",
             "schema": {
               "type": "string"
             }
@@ -765,6 +983,68 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseTransactionSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{planId}/changes": {
+      "get": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "changes",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanChangesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{planId}/categories": {
+      "get": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "categories",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanCategoriesResponse"
                 }
               }
             }
@@ -835,129 +1115,6 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePlanCardTargetsResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/plans/{planId}/categories": {
-      "get": {
-        "tags": [
-          "plan-controller"
-        ],
-        "operationId": "categories",
-        "parameters": [
-          {
-            "name": "planId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePlanCategoriesResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/plans/budget": {
-      "put": {
-        "tags": [
-          "plan-controller"
-        ],
-        "operationId": "updateBudget",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PlanCreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePlanJobStartResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/plans/{planId}/changes": {
-      "get": {
-        "tags": [
-          "plan-controller"
-        ],
-        "operationId": "changes",
-        "parameters": [
-          {
-            "name": "planId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePlanChangesResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/plans/changes/{changeId}/confirm": {
-      "patch": {
-        "tags": [
-          "plan-controller"
-        ],
-        "operationId": "confirmChange",
-        "parameters": [
-          {
-            "name": "changeId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseChange"
                 }
               }
             }
@@ -1129,6 +1286,141 @@
   },
   "components": {
     "schemas": {
+      "Budget": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "byCategory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryBudget"
+            }
+          }
+        }
+      },
+      "CategoryBudget": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PlanCreateRequest": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/Budget"
+          }
+        }
+      },
+      "ApiResponsePlanJobStartResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlanJobStartResponse"
+          }
+        }
+      },
+      "PlanJobStartResponse": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          }
+        }
+      },
+      "PlannedExpenseRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "installmentMonths": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "category": {
+            "type": "string"
+          },
+          "budgetMethod": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponsePlannedExpenseResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlannedExpenseResponse"
+          }
+        }
+      },
+      "PlannedExpenseResponse": {
+        "type": "object",
+        "properties": {
+          "expenseId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "month": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "installmentMonths": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "monthlyAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "category": {
+            "type": "string"
+          },
+          "budgetMethod": {
+            "type": "string"
+          }
+        }
+      },
       "SelectCardsRequest": {
         "type": "object",
         "properties": {
@@ -1217,45 +1509,38 @@
           }
         }
       },
-      "Budget": {
+      "PlanChatRequest": {
         "type": "object",
         "properties": {
-          "total": {
-            "type": "integer",
-            "format": "int64"
+          "message": {
+            "type": "string"
           },
-          "byCategory": {
+          "currentPlan": {
+            "$ref": "#/components/schemas/PlanCreateRequest"
+          },
+          "currentPreference": {
+            "type": "string"
+          },
+          "history": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CategoryBudget"
+              "$ref": "#/components/schemas/Turn"
             }
           }
         }
       },
-      "CategoryBudget": {
+      "Turn": {
         "type": "object",
         "properties": {
-          "category": {
+          "role": {
             "type": "string"
           },
-          "amount": {
-            "type": "integer",
-            "format": "int64"
+          "content": {
+            "type": "string"
           }
         }
       },
-      "PlanCreateRequest": {
-        "type": "object",
-        "properties": {
-          "month": {
-            "type": "string"
-          },
-          "budget": {
-            "$ref": "#/components/schemas/Budget"
-          }
-        }
-      },
-      "ApiResponsePlanJobStartResponse": {
+      "ApiResponsePlanChatResponse": {
         "type": "object",
         "properties": {
           "success": {
@@ -1268,14 +1553,26 @@
             "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/PlanJobStartResponse"
+            "$ref": "#/components/schemas/PlanChatResponse"
           }
         }
       },
-      "PlanJobStartResponse": {
+      "PlanChatResponse": {
         "type": "object",
         "properties": {
-          "jobId": {
+          "reply": {
+            "type": "string"
+          },
+          "needsClarification": {
+            "type": "boolean"
+          },
+          "requiresConfirmation": {
+            "type": "boolean"
+          },
+          "proposedPlan": {
+            "$ref": "#/components/schemas/PlanCreateRequest"
+          },
+          "proposedPreference": {
             "type": "string"
           }
         }
@@ -1876,6 +2173,117 @@
           }
         }
       },
+      "ApiResponseChange": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Change"
+          }
+        }
+      },
+      "Change": {
+        "type": "object",
+        "properties": {
+          "changeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "planId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "previousPlanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "reasonText": {
+            "type": "string"
+          },
+          "previousBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "benefitDelta": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmed": {
+            "type": "boolean"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          }
+        }
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "cardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "previousCardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "previousCardName": {
+            "type": "string"
+          },
+          "previousAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentAmount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "PasswordResetRequest": {
         "type": "object",
         "properties": {
@@ -2036,8 +2444,7 @@
             "type": "string"
           },
           "month": {
-            "type": "string",
-            "description": "월 조회의 월(yyyy-MM). 기간 조회면 null"
+            "type": "string"
           },
           "from": {
             "type": "string",
@@ -2167,23 +2574,6 @@
           }
         }
       },
-      "ApiResponseChange": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/Change"
-          }
-        }
-      },
       "PlanChangesResponse": {
         "type": "object",
         "properties": {
@@ -2199,265 +2589,6 @@
             "items": {
               "$ref": "#/components/schemas/Change"
             }
-          }
-        }
-      },
-      "Change": {
-        "type": "object",
-        "properties": {
-          "changeId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "planId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "previousPlanId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "reasonCode": {
-            "type": "string"
-          },
-          "reasonText": {
-            "type": "string"
-          },
-          "previousBenefit": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "currentBenefit": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "benefitDelta": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "confirmed": {
-            "type": "boolean"
-          },
-          "changedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Item"
-            }
-          }
-        }
-      },
-      "Item": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string"
-          },
-          "category": {
-            "type": "string"
-          },
-          "cardId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "cardName": {
-            "type": "string"
-          },
-          "previousCardId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "previousCardName": {
-            "type": "string"
-          },
-          "previousAmount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "currentAmount": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "ApiResponseCategoryPlan": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/CategoryPlan"
-          }
-        }
-      },
-      "ApiResponsePlanCardTargetsResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/PlanCardTargetsResponse"
-          }
-        }
-      },
-      "PlanCardTargetsResponse": {
-        "type": "object",
-        "properties": {
-          "planId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "month": {
-            "type": "string"
-          },
-          "cards": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CardDetail"
-            }
-          }
-        }
-      },
-      "CardDetail": {
-        "type": "object",
-        "properties": {
-          "cardId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "cardName": {
-            "type": "string"
-          },
-          "targetAmount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "spentAmount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "remainingTarget": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "expectedBenefit": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "currentBenefit": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "performance": {
-            "$ref": "#/components/schemas/Performance"
-          },
-          "benefitLimit": {
-            "$ref": "#/components/schemas/BenefitLimit"
-          },
-          "categories": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CardCategoryAmount"
-            }
-          }
-        }
-      },
-      "Performance": {
-        "type": "object",
-        "properties": {
-          "tiers": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          "previousMonthSpend": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "appliedTier": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "currentMonthAmount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "currentMonthAmountExact": {
-            "type": "boolean"
-          },
-          "achievedTier": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "nextTier": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "shortfallToNextTier": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "exclusionNotes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "BenefitLimit": {
-        "type": "object",
-        "properties": {
-          "monthlyLimit": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "usedAmount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "remainingAmount": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "CardCategoryAmount": {
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string"
-          },
-          "targetAmount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "spentAmount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "expectedBenefit": {
-            "type": "integer",
-            "format": "int64"
           }
         }
       },
@@ -2555,6 +2686,197 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CategoryPlan"
+            }
+          }
+        }
+      },
+      "ApiResponseCategoryPlan": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CategoryPlan"
+          }
+        }
+      },
+      "ApiResponsePlanCardTargetsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlanCardTargetsResponse"
+          }
+        }
+      },
+      "BenefitLimit": {
+        "type": "object",
+        "properties": {
+          "monthlyLimit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "usedAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "remainingAmount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CardCategoryAmount": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "targetAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "spentAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedBenefit": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CardDetail": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "targetAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "spentAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "remainingTarget": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentBenefit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "performance": {
+            "$ref": "#/components/schemas/Performance"
+          },
+          "benefitLimit": {
+            "$ref": "#/components/schemas/BenefitLimit"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardCategoryAmount"
+            }
+          }
+        }
+      },
+      "Performance": {
+        "type": "object",
+        "properties": {
+          "tiers": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "previousMonthSpend": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "appliedTier": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentMonthAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentMonthAmountExact": {
+            "type": "boolean"
+          },
+          "achievedTier": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nextTier": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "shortfallToNextTier": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "exclusionNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PlanCardTargetsResponse": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "month": {
+            "type": "string"
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardDetail"
             }
           }
         }
@@ -2733,6 +3055,57 @@
             "items": {
               "$ref": "#/components/schemas/CategoryAmount"
             }
+          }
+        }
+      },
+      "ApiResponsePlannedExpensesResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlannedExpensesResponse"
+          }
+        }
+      },
+      "PlannedExpensesResponse": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "expenses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlannedExpenseResponse"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Summary"
+          }
+        }
+      },
+      "Summary": {
+        "type": "object",
+        "properties": {
+          "withinBudget": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "extra": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

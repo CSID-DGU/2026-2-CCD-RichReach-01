@@ -20,7 +20,7 @@ public record PlanChangesResponse(long planId, String month, List<Change> change
      * @param changeId        변경 기록 ID. 확인 처리에 쓴다.
      * @param planId          바뀐 뒤의 플랜 ID
      * @param previousPlanId  바뀌기 전의 플랜 ID. 지워졌으면 null
-     * @param reasonCode      변경 원인 코드(TRANSACTION_SYNCED, CATEGORY_EDITED)
+     * @param reasonCode      변경 원인 코드(TRANSACTION_SYNCED, CATEGORY_EDITED, BUDGET_CHANGED, PLANNED_EXPENSE_CHANGED)
      * @param reasonText      사용자에게 그대로 보여줄 변경 이유. 고정 문구다.
      * @param previousBenefit 바뀌기 전 예상 혜택(원)
      * @param currentBenefit  바뀐 뒤 예상 혜택(원)
