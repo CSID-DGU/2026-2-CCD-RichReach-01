@@ -1,4 +1,3 @@
-import '../../../core/demo/app_clock.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_config.dart';
 import '../../onboarding/data/card_repository.dart';
@@ -88,21 +87,18 @@ class FakeSpendingRepository implements SpendingRepository {
 }
 
 /// 백엔드 API로 한 달 사용 내역을 만든다 (홈 최근 사용 내역, 거래내역 HOME-03~05).
-/// - 총 사용금액·건수: `GET /api/transactions/summary?month=` (그달 1일~말일, 이번 달은 오늘까지)
-/// - 거래 목록: `GET /api/transactions?period=`. 목록에는 아직 월 조건이 없어(연동 문서 Q19)
-///   그달을 덮는 가장 짧은 기간으로 받은 뒤 앱에서 그달 거래만 남긴다.
+/// - 총 사용금액·건수·예상 혜택 합계: `GET /api/transactions/summary?month=` (그달 1일~말일, 이번 달은 오늘까지)
+/// - 거래 목록과 거래별 예상 혜택: `GET /api/transactions?month=` (백엔드 #269·#270)
 /// - 동기화 완료: `GET /api/connections`의 카드사가 모두 `SUCCESS`
 /// - 카드 이미지·이름: `GET /api/cards`에서 `cardId`로 찾는다.
 ///
 /// 범위는 서버 기본값(분석 대상 카드, `cardScope=SELECTED`)이라 월간 플랜의 사용 금액과 같다 (Q20).
-/// 거래별 혜택과 혜택 합계는 API가 없어(Q16) 0과 null로 둔다.
+/// 예상 혜택은 카드 혜택 규칙으로 계산한 추정값이다. 계산할 수 없는 거래(`null`)는 0으로 두어 표시하지 않는다.
 class ApiSpendingRepository implements SpendingRepository {
-  ApiSpendingRepository(this._api, this._cards, {DateTime Function()? now})
-    : _now = now ?? appNow;
+  const ApiSpendingRepository(this._api, this._cards);
 
   final ApiClient _api;
   final CardRepository _cards;
-  final DateTime Function() _now;
 
   /// 한 번에 받을 거래 수 (서버 최대값)
   static const pageSize = 100;
@@ -112,15 +108,16 @@ class ApiSpendingRepository implements SpendingRepository {
 
   @override
   Future<SpendingHistory> fetchHistory(DateTime month) async {
+    final code = _monthCode(month);
     final (summary, statuses, cards, items) = await (
       _api.get(
         ApiPaths.transactionSummary,
-        query: {'month': _monthCode(month)},
+        query: {'month': code},
         parse: _MonthSummary.fromJson,
       ),
       _api.get(ApiPaths.connections, parse: _syncStatuses),
       _cards.fetchCards(const []),
-      _fetchMonthTransactions(month),
+      _fetchMonthTransactions(code),
     ).wait;
 
     final cardsById = {for (final card in cards) card.id: card};
@@ -128,7 +125,7 @@ class ApiSpendingRepository implements SpendingRepository {
       month: DateTime(month.year, month.month),
       totalAmount: summary.totalAmount,
       count: summary.transactionCount,
-      totalBenefit: null,
+      totalBenefit: summary.benefitAmount,
       synced:
           statuses.isNotEmpty &&
           statuses.every((status) => status == 'SUCCESS'),
@@ -143,7 +140,7 @@ class ApiSpendingRepository implements SpendingRepository {
                   : item.merchantName,
               category: item.category,
               amount: item.netAmount,
-              benefit: 0,
+              benefit: item.benefitAmount ?? 0,
               approvedAt: item.approvedAt,
             ),
       ],
@@ -151,16 +148,13 @@ class ApiSpendingRepository implements SpendingRepository {
   }
 
   /// [month]의 거래(최근 것부터). 전액 취소된 거래는 요약의 건수와 맞추려고 뺀다.
-  Future<List<_SpendingItem>> _fetchMonthTransactions(DateTime month) async {
-    final start = DateTime(month.year, month.month);
-    final next = DateTime(month.year, month.month + 1);
-    final period = _periodCovering(start);
+  Future<List<_SpendingItem>> _fetchMonthTransactions(String month) async {
     final items = <_SpendingItem>[];
     for (var page = 0; page < maxPages; page++) {
       final result = await _api.get(
         ApiPaths.transactions,
         query: {
-          'period': ?period,
+          'month': month,
           'includeCanceled': 'false',
           'page': page,
           'size': pageSize,
@@ -168,29 +162,9 @@ class ApiSpendingRepository implements SpendingRepository {
         parse: _SpendingPage.fromJson,
       );
       items.addAll(result.content);
-      // 최신순이라 그달보다 앞선 거래가 나오면 더 받을 필요가 없다.
-      final reachedEarlier = result.content.any(
-        (item) => item.approvedAt.isBefore(start),
-      );
-      if (!result.hasNext || reachedEarlier) break;
+      if (!result.hasNext) break;
     }
-    return [
-      for (final item in items)
-        if (!item.approvedAt.isBefore(start) && item.approvedAt.isBefore(next))
-          item,
-    ];
-  }
-
-  /// [month] 1일을 포함하는 가장 짧은 조회 기간 (오늘 기준 최근 1·3·6개월). 더 오래전이면 전체 기간(null).
-  String? _periodCovering(DateTime month) {
-    final now = _now();
-    final monthsAgo = (now.year - month.year) * 12 + now.month - month.month;
-    return switch (monthsAgo) {
-      <= 0 => '1M',
-      <= 2 => '3M',
-      <= 5 => '6M',
-      _ => null,
-    };
+    return items;
   }
 
   static String _monthCode(DateTime month) =>
@@ -207,16 +181,21 @@ class _MonthSummary {
   const _MonthSummary({
     required this.totalAmount,
     required this.transactionCount,
+    required this.benefitAmount,
   });
 
   final int totalAmount;
   final int transactionCount;
+
+  /// 그달 예상 혜택 합계. 계산할 수 있는 카드가 없으면 null.
+  final int? benefitAmount;
 
   static _MonthSummary fromJson(Object? data) {
     final json = data as Map;
     return _MonthSummary(
       totalAmount: json['totalAmount'] as int? ?? 0,
       transactionCount: json['transactionCount'] as int? ?? 0,
+      benefitAmount: json['benefitAmount'] as int?,
     );
   }
 }
@@ -248,6 +227,7 @@ class _SpendingItem {
     required this.category,
     required this.netAmount,
     required this.approvedAt,
+    required this.benefitAmount,
   });
 
   final String cardId;
@@ -255,6 +235,9 @@ class _SpendingItem {
   final SpendingCategory category;
   final int netAmount;
   final DateTime approvedAt;
+
+  /// 예상 혜택. 계산할 수 없는 거래(카드 상품을 모르는 카드)는 null.
+  final int? benefitAmount;
 
   static final _categories = {
     for (final c in SpendingCategory.values) c.code: c,
@@ -266,5 +249,6 @@ class _SpendingItem {
     category: _categories[json['category']] ?? SpendingCategory.etc,
     netAmount: json['netAmount'] as int,
     approvedAt: DateTime.parse(json['approvedAt'] as String),
+    benefitAmount: json['benefitAmount'] as int?,
   );
 }

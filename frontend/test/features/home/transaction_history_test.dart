@@ -49,7 +49,7 @@ void main() {
     expect(findText('동기화 완료'), findsOneWidget);
     expect(findText('486,000원'), findsOneWidget);
     expect(findText('34건'), findsOneWidget);
-    expect(findText('받은 혜택 +18,600원'), findsOneWidget);
+    expect(findText('예상 혜택 +18,600원'), findsOneWidget);
 
     expect(findText('10월 24일'), findsOneWidget);
     expect(findText('합계 32,700원'), findsOneWidget);
@@ -62,7 +62,7 @@ void main() {
     }
   });
 
-  testWidgets('혜택 정보가 없으면 받은 혜택과 거래별 혜택을 빼고 보여준다', (tester) async {
+  testWidgets('혜택 정보가 없으면 예상 혜택 합계와 거래별 혜택을 빼고 보여준다', (tester) async {
     await pumpAppAt(
       tester,
       AppRoute.transactionHistory,
@@ -70,7 +70,7 @@ void main() {
     );
 
     expect(findText('486,000원'), findsOneWidget);
-    expect(find.textContaining('받은 혜택'), findsNothing);
+    expect(find.textContaining('예상 혜택'), findsNothing);
     expect(find.textContaining('+420원'), findsNothing);
     expect(findText('GS25'), findsOneWidget);
   });
