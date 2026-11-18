@@ -21,18 +21,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 카드사 연결 하나를 해제한다. 순서가 중요하다.
+ * 카드사 연결 하나를 해제한다. 순서가 중요하다. <b>되돌릴 수 없는 CODEF 호출을 마지막 단계로 두어서</b>, 그 앞의 이쪽
+ * 변경이 실패하면 CODEF는 건드리지 않고, CODEF가 실패하면 이쪽 변경을 모두 되돌린다.
  *
  * <ol>
- *   <li>CODEF에서 그 카드사 계정을 지운다. 지우지 못하면(CODEF 장애 등) {@code CONN-005}로 끝내고 이쪽 데이터는 그대로 둔다.
- *       CODEF에 로그인 정보가 남은 채 연결이 해제된 것처럼 보이는 일이 없게 하려는 것이다. 사용자는 다시 해제를 시도하면 된다.</li>
  *   <li>그 카드사에서 수집한 <b>카드와 거래, 플랜 배분을 지운다.</b> (다시 연결했을 때 같은 카드와 거래가 겹쳐 쌓이지 않는다)
  *       이미 만든 월간 플랜 자체와 변경 기록은 남는다.</li>
  *   <li>계정은 지우지 않고 해제 상태({@code DELETED})로 표시한다. (동기화 작업 기록이 참조한다) 같은 카드사를 다시 연결하면
- *       새 계정이 만들어진다.</li>
+ *       새 계정이 만들어진다. 이 시점에 DB에 반영해서(flush), DB 쪽 오류가 CODEF를 부르기 전에 드러나게 한다.</li>
+ *   <li>CODEF에서 그 카드사 계정을 지운다. 지우지 못하면(CODEF 장애 등) {@code CONN-005}로 끝내고, 트랜잭션이 위의 변경을
+ *       모두 되돌려서 데이터는 그대로 남는다. CODEF에 로그인 정보가 남은 채 연결이 해제된 것처럼 보이는 일이 없다. 사용자는
+ *       다시 해제를 시도하면 된다.</li>
  *   <li>이번 달 플랜의 남은 기간을 다시 계산하도록 알린다. (커밋된 뒤에 처리된다) 분석 대상 카드가 하나도 남지 않으면
  *       재계산은 실패로 기록되고, 이전 플랜이 그대로 남는다.</li>
  * </ol>
+ * <b>남은 위험</b>: CODEF 삭제에 성공한 직후 커밋이 실패하면 CODEF에서는 지워졌는데 이쪽은 연결 상태로 남는다. 이때 다시 해제하면
+ * CODEF가 이미 삭제된 계정에 어떤 응답을 주는지에 따라 실패할 수 있다. 그 응답은 아직 확인하지 못해서, 확인한 뒤 "이미 삭제됨"을
+ * 성공으로 처리하는 것을 후속으로 한다.
  * 없거나 이미 해제했거나 다른 사용자의 계정은 {@code CONN-001}로 같게 응답한다. 동기화가 진행 중이면 {@code CONN-007}이다.
  * 계정이 잠긴 상태여도 해제할 수 있다. 카드사 아이디와 비밀번호는 다루지 않고, 로그에는 카드사만 남긴다.
  *
@@ -69,11 +74,13 @@ public class ConnectionDisconnectService {
             throw new BusinessException(ErrorCode.SYNC_ALREADY_RUNNING);
         }
 
-        authenticator.disconnect(account.getConnection().getConnectedId(), company);
-
         int deleted = ownedCards.deleteAllOfAccount(userId, account.getId());
         account.disconnect();
-        orgAccounts.save(account);
+        // 지금 DB에 반영해서, DB 쪽 오류가 있으면 되돌릴 수 없는 CODEF 호출 전에 드러나게 한다.
+        orgAccounts.saveAndFlush(account);
+
+        // 마지막 단계. 실패하면 예외가 트랜잭션을 되돌려 위의 삭제와 해제 표시가 모두 취소된다.
+        authenticator.disconnect(account.getConnection().getConnectedId(), company);
         log.info("카드사 연결 해제: company={}, cards={}", company, deleted);
 
         events.publishEvent(new TransactionsChangedEvent(userId, YearMonth.now(clock),

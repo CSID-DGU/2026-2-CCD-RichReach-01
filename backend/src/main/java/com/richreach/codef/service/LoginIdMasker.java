@@ -18,10 +18,11 @@ final class LoginIdMasker {
             return null;
         }
         String id = loginId.strip();
-        int visible = id.length() <= VISIBLE ? 1 : VISIBLE;
-        // 이모지처럼 두 칸을 쓰는 글자가 중간에서 잘리지 않게 글자(코드 포인트) 단위로 자른다.
-        int end = id.offsetByCodePoints(0, Math.min(visible, id.codePointCount(0, id.length())));
-        return id.substring(0, end) + MASK;
+        // 이모지처럼 두 칸(UTF-16)을 쓰는 글자가 있어도 글자(코드 포인트) 수로 세고 자른다. length()로 판정하면 "a😀"가
+        // 3으로 세어져 두 글자를 모두 남기는 일이 생긴다.
+        int characters = id.codePointCount(0, id.length());
+        int visible = characters <= VISIBLE ? 1 : VISIBLE;
+        return id.substring(0, id.offsetByCodePoints(0, visible)) + MASK;
     }
 
 }

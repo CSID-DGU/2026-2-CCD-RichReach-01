@@ -34,8 +34,11 @@ import com.richreach.global.exception.ErrorCode;
 import com.richreach.user.entity.User;
 import com.richreach.user.repository.UserRepository;
 import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,8 +48,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -79,6 +85,19 @@ class CardSettingsApiTest {
     private static final String KB = "0301";
     private static final String SHINHAN = "0306";
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
+    /** 서비스와 테스트가 같은 시각을 보도록 고정한 시계. 달이 바뀌는 시점에 기대 기간이 어긋나지 않게 한다. */
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul"));
+
+    @TestConfiguration
+    static class FixedClockConfig {
+
+        @Bean
+        @Primary
+        Clock fixedClock() {
+            return CLOCK;
+        }
+
+    }
 
     @MockitoBean
     private CodefAccountClient codef;
@@ -173,7 +192,7 @@ class CardSettingsApiTest {
     void cardSettings() throws Exception {
         CodefOrgAccount account = connect(user, KB);
         OwnedCard card = card(user, account, CardCompany.KB, "테스트 카드", "1111");
-        YearMonth previous = YearMonth.now().minusMonths(1);
+        YearMonth previous = YearMonth.now(CLOCK).minusMonths(1);
 
         call(get("/api/cards/" + card.getId() + "/settings"), token).andExpect(status().isOk())
             .andExpect(jsonPath("$.data.cardId").value(card.getId()))

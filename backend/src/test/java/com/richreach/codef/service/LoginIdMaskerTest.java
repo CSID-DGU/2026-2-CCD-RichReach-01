@@ -40,6 +40,20 @@ class LoginIdMaskerTest {
     }
 
     @Test
+    @DisplayName("짧은 아이디도 글자 수로 판정해서, 이모지가 섞여도 원문 전체가 남지 않는다")
+    void shortIdsAreJudgedByCharacterCount() {
+        // 두 글자(a + 이모지)는 UTF-16으로는 3칸이지만 2자 이하이므로 앞 1자만 남긴다.
+        assertThat(LoginIdMasker.mask("a😀")).isEqualTo("a***");
+        assertThat(LoginIdMasker.mask("😀a")).isEqualTo("😀***");
+        assertThat(LoginIdMasker.mask("😀")).isEqualTo("😀***");
+        // 세 글자부터는 앞 2자를 남긴다.
+        assertThat(LoginIdMasker.mask("a😀b")).isEqualTo("a😀***");
+        // 기존 결과는 그대로다.
+        assertThat(LoginIdMasker.mask("ab")).isEqualTo("a***");
+        assertThat(LoginIdMasker.mask("abc")).isEqualTo("ab***");
+    }
+
+    @Test
     @DisplayName("가린 값에 원문의 나머지가 들어 있지 않다")
     void doesNotLeakTheRest() {
         assertThat(LoginIdMasker.mask("secret-login-id")).doesNotContain("cret").doesNotContain("login");
