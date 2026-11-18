@@ -73,6 +73,33 @@ class CodefAccountClientTest {
     }
 
     @Test
+    @DisplayName("연결 해제는 delete 경로로 connectedId와 카드사 한 곳만 보내고, 아이디와 비밀번호는 보내지 않는다")
+    @SuppressWarnings("unchecked")
+    void deleteSendsOnlyTheCompany() {
+        AccountResult result = client.delete("test-connected-id", CardCompany.KB);
+
+        Map<String, Object> body = sentBody("/v1/account/delete");
+        assertThat(body).containsEntry("connectedId", "test-connected-id");
+        List<Map<String, Object>> accounts = (List<Map<String, Object>>) body.get("accountList");
+        assertThat(accounts).hasSize(1);
+        assertThat(accounts.get(0)).containsEntry("organization", "0301").containsEntry("businessType", "CD")
+            .containsEntry("clientType", "P").containsEntry("loginType", "1")
+            .doesNotContainKeys("id", "password");
+        assertThat(result.success()).isTrue();
+    }
+
+    @Test
+    @DisplayName("연결 해제 응답이 실패 코드이면 실패로 읽는다")
+    void deleteParsesFailure() throws Exception {
+        when(apiClient.post(any(), any())).thenReturn(JSON.readTree("{\"result\":{\"code\":\"CF-09999\"},\"data\":{}}"));
+
+        AccountResult result = client.delete("test-connected-id", CardCompany.KB);
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.errorCode()).isEqualTo("CF-09999");
+    }
+
+    @Test
     @DisplayName("이미 연결한 카드사는 update 경로로 보낸다")
     void updateUsesUpdatePath() {
         client.update("test-connected-id", CardCompany.WOORI, "test-card-id", "test-card-password");

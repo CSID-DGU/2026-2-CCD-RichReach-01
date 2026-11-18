@@ -43,6 +43,23 @@ class CardCompanyAuthenticator {
         return authenticate(company, () -> codef.update(connectedId, company, loginId, password));
     }
 
+    /**
+     * 카드사 계정을 CODEF에서 지운다. 지우지 못하면 예외를 던진다. (연결을 해제한다고 하고 CODEF에는 로그인 정보가 남는 일이
+     * 없도록, 호출하는 쪽은 성공했을 때만 이쪽 데이터를 지운다.)
+     */
+    void disconnect(String connectedId, CardCompany company) {
+        AccountResult result;
+        try {
+            result = codef.delete(connectedId, company);
+        } catch (BusinessException e) {
+            throw CodefFailures.translate(e);
+        }
+        if (!result.success()) {
+            log.warn("카드사 연결 해제 실패: company={}, codefCode={}", company, result.errorCode());
+            throw new BusinessException(ErrorCode.CODEF_UNAVAILABLE);
+        }
+    }
+
     private AccountResult authenticate(CardCompany company, Supplier<AccountResult> request) {
         AccountResult result;
         try {
