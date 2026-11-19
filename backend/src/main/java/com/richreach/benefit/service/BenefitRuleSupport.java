@@ -13,4 +13,9 @@ public final class BenefitRuleSupport {
             || rule.monthlyCountLimit() != null || rule.annualCountLimit() != null
             || rule.eligibleSpendMonthlyLimit() != null;
     }
+
+    /** Aggregated spend cannot prove these source rule conditions. */
+    public static boolean hasUnmodelledConditions(CalculationRule rule) {
+        return hasUnmodelledLimits(rule) || rule.unsupportedCondition();
+    }
 }

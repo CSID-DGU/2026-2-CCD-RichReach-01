@@ -18,7 +18,7 @@
 - 331종은 수집한 **카드 상품** 수다. 입력 업종은 `SpendingCategory`의 `DINING`, `CAFE`, `CONVENIENCE_STORE`, `SHOPPING`, `TRANSPORT`, `FUEL_VEHICLE`, `LIFE_HEALTH`, `TELECOM_SUBSCRIPTION`, `CULTURE_TRAVEL`, `EDUCATION`, `ETC` 11개다.
 - 추천·플랜의 카드 후보는 `user_cards`에서 해당 사용자의 `active=true`, `selected=true`, `card_product_id`가 존재하는 카드다. 331종 전체를 사용자가 가진 카드처럼 비교하지 않는다.
 - 331종이 `stg_card_catalog`에 있다는 사실만으로 API가 쓸 수 없다. 실제 상품은 `card_products`, 계산 규칙은 `benefit_rules`, 실제 보유·상품 매칭은 `user_cards`에서 확인한다. 현재 승격 도구는 MVP로 선택한 상품만 최종 테이블에 옮길 수 있다.
-- `rule_engine_ready=true`는 원문 검토 표시다. 이것만으로 계산 가능하지 않다. 현재 `SimpleBenefitCalculator`는 비율 혜택 중 가맹점 지정, 일별·횟수·할인대상금액 한도, 다른 혜택과의 대체 관계, 마일리지 등 정확히 처리할 수 없는 규칙을 제외한다. 추천 수치는 **계산에 포함된 규칙의 추가 혜택**이다. 카드의 모든 실제 혜택을 뜻하지 않는다.
+- `rule_engine_ready=true`는 원문 검토 표시다. 이것만으로 계산 가능하지 않다. 현재 `SimpleBenefitCalculator`는 비율 혜택 중 가맹점 지정, 결제수단 지정, 변동 요율, 월 한도 미확정, 일별·횟수·할인대상금액 한도, 다른 혜택과의 대체 관계, 마일리지 등 정확히 처리할 수 없는 규칙을 제외한다. 추천 수치는 **계산에 포함된 규칙의 추가 혜택**이다. 카드의 모든 실제 혜택을 뜻하지 않는다. 자유 문장 `conditions`와 실적 제외 원문이 실제 규칙에 반영됐는지는 카드별 원문 검토가 필요하다.
 - 전월실적은 카드사의 확정 실적이 아니라 수집 거래로 계산한 추정값이다. 카드사 실적 제외 조건이 완전히 구조화되지 않은 상품에는 차이가 날 수 있다.
 
 ### 배포 DB에서 먼저 확인할 값
@@ -89,7 +89,7 @@ Function Calling을 쓰면 모델이 `recommend_card({amount,category,merchantNa
 
 후속 채팅 응답은 `type=FOLLOW_UP`, `question="학식 결제인가요, 서점 결제인가요?"`, `parsed={merchantName,amount,category:null}`, `missing=["category"]`처럼 추가 질문이 필요한 상태를 표현한다. 사용자가 선택한 업종을 새 요청에 명시적으로 보내면 그 값을 사용하고, 실제 승인 거래의 업종을 고칠 때는 기존 거래 업종 수정 API를 사용한다. 가맹점명에 대한 모델의 자신감 숫자만으로 할인액을 확정하지 않는다.
 
-특정 가맹점 혜택, 간편결제 조건은 현재 수동 추천 입력과 `SimpleBenefitCalculator`가 처리하지 않는다. `payment_methods` 값과 실제 결제 수단이 모두 확인되지 않으면 해당 규칙을 계산에서 제외한다. 가맹점 DB를 추가할 때는 정규화 상호명, 가맹점 식별자, 후보 업종, 매칭 근거·검토 상태를 저장하고, 여러 업종 후보가 가능하면 사용자에게 확인한다. 결제수단을 알 수 없는 CODEF 승인내역만으로 간편결제 여부를 추정하지 않는다.
+특정 가맹점 혜택, 간편결제 조건은 현재 수동 추천 입력과 `SimpleBenefitCalculator`가 처리하지 않는다. `payment_methods`가 지정된 규칙은 결제 수단 확인 전까지 계산에서 제외한다. 가맹점 DB를 추가할 때는 정규화 상호명, 가맹점 식별자, 후보 업종, 매칭 근거·검토 상태를 저장하고, 여러 업종 후보가 가능하면 사용자에게 확인한다. 결제수단을 알 수 없는 CODEF 승인내역만으로 간편결제 여부를 추정하지 않는다.
 
 ## 4단계: 카드 약관 근거 검색
 

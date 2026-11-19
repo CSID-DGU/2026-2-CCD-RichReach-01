@@ -259,7 +259,7 @@ public class CpSatPlanStrategyRunner implements PlanStrategyRunner {
 
     private static boolean supported(CalculationRule rule, long previousMonthSpend) {
         if (rule.merchantSpecific() || rule.ratePercent() == null || rule.ratePercent().signum() < 0
-            || "MILE".equals(rule.rewardUnit()) || BenefitRuleSupport.hasUnmodelledLimits(rule)) {
+            || "MILE".equals(rule.rewardUnit()) || BenefitRuleSupport.hasUnmodelledConditions(rule)) {
             return false;
         }
         if ("REPLACES_BASE".equals(rule.ruleMode()) || "PREFER_HIGHER".equals(rule.ruleMode())

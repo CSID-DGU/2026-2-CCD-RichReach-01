@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
  * <p>쓸 규칙은 설정({@code richreach.benefit.rule-selection})으로 정한다. 기본은 사람이 원문과 대조해 확인한 규칙만 쓰고,
  * ALL이면 확인 전 규칙도 써서 결과의 {@code confirmedOnly}가 false가 된다.
  * 카드 규칙은 카드 도메인의 {@link BenefitRuleQueryService}를 거쳐서만 읽는다.
- * 일별·횟수·할인대상금액 한도는 월간 업종 합계만으로 적용할 수 없으므로 해당 규칙의
+ * 일별·횟수·할인대상금액 한도와 결제수단·요율·월 한도 미확정 조건은 월간 업종 합계만으로 적용할 수 없으므로 해당 규칙의
  * 혜택 전체를 예상 금액에서 제외한다.
  */
 @Service
@@ -41,15 +41,15 @@ public class SimpleBenefitCalculator implements BenefitCalculator {
                 : List.of("혜택 규칙이 없어 혜택을 계산하지 못했습니다.");
             return BenefitResult.none(readyOnly, notes);
         }
-        // The monthly category aggregate cannot enforce per-day, per-payment, or count limits.
-        // Excluding those rules is safer than presenting an inflated discount as a forecast.
+        // Monthly category totals cannot verify source conditions such as payment method or daily caps.
+        // Exclude unsupported rules instead of presenting an inflated discount.
         List<CalculationRule> calculable = candidates.stream()
-            .filter(rule -> !BenefitRuleSupport.hasUnmodelledLimits(rule)).toList();
+            .filter(rule -> !BenefitRuleSupport.hasUnmodelledConditions(rule)).toList();
         List<RuleInput> inputs = calculable.stream().map(SimpleBenefitCalculator::toInput).toList();
         BenefitResult result = BenefitMath.compute(inputs, query.monthlySpend(), query.previousMonthSpend(), readyOnly);
         if (calculable.size() == candidates.size()) return result;
         List<String> notes = new ArrayList<>(result.notes());
-        notes.add("일별·횟수·할인대상금액 한도를 확인할 수 없는 혜택은 예상 금액에서 제외했습니다.");
+        notes.add("결제수단·요율·한도 등 확인할 수 없는 조건이 있는 혜택은 예상 금액에서 제외했습니다.");
         return new BenefitResult(result.totalBenefit(), result.benefitByCategory(), result.confirmedOnly(), notes);
     }
 

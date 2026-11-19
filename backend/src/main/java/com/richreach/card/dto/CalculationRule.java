@@ -25,6 +25,7 @@ import java.util.Set;
  * @param previousMonthMinKrw        전월실적 하한(이상)
  * @param previousMonthMaxExclusiveKrw 전월실적 상한(미만)
  * @param ruleEngineReady            사람이 원문과 대조해 확인한 규칙인지
+ * @param unsupportedCondition        현재 계산 입력으로 확인할 수 없는 결제수단·요율·산정방식·한도 조건이 있는지
  */
 public record CalculationRule(
     Long id,
@@ -44,6 +45,20 @@ public record CalculationRule(
     String ruleMode,
     Long previousMonthMinKrw,
     Long previousMonthMaxExclusiveKrw,
-    boolean ruleEngineReady) {
+    boolean ruleEngineReady,
+    boolean unsupportedCondition) {
+
+    /** 기존 계산 입력을 사용하는 호출부의 규칙은 별도 조건이 없다고 명시한 것으로 본다. */
+    public CalculationRule(Long id, Set<SpendingCategory> categories, boolean allMerchants,
+                           boolean merchantSpecific, BigDecimal ratePercent, String rewardUnit,
+                           Long monthlyLimit, String capGroupId, Long sharedMonthlyLimit, Long dailyLimit,
+                           Integer dailyCountLimit, Integer monthlyCountLimit, Integer annualCountLimit,
+                           Long eligibleSpendMonthlyLimit, String ruleMode, Long previousMonthMinKrw,
+                           Long previousMonthMaxExclusiveKrw, boolean ruleEngineReady) {
+        this(id, categories, allMerchants, merchantSpecific, ratePercent, rewardUnit, monthlyLimit,
+            capGroupId, sharedMonthlyLimit, dailyLimit, dailyCountLimit, monthlyCountLimit,
+            annualCountLimit, eligibleSpendMonthlyLimit, ruleMode, previousMonthMinKrw,
+            previousMonthMaxExclusiveKrw, ruleEngineReady, false);
+    }
 
 }

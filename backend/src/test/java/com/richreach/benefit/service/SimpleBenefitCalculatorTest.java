@@ -71,9 +71,10 @@ class SimpleBenefitCalculatorTest {
             insert into benefit_rules (card_product_id, source_benefit_id, benefit_type, category, category_name,
                 merchants, target_raw, rate_percent, monthly_limit, monthly_limit_status, rule_mode,
                 review_status, rule_engine_ready, source_scope_id, extraction_method)
-            values (?, ?, 'DISCOUNT', ?, ?, ?, '원문', ?, ?, 'LIMITED', 'BASE', 'AUTO_EXTRACTED_NEEDS_REVIEW', ?, 'scope',
+            values (?, ?, 'DISCOUNT', ?, ?, ?, '원문', ?, ?, ?, 'BASE', 'AUTO_EXTRACTED_NEEDS_REVIEW', ?, 'scope',
                 'test')
-            """, productId, PREFIX + name, category, category, merchants, ratePercent, monthlyLimit, ready);
+            """, productId, PREFIX + name, category, category, merchants, ratePercent, monthlyLimit,
+            monthlyLimit == null ? "UNLIMITED" : "LIMITED", ready);
         return jdbc.queryForObject("select id from benefit_rules where source_benefit_id = ?", Long.class,
             PREFIX + name);
     }
@@ -152,6 +153,20 @@ class SimpleBenefitCalculatorTest {
     void notesUnappliedLimits() {
         long ruleId = insertRule("limited", "DINING", null, 5.0, null, true);
         jdbc.update("update benefit_rules set daily_limit = 5000, monthly_count_limit = 3 where id = ?", ruleId);
+
+        BenefitResult result = calculator(RuleSelection.READY_ONLY).calculate(query(0));
+
+        assertThat(result.totalBenefit()).isZero();
+        assertThat(result.notes()).singleElement().asString().contains("제외");
+    }
+
+    @Test
+    @DisplayName("결제수단이 지정되거나 월 한도 상태가 불명확하면 혜택 금액에서 제외한다")
+    void skipsPaymentMethodAndUnknownCap() {
+        long methodRule = insertRule("method", "DINING", null, 5.0, null, true);
+        long unknownCapRule = insertRule("unknown-cap", "CAFE", null, 10.0, null, true);
+        jdbc.update("update benefit_rules set payment_methods = 'SAMSUNG_PAY' where id = ?", methodRule);
+        jdbc.update("update benefit_rules set monthly_limit_status = 'NOT_EXTRACTED' where id = ?", unknownCapRule);
 
         BenefitResult result = calculator(RuleSelection.READY_ONLY).calculate(query(0));
 

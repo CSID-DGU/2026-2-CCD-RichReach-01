@@ -45,12 +45,39 @@ public class BenefitRuleQueryService {
     private CalculationRule toCalculationRule(BenefitRule rule, PerformanceTier tier) {
         MappedCategories mapped = categoryMapper.map(rule.getCategory());
         boolean merchantSpecific = notBlank(rule.getMerchants()) || notBlank(rule.getTargetsNormalized());
+        // The category aggregate cannot verify payment rails, variable rates, or an unspecified cap.
+        // Exclude those rows before both the immediate selector and CP-SAT use them.
+        boolean unsupportedCondition = notBlank(rule.getPaymentMethods())
+            || rule.getRateMinPercent() != null || rule.getRateMaxPercent() != null
+            || (notBlank(rule.getAmountBasis())
+                && !"PERCENT_OF_ELIGIBLE_SPEND".equals(rule.getAmountBasis()))
+            || !knownMonthlyCap(rule)
+            || unsupportedRewardUnit(rule)
+            || !("BASE".equals(rule.getRuleMode()) || "ADDITIONAL".equals(rule.getRuleMode()));
         return new CalculationRule(rule.getId(), mapped.categories(), mapped.allMerchants(), merchantSpecific,
             rule.getRatePercent(), rule.getRewardUnit(), rule.getMonthlyLimit(), rule.getCapGroupId(),
             rule.getSharedMonthlyLimit(), rule.getDailyLimit(), rule.getDailyCountLimit(),
             rule.getMonthlyCountLimit(), rule.getAnnualCountLimit(), rule.getEligibleSpendMonthlyLimitKrw(),
             rule.getRuleMode(), tier == null ? null : tier.getPreviousMonthMinKrw(),
-            tier == null ? null : tier.getPreviousMonthMaxExclusiveKrw(), rule.isRuleEngineReady());
+            tier == null ? null : tier.getPreviousMonthMaxExclusiveKrw(), rule.isRuleEngineReady(),
+            unsupportedCondition);
+    }
+
+    private static boolean knownMonthlyCap(BenefitRule rule) {
+        if (notBlank(rule.getCapGroupId()) && rule.getSharedMonthlyLimit() == null) return false;
+        return switch (rule.getMonthlyLimitStatus() == null ? "" : rule.getMonthlyLimitStatus()) {
+            case "UNLIMITED" -> true;
+            case "LIMITED" -> rule.getMonthlyLimit() != null;
+            case "SHARED_LIMIT" -> notBlank(rule.getCapGroupId()) && rule.getSharedMonthlyLimit() != null;
+            default -> false;
+        };
+    }
+
+    private static boolean unsupportedRewardUnit(BenefitRule rule) {
+        String unit = rule.getRewardUnit();
+        return unit == null
+            ? !("DISCOUNT".equals(rule.getBenefitType()) || "CASHBACK".equals(rule.getBenefitType()))
+            : !("KRW".equals(unit) || "POINT".equals(unit));
     }
 
     private static boolean notBlank(String value) {
