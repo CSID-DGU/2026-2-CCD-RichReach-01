@@ -354,7 +354,7 @@ class CardSettingsApiTest {
     void blockedWhileSyncing() throws Exception {
         CodefOrgAccount kb = connect(user, KB);
         card(user, kb, CardCompany.KB, "KB 카드", "1111");
-        syncJobs.save(CodefSyncJob.startCardList(kb, "batch", LocalDateTime.now()));
+        syncJobs.save(CodefSyncJob.startCardList(kb, "batch", LocalDateTime.now(CLOCK)));
 
         disconnect(token, kb.getId()).andExpect(status().isConflict())
             .andExpect(jsonPath("$.code").value("CONN-007"));
