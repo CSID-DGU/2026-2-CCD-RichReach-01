@@ -1,4 +1,4 @@
-# 월 예산 챗봇 미리보기 API
+# 월 예산 챗봇 미리보기·확정 API
 
 ## 담당 범위
 
@@ -10,7 +10,7 @@
 2. 프론트가 이 예산을 초안으로 보여주고 사용자가 직접 수정할 수 있게 합니다.
 3. 사용자가 채팅하면 이 초안을 `POST /api/plans/chat/preview`에 함께 보냅니다.
 4. 답변에 수정안이 있으면 프론트가 변경 전·후 금액을 보여주고 사용자의 확정을 받습니다.
-5. 월초에 확정한 예산은 기존 `POST /api/plans`로 전송해 플랜을 생성합니다. **이미 생성된 월간 플랜의 수정·재최적화 API는 아직 없습니다.** 월중 변경을 앱에 반영하려면 백엔드의 버전 관리와 재계산 기능이 추가로 필요합니다.
+5. 월초에 플랜이 아직 없으면 기존 `POST /api/plans`로 생성합니다. 월중에 이미 플랜이 있으면 사용자 확인 뒤 `POST /api/plans/chat/confirm`으로 확정하고, 반환된 `jobId`로 재계산 완료를 확인합니다.
 
 ## 요청
 
@@ -70,9 +70,41 @@ Content-Type: application/json
 
 실제 응답의 `proposedPlan.budget.byCategory`에는 11개 업종이 고정 순서로 들어갑니다. 변경이 없는 대화에서는 `requiresConfirmation=false`이고 `proposedPlan`과 `proposedPreference`는 `null`입니다. 질문이 모호하면 `needsClarification=true`이며 수정안을 반환하지 않습니다. 제안된 `proposedPlan`은 사용자가 확인한 후에만 화면 초안을 바꿔야 합니다.
 
-모델은 카드 혜택이나 최적 카드의 금액을 계산하지 않습니다. `IMMEDIATE_DISCOUNT` 방향 제안은 화면의 선택값에 관한 미리보기일 뿐이며, 현재 월간 최적화 서비스의 전략 변경으로 자동 연결되지 않습니다.
+모델은 카드 혜택이나 최적 카드의 금액을 계산하지 않습니다. `IMMEDIATE_DISCOUNT` 방향 제안은 사용자 확인 뒤 플랜의 추천 방향으로 저장됩니다. 월간 플랜의 재계산 자체는 현재 CP-SAT을 사용합니다. 실제 결제 전 카드 추천에서 이 방향을 적용하는 API는 별도로 연결해야 합니다.
 
 사용자별 대화 맥락은 요청의 `history`와 `currentPlan`으로 전달합니다. 이 과정에 모델의 파인튜닝은 필요하지 않습니다. 서버가 대화를 저장하지 않으므로 앱을 다시 열었을 때 이전 대화를 이어가려면 팀에서 사용자별 대화 저장 기능을 추가해야 합니다.
+
+## 월중 수정안 확정
+
+`preview`가 `requiresConfirmation=true`로 돌려준 `proposedPlan`과 `proposedPreference`를 화면에서 비교해 보여주고, 사용자가 확정 버튼을 누른 뒤에만 호출합니다. `basePlanId`는 수정안을 만들 때 조회한 `GET /api/plans?month=yyyy-MM`의 `planId`입니다. 다른 사용자의 플랜이나 이후 변경된 플랜을 기준으로 확정하지 않도록 서버가 다시 확인합니다.
+
+```http
+POST /api/plans/chat/confirm
+Authorization: Bearer <access-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "basePlanId": 51,
+  "confirmed": true,
+  "proposedPlan": {
+    "month": "2026-11",
+    "budget": {
+      "total": 130000,
+      "byCategory": [
+        {"category": "DINING", "amount": 100000},
+        {"category": "CAFE", "amount": 30000}
+      ]
+    }
+  },
+  "proposedPreference": "MONTHLY_PLAN"
+}
+```
+
+성공 응답의 `data`에는 `reply`, `needsClarification=false`, `jobId`가 있습니다. `GET /api/plans/jobs/{jobId}`가 `COMPLETED`이면 `GET /api/plans?month=yyyy-MM`을 다시 조회합니다. 이 응답에 저장된 `recommendationPreference`가 있습니다. 작업이 `FAILED`라면 이전 플랜과 방향은 그대로 남습니다. 같은 확정 요청이 진행 중에 다시 들어오면 같은 `jobId`를 돌려줍니다.
+
+이미 승인된 거래보다 업종 예산이 작거나 `basePlanId`가 최신 플랜과 다르면 `needsClarification=true`, `jobId=null`과 서버 고정 안내 문구를 돌려줍니다. 승인 거래는 확정 시와 저장 직전에 다시 확인합니다. 11개 업종 코드·금액 범위·합계는 기존 플랜 예산 검증을 그대로 사용하며, 잘못된 구조는 `PLAN-003`, 사용자 확인이 없거나 이번 달이 아니면 `COMMON-400`입니다. 다른 재계산이 진행 중이면 `PLAN-005`입니다. 서버는 이 단계에서 OpenAI를 호출하지 않습니다.
 
 ## 오류와 운영
 

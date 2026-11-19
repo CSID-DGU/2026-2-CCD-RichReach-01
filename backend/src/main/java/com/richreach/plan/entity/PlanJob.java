@@ -76,6 +76,10 @@ public class PlanJob extends BaseEntity {
     @Column(name = "recalc_reason", updatable = false, length = 30)
     private String recalcReason;
 
+    /** 챗봇 확정 작업에서 계산 성공 시 저장할 추천 방식. 다른 작업에는 null이다. */
+    @Column(name = "requested_preference", updatable = false, length = 20)
+    private String requestedPreference;
+
     @Column(nullable = false, length = 20)
     private String status;
 
@@ -123,6 +127,15 @@ public class PlanJob extends BaseEntity {
         PlanJob job = start(userId, jobId, planMonth, budgetTotal, budgetEncoded, requestHash, now);
         job.jobType = TYPE_RECALCULATE;
         job.recalcReason = reason.name();
+        return job;
+    }
+
+    public static PlanJob startChatRecalculation(long userId, String jobId, String planMonth, long budgetTotal,
+                                                String budgetEncoded, String requestHash, String preference,
+                                                LocalDateTime now) {
+        PlanJob job = startRecalculation(userId, jobId, planMonth, budgetTotal, budgetEncoded, requestHash,
+            PlanChangeReason.CHAT_CONFIRMED, now);
+        job.requestedPreference = preference;
         return job;
     }
 

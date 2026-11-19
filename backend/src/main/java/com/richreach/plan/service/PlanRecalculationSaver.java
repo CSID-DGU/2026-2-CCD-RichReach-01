@@ -52,12 +52,14 @@ class PlanRecalculationSaver {
 
     /** 지금 보여줄 플랜의 ID. 바뀐 것이 없으면 이전 플랜의 ID이고, 있으면 새로 저장한 플랜의 ID다. */
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
-    long save(long userId, YearMonth month, Computation computation, PlanChangeReason reason) {
+    long save(long userId, YearMonth month, Computation computation, PlanChangeReason reason, String preference) {
         MonthlyPlan base = computation.baseline().plan();
         List<Draft> drafts = PlanChangeBuilder.diff(computation.baseline().allocations(), computation.targets());
         // 예산이 바뀌었으면 배분이 같아도 새 버전을 만들어 새 예산을 확정 예산으로 남긴다.
         boolean budgetChanged = !computation.budget().byCategory().equals(computation.baseline().budget().byCategory());
-        if (drafts.isEmpty() && !budgetChanged) {
+        String effectivePreference = preference == null ? base.effectiveRecommendationPreference() : preference;
+        boolean preferenceChanged = !effectivePreference.equals(base.effectiveRecommendationPreference());
+        if (drafts.isEmpty() && !budgetChanged && !preferenceChanged) {
             return base.getId();
         }
 
@@ -66,6 +68,7 @@ class PlanRecalculationSaver {
         long profileId = budgetChanged ? saveProfile(userId, month, computation.budget()) : base.getProfileId();
         MonthlyPlan plan = MonthlyPlan.create(userId, profileId, month, PlanStrategy.CP_SAT, version,
             computation.totalSpend(), computation.totalBenefit());
+        plan.setRecommendationPreference(effectivePreference);
         plan.recordSolve(computation.solverStatus(), null);
         plan = plans.save(plan);
 

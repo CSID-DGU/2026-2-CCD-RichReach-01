@@ -80,7 +80,7 @@ public class PlanQueryService {
 
         return new PlanResponse(plan.getId(), plan.getPlanMonth(), plan.getExpectedBenefit(), baseline,
             additionalBenefit(plan.getExpectedBenefit(), baseline), cardTargets,
-            recalculationJobId(userId, planMonth));
+            recalculationJobId(userId, planMonth), plan.effectiveRecommendationPreference());
     }
 
     /** 플랜의 업종별 사용계획. 없거나 다른 사용자의 플랜이면 {@code PLAN-001}이다. */

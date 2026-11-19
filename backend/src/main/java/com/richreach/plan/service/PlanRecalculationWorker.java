@@ -6,6 +6,7 @@ import com.richreach.plan.entity.PlanJob;
 import com.richreach.plan.repository.PlanJobRepository;
 import com.richreach.plan.service.PlanRecalculationComputer.Computation;
 import com.richreach.user.service.UserLockService;
+import com.richreach.transaction.service.TransactionSummaryService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -44,6 +45,7 @@ public class PlanRecalculationWorker {
     private final PlanRecalculationComputer computer;
     private final PlanRecalculationSaver saver;
     private final UserLockService userLock;
+    private final TransactionSummaryService transactions;
     private final TransactionTemplate transaction;
     private final PlanProperties properties;
     private final Clock clock;
@@ -78,7 +80,8 @@ public class PlanRecalculationWorker {
         YearMonth month = YearMonth.parse(job.getPlanMonth());
         PlanChangeReason reason = PlanChangeReason.valueOf(job.getRecalcReason());
         // 예산 수정 작업은 요청한 예산으로 계산한다. 거래 반영 작업은 지금 플랜의 확정 예산을 쓴다.
-        PlanBudget budgetOverride = reason == PlanChangeReason.BUDGET_CHANGED
+        PlanBudget budgetOverride = (reason == PlanChangeReason.BUDGET_CHANGED
+            || reason == PlanChangeReason.CHAT_CONFIRMED)
             ? PlanBudget.decode(month, job.getBudgetTotal(), job.getBudgetEncoded()) : null;
 
         for (int run = 1; run <= MAX_RUNS; run++) {
@@ -96,7 +99,8 @@ public class PlanRecalculationWorker {
                 continue;
             }
             progress(id, 80);
-            Outcome outcome = transaction.execute(status -> finish(status, id, userId, month, computation, reason));
+            Outcome outcome = transaction.execute(status -> finish(status, id, userId, month, computation, reason,
+                job.getRequestedPreference(), budgetOverride));
             if (outcome != Outcome.RERUN) {
                 return;
             }
@@ -110,12 +114,18 @@ public class PlanRecalculationWorker {
      * 않고 다시 계산하라고 알린다.
      */
     private Outcome finish(org.springframework.transaction.TransactionStatus status, long id, long userId,
-                           YearMonth month, Computation computation, PlanChangeReason reason) {
+                           YearMonth month, Computation computation, PlanChangeReason reason, String preference,
+                           PlanBudget budgetOverride) {
         userLock.lock(userId);
         if (jobs.consumeRerun(id) == 1) {
             return Outcome.RERUN;
         }
-        long planId = saver.save(userId, month, computation, reason);
+        if (reason == PlanChangeReason.CHAT_CONFIRMED
+            && PlanApprovedSpendGuard.belowBudget(transactions.cardCategorySpend(userId, month), budgetOverride)) {
+            jobs.failIfInProgress(id, "BUDGET_BELOW_SPENT", PlanChatConfirmService.BELOW_SPENT_REPLY, now());
+            return Outcome.ENDED;
+        }
+        long planId = saver.save(userId, month, computation, reason, preference);
         LocalDateTime now = now();
         // 완료는 "진행 중이고 제한 시간이 지나지 않은" 작업에만 적용되는 조건부 UPDATE다. 이미 끝난 작업이면 0행이라 방금 저장한
         // 플랜과 변경 기록을 모두 되돌려, 늦게 끝난 결과가 남지 않게 한다.

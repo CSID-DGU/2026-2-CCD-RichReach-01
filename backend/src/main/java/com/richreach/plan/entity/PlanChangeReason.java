@@ -10,7 +10,9 @@ public enum PlanChangeReason {
     /** 사용자가 이번 달 소비예산을 고쳤다. */
     BUDGET_CHANGED("소비예산이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요."),
     /** 사용자가 이번 달 예정지출을 추가·수정·삭제했다. */
-    PLANNED_EXPENSE_CHANGED("예정지출이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요.");
+    PLANNED_EXPENSE_CHANGED("예정지출이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요."),
+    /** 사용자가 챗봇 수정안을 확인하고 확정했다. */
+    CHAT_CONFIRMED("확정한 챗봇 수정안을 기준으로 남은 기간의 카드 사용 계획을 다시 계산했어요.");
 
     private final String text;
 

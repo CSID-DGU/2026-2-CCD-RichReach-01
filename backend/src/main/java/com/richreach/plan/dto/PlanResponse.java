@@ -14,6 +14,7 @@ import java.util.List;
  * @param cardTargets       카드별 목표 사용금액. 금액이 큰 카드부터이고, 카드 번호는 담지 않는다.
  * @param recalculationJobId 승인 거래를 반영해 남은 기간의 플랜을 다시 계산하는 중이면 그 작업 ID. 아니면 null이다.
  *                          화면은 {@code GET /api/plans/jobs/{jobId}}로 진행 상태를 보고, 끝나면 플랜을 다시 조회한다.
+ * @param recommendationPreference 확정된 추천 방향(MONTHLY_PLAN 또는 IMMEDIATE_DISCOUNT)
  */
 public record PlanResponse(
     long planId,
@@ -22,7 +23,8 @@ public record PlanResponse(
     Long baselineBenefit,
     Long additionalBenefit,
     List<CardTarget> cardTargets,
-    String recalculationJobId) {
+    String recalculationJobId,
+    String recommendationPreference) {
 
     /**
      * 카드 한 장의 목표 사용금액.
