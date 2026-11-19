@@ -3,6 +3,12 @@
 spring:
   jpa:
     show-sql: false
+  # 컨텍스트가 여러 개라 연결 풀을 작게 둔다. (한 MySQL 컨테이너를 모든 컨텍스트가 나눠 쓴다. 기본 풀 크기 10 x 컨텍스트 수는
+  # 불필요하게 많은 연결을 연다. 비동기 작업과 테스트 스레드가 동시에 쓰는 정도는 5개면 충분하다.)
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
 
 # 비밀번호 재설정 통합 테스트(AccountRecoveryApiTest)가 응답에 담긴 인증번호로 흐름을 확인한다.
 app:

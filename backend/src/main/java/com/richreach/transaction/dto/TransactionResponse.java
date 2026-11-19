@@ -22,6 +22,8 @@ import java.time.LocalDateTime;
  * @param categoryEdited   사용자가 업종을 고쳤는지. true이면 {@code category}는 고친 값이다.
  * @param installmentMonths 할부 개월. 0이면 일시불
  * @param overseas         해외 결제 여부
+ * @param benefitAmount    이 거래의 <b>예상</b> 혜택(원). 카드사가 실제로 지급한 금액이 아니라 카드 혜택 규칙으로 계산한 추정값이다.
+ *                         카드 상품과 매칭되지 않은 카드의 거래처럼 계산할 수 없으면 null이고, 계산했지만 혜택이 없으면 0이다.
  */
 public record TransactionResponse(
     Long transactionId,
@@ -36,7 +38,8 @@ public record TransactionResponse(
     SpendingCategory autoCategory,
     boolean categoryEdited,
     int installmentMonths,
-    boolean overseas) {
+    boolean overseas,
+    Long benefitAmount) {
 
     public static TransactionResponse from(CardTransaction transaction) {
         return new TransactionResponse(
@@ -52,7 +55,14 @@ public record TransactionResponse(
             SpendingCategory.fromCode(transaction.getCategory()).orElse(SpendingCategory.ETC),
             transaction.getCategoryOverride() != null,
             transaction.getInstallmentMonths(),
-            transaction.isOverseas());
+            transaction.isOverseas(),
+            null);
+    }
+
+    /** 예상 혜택을 채운 같은 거래. 혜택은 같은 카드·달의 다른 거래와 함께 계산하므로 거래만으로는 정할 수 없다. */
+    public TransactionResponse withBenefit(Long benefit) {
+        return new TransactionResponse(transactionId, cardId, approvedAt, merchantName, amount, canceledAmount, netAmount,
+            status, category, autoCategory, categoryEdited, installmentMonths, overseas, benefit);
     }
 
 }

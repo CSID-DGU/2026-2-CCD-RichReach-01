@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_config.dart';
 import '../../../core/network/api_providers.dart';
+import '../../plan/application/monthly_plan_providers.dart';
 import '../data/auth_repository.dart';
 import '../data/signup_repository.dart';
+import '../data/start_route_resolver.dart';
 
 /// 로그인·계정 찾기 저장소. `USE_FAKE_API=false`면 로그인은 백엔드 API를 쓴다.
 final authRepositoryProvider = Provider<AuthRepository>(
@@ -22,6 +24,17 @@ final signupRepositoryProvider = Provider<SignupRepository>(
       : ApiSignupRepository(
           ref.watch(apiClientProvider),
           ref.watch(tokenStorageProvider),
+        ),
+);
+
+/// 로그인한 사용자의 시작 화면 (Q8). `USE_FAKE_API=false`면 연결·플랜 API로 정한다.
+final startRouteResolverProvider = Provider<StartRouteResolver>(
+  (ref) => ApiConfig.useFakeApi
+      ? const FakeStartRouteResolver()
+      : ApiStartRouteResolver(
+          ref.watch(apiClientProvider),
+          ref.watch(tokenStorageProvider),
+          month: ref.watch(currentMonthProvider),
         ),
 );
 

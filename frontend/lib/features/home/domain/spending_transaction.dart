@@ -20,7 +20,7 @@ class SpendingTransaction {
   /// 원 단위 결제 금액
   final int amount;
 
-  /// 원 단위로 받은(받을) 혜택. 없으면 0.
+  /// 원 단위 예상 혜택(카드 혜택 규칙으로 계산한 추정값). 없거나 계산할 수 없으면 0.
   final int benefit;
   final DateTime approvedAt;
 }
@@ -42,8 +42,8 @@ class SpendingHistory {
   final int totalAmount;
   final int count;
 
-  /// 원 단위로 받은 혜택 합계
-  final int totalBenefit;
+  /// 원 단위 이번 달 예상 혜택 합계. 계산할 수 있는 카드가 없으면 null이고 화면에서 뺀다.
+  final int? totalBenefit;
 
   /// 카드사 데이터 동기화를 마쳤는지 ("동기화 완료")
   final bool synced;

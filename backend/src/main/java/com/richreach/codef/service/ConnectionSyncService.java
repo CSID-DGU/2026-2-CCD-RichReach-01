@@ -6,6 +6,7 @@ import com.richreach.codef.dto.ConnectionSyncRequest;
 import com.richreach.codef.dto.ConnectionSyncStartResponse;
 import com.richreach.codef.dto.ConnectionSyncStatusResponse;
 import com.richreach.codef.dto.ConnectionSyncStatusResponse.Result;
+import com.richreach.codef.dto.ConnectionSyncStatusResponse.TransactionCollection;
 import com.richreach.codef.entity.CardCompany;
 import com.richreach.codef.entity.CodefOrgAccount;
 import com.richreach.codef.entity.CodefSyncJob;
@@ -196,14 +197,21 @@ public class ConnectionSyncService {
         boolean timedOut = job.isTimedOut(properties.timeout(), now);
 
         if (job.isInProgress() && !timedOut) {
-            return new Result(connectionId, company, IN_PROGRESS, 0, null, null);
+            return new Result(connectionId, company, IN_PROGRESS, 0, null, null, null);
         }
         if (job.hasFailed(properties.timeout(), now)) {
             SyncFailure failure = SyncFailure.of(job, timedOut);
-            return new Result(connectionId, company, FAILED, 0, failure.code(), failure.reason());
+            return new Result(connectionId, company, FAILED, 0, failure.code(), failure.reason(), null);
         }
         int count = job.getFetchedCount() == null ? 0 : job.getFetchedCount();
-        return new Result(connectionId, company, SUCCESS, count, null, null);
+        TransactionCollection transactions = job.getTxStatus() == null ? null
+            : new TransactionCollection(job.getTxStatus(), valueOf(job.getTxSavedCount()),
+                valueOf(job.getTxUnmatchedCount()), job.getTxCollectedFrom(), job.getTxCollectedTo());
+        return new Result(connectionId, company, SUCCESS, count, null, null, transactions);
+    }
+
+    private static int valueOf(Integer value) {
+        return value == null ? 0 : value;
     }
 
     private LocalDateTime now() {

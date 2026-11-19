@@ -19,6 +19,9 @@ import com.richreach.auth.repository.RefreshTokenRepository;
 import com.richreach.auth.service.AuthTokenService;
 import com.richreach.card.entity.OwnedCard;
 import com.richreach.card.repository.OwnedCardRepository;
+import com.richreach.codef.client.CodefApprovalClient;
+import com.richreach.codef.client.CodefApprovalClient.ApprovalListResult;
+import com.richreach.codef.client.CodefApprovalClient.CodefApproval;
 import com.richreach.codef.client.CodefCardClient;
 import com.richreach.codef.client.CodefCardClient.CardListResult;
 import com.richreach.codef.client.CodefCardClient.CodefCard;
@@ -86,6 +89,10 @@ class ConnectionSyncApiTest {
 
     @MockitoBean
     private CodefCardClient cards;
+    @MockitoBean
+    private CodefApprovalClient approvals;
+    @Autowired
+    private com.richreach.transaction.repository.CardTransactionRepository transactionRepository;
 
     @Autowired
     private MockMvc mockMvc;
@@ -115,6 +122,9 @@ class ConnectionSyncApiTest {
         user = newUser();
         accessToken = authTokenService.issue(user.getId()).accessToken();
         release = new CountDownLatch(1);
+        // 기본은 승인내역이 없는 성공 응답이다.
+        when(approvals.fetchApprovals(anyString(), anyString(), any(), any()))
+            .thenReturn(new ApprovalListResult(true, 0, "CF-00000", List.of()));
     }
 
     @AfterEach
@@ -511,6 +521,104 @@ class ConnectionSyncApiTest {
         syncStatus(accessToken, "late-batch")
             .andExpect(jsonPath("$.data.status").value("FAILED"))
             .andExpect(jsonPath("$.data.results[0].failureCode").value("SYNC_TIMEOUT"));
+    }
+
+    // ---- 승인내역 수집 ----
+
+    private static CodefApproval approval(String approvalNo, String cardNumber) {
+        return new CodefApproval(approvalNo, java.time.LocalDate.now(), java.time.LocalTime.of(12, 30), "테스트가맹점",
+            12_000, 0, 0, "", cardNumber, "0", "1", "1", "KRW");
+    }
+
+    @Test
+    @DisplayName("동기화하면 카드를 저장한 뒤 최근 6개월을 월 단위로 수집해 거래로 저장하고, 결과를 응답에 담는다")
+    void collectsApprovalsAfterSavingCards() throws Exception {
+        connect(KB);
+        stubResult(KB, cardsOf(2));
+        when(approvals.fetchApprovals(anyString(), eq(KB), any(), any())).thenReturn(new ApprovalListResult(true, 2,
+            "CF-00000", List.of(approval("A1", "1111-22**-****-4001"), approval("A2", "9999-99**-****-9999"))));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "SUCCESS");
+
+        verify(approvals, org.mockito.Mockito.times(6)).fetchApprovals(anyString(), eq(KB), any(), any());
+        assertThat(transactionRepository.count()).isEqualTo(1);
+        syncStatus(accessToken, jobId).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.results[0].transactions.status").value("SUCCESS"))
+            .andExpect(jsonPath("$.data.results[0].transactions.savedCount").value(1))
+            .andExpect(jsonPath("$.data.results[0].transactions.unmatchedCount").value(6))
+            .andExpect(jsonPath("$.data.results[0].transactions.collectedFrom").exists())
+            .andExpect(jsonPath("$.data.results[0].transactions.collectedTo").exists());
+    }
+
+    @Test
+    @DisplayName("승인내역 수집이 실패해도 카드 동기화는 SUCCESS이고, 수집 결과만 FAILED다")
+    void collectionFailureKeepsCardSyncSuccessful() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, cardsOf(1));
+        when(approvals.fetchApprovals(anyString(), eq(KB), any(), any()))
+            .thenReturn(ApprovalListResult.failure("CF-09999"));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "SUCCESS");
+
+        assertThat(ownedCards.findByOrgAccountId(kb.getId())).hasSize(1);
+        syncStatus(accessToken, jobId).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.results[0].cardCount").value(1))
+            .andExpect(jsonPath("$.data.results[0].transactions.status").value("FAILED"))
+            .andExpect(jsonPath("$.data.results[0].transactions.savedCount").value(0))
+            .andExpect(jsonPath("$.data.results[0].transactions.collectedFrom").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("카드가 0장이면 승인내역을 수집하지 않고 transactions는 없다")
+    void noCardsMeansNoCollection() throws Exception {
+        connect(KB);
+        stubResult(KB, cardsOf(0));
+
+        String jobId = startAndGetJobId();
+        awaitStatus(jobId, "SUCCESS");
+
+        verify(approvals, never()).fetchApprovals(anyString(), anyString(), any(), any());
+        syncStatus(accessToken, jobId).andExpect(jsonPath("$.data.results[0].transactions").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("수집을 마친 기간을 카드사 계정에 기록하고, 다시 동기화하면 마지막 달부터만 가져온다")
+    void recordsCollectedRangeAndCollectsIncrementally() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, cardsOf(2));
+
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        CodefOrgAccount recorded = orgAccounts.findById(kb.getId()).orElseThrow();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        assertThat(recorded.getTxCollectedFrom()).isEqualTo(today.minusMonths(5).withDayOfMonth(1));
+        assertThat(recorded.getTxCollectedTo()).isEqualTo(today);
+        assertThat(recorded.getTxCollectedCardIds()).isNotBlank();
+        verify(approvals, org.mockito.Mockito.times(6)).fetchApprovals(anyString(), eq(KB), any(), any());
+
+        // 같은 카드로 다시 동기화하면 이번 달만 다시 가져온다. (이미 수집한 달은 건너뜀)
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        verify(approvals, org.mockito.Mockito.times(7)).fetchApprovals(anyString(), eq(KB), any(), any());
+        CodefOrgAccount again = orgAccounts.findById(kb.getId()).orElseThrow();
+        assertThat(again.getTxCollectedFrom()).isEqualTo(recorded.getTxCollectedFrom());
+    }
+
+    @Test
+    @DisplayName("승인내역 수집이 실패하면 수집 범위를 기록하지 않는다")
+    void failedCollectionRecordsNoRange() throws Exception {
+        CodefOrgAccount kb = connect(KB);
+        stubResult(KB, cardsOf(1));
+        when(approvals.fetchApprovals(anyString(), eq(KB), any(), any()))
+            .thenReturn(ApprovalListResult.failure("CF-09999"));
+
+        awaitStatus(startAndGetJobId(), "SUCCESS");
+
+        CodefOrgAccount account = orgAccounts.findById(kb.getId()).orElseThrow();
+        assertThat(account.getTxCollectedFrom()).isNull();
+        assertThat(account.getTxCollectedTo()).isNull();
     }
 
     // ---- 보유카드 저장 ----

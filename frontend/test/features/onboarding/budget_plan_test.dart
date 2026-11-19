@@ -65,6 +65,26 @@ class _EtcOnlyBudget implements BudgetRepository {
 }
 
 /// 기존 예상(기준 플랜)이 없는 플랜을 바로 만들어 주는 플랜 생성.
+/// 처음 [failures]번은 네트워크 오류를 내고, 그 뒤에는 가짜 분석을 돌려준다.
+class _FlakyBudget implements BudgetRepository {
+  _FlakyBudget(this.failures);
+
+  int failures;
+  int calls = 0;
+
+  @override
+  Future<SpendingAnalysis> fetchAnalysis(TransactionPeriod period) {
+    calls++;
+    if (failures-- > 0) {
+      throw const ApiException(ApiErrorKind.network);
+    }
+    return FakeBudgetRepository(delay: Duration.zero).fetchAnalysis(period);
+  }
+
+  @override
+  Future<void> saveBudget(MonthlyBudget budget) async {}
+}
+
 class _NoBaselinePlan implements PlanRepository {
   const _NoBaselinePlan();
 
@@ -370,6 +390,24 @@ void main() {
     });
   });
 
+  testWidgets('ONB-06 분석을 불러오지 못하면 실패 안내와 다시 시도 버튼을 보여준다', (tester) async {
+    final budget = _FlakyBudget(1);
+    await pumpAppAt(tester, AppRoute.budget, budget: budget);
+    await tester.pumpAndSettle();
+
+    // ONB-07A 실패 화면과 같은 구성: 제목, 이유, 하단 다시 시도 (플랜 만들기 대신)
+    expect(findText('소비내역을 분석하지 못했어요'), findsOneWidget);
+    expect(findText('인터넷 연결을 확인해 주세요.'), findsOneWidget);
+    expect(findText('이 예산으로 플랜 만들기'), findsNothing);
+
+    await tester.tap(find.widgetWithText(FilledButton, '다시 시도'));
+    await tester.pumpAndSettle();
+
+    expect(budget.calls, 2);
+    expect(findText('소비내역을 분석하지 못했어요'), findsNothing);
+    expect(findText('이 예산으로 플랜 만들기'), findsOneWidget);
+  });
+
   testWidgets('ONB-07A 플랜 생성 화면은 그림과 진행 막대를 보여주고 뒤로가기를 막는다', (tester) async {
     await pumpAppAt(
       tester,
@@ -407,8 +445,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // AUTH-04와 같은 구성: 경고 아이콘, 제목, 이유, 하단 다시 시도 버튼
+      expect(findText('플랜을 만들지 못했어요'), findsOneWidget);
       expect(findText('플랜을 계산하지 못했어요.'), findsOneWidget);
-      await tester.tap(findText('다시 시도'));
+      expect(find.bySemanticsLabel('플랜 생성 진행률'), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, '다시 시도'));
       await tester.pumpAndSettle();
       expect(plan.calls, 2);
     });

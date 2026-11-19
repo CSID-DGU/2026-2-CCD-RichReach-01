@@ -1,5 +1,6 @@
 package com.richreach.card.staging;
 
+import com.richreach.SharedMysql;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
@@ -24,24 +25,19 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * 앱 전체를 띄우지 않고 일회용 MySQL에 migration(V1~)만 적용해서 적재기를 검증한다.
  * 테스트 CSV는 실행할 때 지어낸 값으로 만든다. (저장소에 CSV를 두지 않는다)
  */
-@Testcontainers
 class StagingServiceTest {
 
     /** 테스트가 실행될 때 만드는 가짜 CSV 8종이 들어가는 임시 폴더. 저장소에 CSV 파일을 두지 않는다. */
     @TempDir
     static Path fixtures;
 
-    @Container
-    static final MySQLContainer MYSQL = new MySQLContainer(DockerImageName.parse("mysql:8.4"));
+    /** 공유 MySQL 컨테이너 안에 이 테스트만 쓰는 새 DB. (flyway clean으로 지워도 다른 테스트에 영향이 없다) */
+    static final SharedMysql.Database DB = SharedMysql.newDatabase();
 
     static JdbcTemplate jdbc;
     static StagingService service;
@@ -53,11 +49,11 @@ class StagingServiceTest {
     static void migrateAndWire() throws IOException {
         writeFixtures(fixtures);
         Flyway.configure()
-            .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
+            .dataSource(DB.jdbcUrl(), DB.username(), DB.password())
             .load()
             .migrate();
         DriverManagerDataSource dataSource =
-            new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+            new DriverManagerDataSource(DB.jdbcUrl(), DB.username(), DB.password());
         jdbc = new JdbcTemplate(dataSource);
         DataSourceTransactionManager txManager = new DataSourceTransactionManager(dataSource);
         loader = new CsvStagingLoader(jdbc, txManager);

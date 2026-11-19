@@ -78,7 +78,8 @@ public class PlanGenerationService {
         }
 
         LocalDateTime now = now();
-        Optional<PlanJob> running = jobs.findFirstByUserIdAndStatusOrderByIdDesc(userId, PlanJob.STATUS_IN_PROGRESS);
+        Optional<PlanJob> running = jobs.findFirstByUserIdAndJobTypeAndStatusOrderByIdDesc(userId,
+            PlanJob.TYPE_GENERATE, PlanJob.STATUS_IN_PROGRESS);
         if (running.isPresent() && running.get().isTimedOut(properties.timeout(), now)) {
             // 멈춘 작업은 실패로 기록해 두고 새 요청을 받는다. (늦게 끝나도 완료로 바뀌지 않는다.)
             jobs.failIfTimedOut(running.get().getId(), PlanGenerationWorker.CODE_TIMEOUT, TIMEOUT_REASON, now,

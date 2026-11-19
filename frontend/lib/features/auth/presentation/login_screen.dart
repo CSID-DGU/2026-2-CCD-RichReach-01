@@ -56,6 +56,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _onEdited(String _) => setState(() => _loginError = null);
 
+  /// 로그인한 사용자의 시작 화면 (Q8). 정하지 못하면 온보딩 처음(ONB-01)으로 보낸다.
+  Future<AppRoute> _startRoute() async {
+    try {
+      return await ref.read(startRouteResolverProvider).resolve();
+    } catch (_) {
+      return AppRoute.serviceIntro;
+    }
+  }
+
   Future<void> _onSubmit() async {
     setState(() => _submitted = true);
     if (SignupValidator.email(_email.text) != null) return;
@@ -65,8 +74,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authRepositoryProvider)
           .login(email: _email.text.trim(), password: _password.text);
-      // TODO: 카드 연결·플랜 조회 API가 나오면 온보딩을 마친 사용자는 월간 플랜으로 보낸다 (온보딩 문서 Q8).
-      if (mounted) context.go(AppRoute.serviceIntro.path);
+      final route = await _startRoute();
+      if (mounted) context.go(route.path);
     } on InvalidCredentialsException {
       _showLoginError(LoginScreen.invalidCredentialsMessage);
     } on AccountLockedException {

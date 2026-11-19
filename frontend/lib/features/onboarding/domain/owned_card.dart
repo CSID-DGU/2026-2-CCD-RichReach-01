@@ -25,6 +25,13 @@ enum AnalysisStatus {
   final String label;
 }
 
+/// 화면에 보여줄 카드 이름. 카드사가 `이지캐시백 카드(체크)|IBK기업은행`처럼
+/// `|` 뒤에 발급사를 붙여 보내면 그 부분을 뗀다.
+String cardDisplayName(String raw) {
+  final name = raw.split('|').first.trim();
+  return name.isEmpty ? raw.trim() : name;
+}
+
 /// 카드사에서 불러온 보유카드 한 장.
 class OwnedCard {
   const OwnedCard({

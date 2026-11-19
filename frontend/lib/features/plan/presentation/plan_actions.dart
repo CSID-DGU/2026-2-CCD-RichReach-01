@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../onboarding/presentation/budget_dialogs.dart';
+import '../data/monthly_plan_repository.dart';
 import '../application/monthly_plan_providers.dart';
 import '../domain/monthly_plan.dart';
 import 'plan_change_sheet.dart';
@@ -32,22 +34,29 @@ Future<void> editPlanBudget(
   final messenger = ScaffoldMessenger.of(context);
   showRecalculatingDialog(context);
   MonthlyPlan? updated;
+  String? failure;
   try {
     updated = await ref
         .read(monthlyPlanProvider(plan.month).notifier)
         .recalculate(budget);
+  } on PlanRecalculationFailure catch (e) {
+    failure = e.message;
+  } on ApiException catch (e) {
+    failure = e.userMessage;
   } catch (_) {
-    updated = null;
+    failure = '플랜을 다시 계산하지 못했어요. 잠시 후 다시 시도해 주세요.';
   } finally {
     navigator.pop();
   }
 
-  final change = updated?.change;
   if (!context.mounted) return;
-  if (change == null) {
-    messenger.showSnackBar(
-      const SnackBar(content: Text('플랜을 다시 계산하지 못했어요. 잠시 후 다시 시도해 주세요.')),
-    );
+  final change = updated?.change;
+  if (failure != null || change == null) {
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(failure ?? '소비예산을 바꿔 플랜을 다시 계산했어요.')),
+      );
     return;
   }
   await showPlanChange(context, ref, plan.month, change);

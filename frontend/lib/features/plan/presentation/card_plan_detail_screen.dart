@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/theme/app_colors.dart';
@@ -61,7 +62,12 @@ class _CardPlanContent extends StatelessWidget {
     return ListView(
       padding: detailPadding,
       children: [
-        _CardHero(detail: detail),
+        CardPlanHero(
+          detail: detail,
+          // SETTINGS-03은 지금 경로 아래(…/cards/:cardId/settings)에 있다.
+          onOpenSettings: () =>
+              context.push('${GoRouterState.of(context).uri.path}/settings'),
+        ),
         const SizedBox(height: 14),
         const DetailSectionTitle('목표 사용금액'),
         const SizedBox(height: 12),
@@ -87,17 +93,19 @@ class _CardPlanContent extends StatelessWidget {
   }
 }
 
-/// 카드 앞면(카드 이미지) ↔ 뒷면(혜택 요약). 가로로 뒤집히며 바뀐다.
-class _CardHero extends StatefulWidget {
-  const _CardHero({required this.detail});
+/// 카드 앞면(카드 이미지) ↔ 뒷면(혜택 요약). 가로로 뒤집히며 바뀐다. (PLAN-02, SETTINGS-03)
+/// [onOpenSettings]가 있으면 앞면에 카드 설정 버튼을 보여준다.
+class CardPlanHero extends StatefulWidget {
+  const CardPlanHero({super.key, required this.detail, this.onOpenSettings});
 
   final CardPlanDetail detail;
+  final VoidCallback? onOpenSettings;
 
   @override
-  State<_CardHero> createState() => _CardHeroState();
+  State<CardPlanHero> createState() => _CardPlanHeroState();
 }
 
-class _CardHeroState extends State<_CardHero> {
+class _CardPlanHeroState extends State<CardPlanHero> {
   bool _showBack = false;
 
   void _flip() => setState(() => _showBack = !_showBack);
@@ -121,6 +129,7 @@ class _CardHeroState extends State<_CardHero> {
                 key: const ValueKey('front'),
                 detail: widget.detail,
                 onFlip: _flip,
+                onOpenSettings: widget.onOpenSettings,
               ),
       ),
     );
@@ -148,19 +157,18 @@ class _CardHeroState extends State<_CardHero> {
 }
 
 class _CardFront extends StatelessWidget {
-  const _CardFront({super.key, required this.detail, required this.onFlip});
+  const _CardFront({
+    super.key,
+    required this.detail,
+    required this.onFlip,
+    this.onOpenSettings,
+  });
 
   final CardPlanDetail detail;
   final VoidCallback onFlip;
 
-  void _openSettings(BuildContext context) {
-    // TODO(#80): 카드 정보·연결 관리 화면이 생기면 그 화면으로 이동한다.
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('카드 정보 및 연결 관리 화면은 준비 중이에요.')),
-      );
-  }
+  /// 카드 정보·연결 관리(SETTINGS-03)로 가기. 없으면 설정 버튼을 숨긴다.
+  final VoidCallback? onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -206,15 +214,19 @@ class _CardFront extends StatelessWidget {
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _openSettings(context),
-                  tooltip: '카드 정보 및 연결 관리',
-                  icon: const Icon(
-                    Icons.settings_outlined,
-                    color: AppColors.onPrimary,
-                    size: 22,
-                  ),
-                ),
+                if (onOpenSettings case final open?)
+                  IconButton(
+                    onPressed: open,
+                    tooltip: '카드 정보 및 연결 관리',
+                    icon: const Icon(
+                      Icons.settings_outlined,
+                      color: AppColors.onPrimary,
+                      size: 22,
+                    ),
+                  )
+                else
+                  // 설정 버튼이 없어도 글자 높이를 맞춘다.
+                  const SizedBox(height: 48),
               ],
             ),
           ),
@@ -314,6 +326,10 @@ class _CardBack extends StatelessWidget {
               padding: const EdgeInsets.only(right: 8),
               child: Column(
                 children: [
+                  if (detail.benefits.isEmpty)
+                    Expanded(
+                      child: Center(child: Text('혜택 정보가 없어요', style: muted)),
+                    ),
                   for (final (i, benefit)
                       in detail.benefits.take(3).indexed) ...[
                     if (i > 0) divider,
@@ -322,7 +338,7 @@ class _CardBack extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              benefit.category.label,
+                              benefit.label,
                               style: white.copyWith(
                                 fontWeight: FontWeight.w500,
                               ),
@@ -339,13 +355,13 @@ class _CardBack extends StatelessWidget {
                   const SizedBox(height: 10),
                   _BackRow(
                     label: '전월 실적 기준',
-                    value: formatWon(detail.performanceRequirement),
+                    value: _wonOrDash(detail.performanceRequirement),
                     style: muted,
                   ),
                   const SizedBox(height: 11),
                   _BackRow(
                     label: '월 혜택 한도',
-                    value: formatWon(detail.benefitLimit),
+                    value: _wonOrDash(detail.benefitLimit),
                     style: muted,
                   ),
                 ],
@@ -441,8 +457,8 @@ class _GoalCard extends StatelessWidget {
                 flex: 136,
                 child: stat(
                   '전월 실적 인정액',
-                  '${formatNumber(detail.usedAmount)} / '
-                      '${formatWon(detail.performanceRequirement)}',
+                  '${formatNumber(detail.performanceAmount)} / '
+                      '${_wonOrDash(detail.performanceRequirement)}',
                   size: 10,
                 ),
               ),
@@ -450,21 +466,19 @@ class _GoalCard extends StatelessWidget {
                 flex: 98,
                 child: stat(
                   '남은 혜택 한도',
-                  formatWon(detail.remainingBenefitLimit),
+                  _wonOrDash(detail.remainingBenefitLimit),
                 ),
               ),
               Expanded(
                 flex: 94,
-                child: stat('현재 예상 혜택', formatWon(detail.expectedBenefit)),
+                child: stat('현재 예상 혜택', _wonOrDash(detail.expectedBenefit)),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            '* 총 사용 ${formatWon(detail.totalSpent)} 중 '
-            '실적 제외 ${formatWon(detail.excludedFromPerformance)}',
-            style: label,
-          ),
+          if (_performanceNote(detail) case final note?) ...[
+            const SizedBox(height: 12),
+            Text(note, style: label),
+          ],
         ],
       ),
     );
@@ -539,4 +553,21 @@ class _CategoryUsageCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 금액. 서버가 알 수 없다고 한 값(null)은 0이나 "한도 없음"이 아니라 "-"로 보여준다.
+String _wonOrDash(int? amount) => amount == null ? '-' : formatWon(amount);
+
+/// 목표 사용금액 카드 아래 안내.
+/// - 실적 인정 금액이 정확하면: 총 사용 중 실적에서 빠진 금액
+/// - 정확하지 않으면(서버가 제외 결제를 빼지 못함): 제외 조건이 있을 수 있다는 안내
+String? _performanceNote(CardPlanDetail detail) {
+  if (detail.performanceExact) {
+    return '* 총 사용 ${formatWon(detail.totalSpent)} 중 '
+        '실적 제외 ${formatWon(detail.excludedFromPerformance)}';
+  }
+  return switch (detail.exclusionNotes) {
+    [final first, ...] => '* 실적에서 제외되는 결제가 있을 수 있어요 ($first)',
+    _ => null,
+  };
 }

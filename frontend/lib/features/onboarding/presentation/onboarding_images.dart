@@ -19,21 +19,58 @@ String companyLogoAsset(CardCompany company) => switch (company) {
   CardCompany.shinhan => AppAssets.cardCompanyShinhan,
 };
 
-/// 카드 이미지 경로. 그림이 없는 카드는 null (API 연동 후에는 서버의 카드 이미지 주소를 쓴다).
-String? cardImageAsset(OwnedCard card) => switch (card.id) {
-  'SHINHAN-2471' => AppAssets.cardShinhanDeepDream,
-  'KB-0912' => AppAssets.cardKbMyWesh,
-  'WOORI-8830' => AppAssets.cardWooriCardUiJeongseok,
-  _ => null,
-};
+/// 카드 이미지 경로. 그림이 없는 카드는 null (서버가 카드 이미지 주소를 주면 그것을 쓴다).
+String? cardImageAsset(OwnedCard card) =>
+    switch (card.id) {
+      'SHINHAN-2471' => AppAssets.cardShinhanDeepDream,
+      'KB-0912' => AppAssets.cardKbMyWesh,
+      'WOORI-8830' => AppAssets.cardWooriCardUiJeongseok,
+      _ => null,
+    } ??
+    _productImage(card)?.small;
 
 /// 큰 카드 이미지 경로 (그림자·여백 없음). 그림이 없는 카드는 null.
-String? largeCardImageAsset(OwnedCard card) => switch (card.id) {
-  'SHINHAN-2471' => AppAssets.cardShinhanDeepDreamLarge,
-  'KB-0912' => AppAssets.cardKbMyWeshLarge,
-  'WOORI-8830' => AppAssets.cardWooriCardUiJeongseokLarge,
-  _ => null,
-};
+String? largeCardImageAsset(OwnedCard card) =>
+    switch (card.id) {
+      'SHINHAN-2471' => AppAssets.cardShinhanDeepDreamLarge,
+      'KB-0912' => AppAssets.cardKbMyWeshLarge,
+      'WOORI-8830' => AppAssets.cardWooriCardUiJeongseokLarge,
+      _ => null,
+    } ??
+    _productImage(card)?.large;
+
+/// 실제 상품 카드의 그림. 카드사가 같고 카드 이름에 상품명이 들어 있으면 그 그림을 쓴다.
+/// (카드 이름은 "신한카드 Hey Young 체크"처럼 카드사·데이터마다 조금씩 달라서 상품명으로 찾는다.)
+({String small, String large})? _productImage(OwnedCard card) {
+  final name = card.name.replaceAll(' ', '');
+  for (final (company, product, small, large) in _productImages) {
+    if (card.company == company && name.contains(product)) {
+      return (small: small, large: large);
+    }
+  }
+  return null;
+}
+
+const _productImages = [
+  (
+    CardCompany.nh,
+    'NEWHAVE',
+    AppAssets.cardNhAllbareunNewHave,
+    AppAssets.cardNhAllbareunNewHaveLarge,
+  ),
+  (
+    CardCompany.shinhan,
+    'HeyYoung',
+    AppAssets.cardShinhanHeyYoung,
+    AppAssets.cardShinhanHeyYoungLarge,
+  ),
+  (
+    CardCompany.bc,
+    '이지캐시백',
+    AppAssets.cardBcEasyCashback,
+    AppAssets.cardBcEasyCashbackLarge,
+  ),
+];
 
 /// 흰 바탕 로고에 두르는 브랜드 색 테두리. 바탕이 진한 로고는 null.
 Color? companyLogoBorderColor(CardCompany company) => switch (company) {

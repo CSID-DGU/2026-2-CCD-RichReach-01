@@ -72,12 +72,17 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | ONB-07B | 최초 플랜 생성 완료 | `/onboarding/plan-ready` | `planReady` |
 | HOME-01 | 홈 (하단 탭) | `/home` | `home` |
 | HOME-03 | 거래내역 (전체·카드별·카테고리, HOME-03~05) | `/home/transactions` | `transactionHistory` |
+| HOME-07 | 예정지출 관리 (수정·삭제 시트 HOME-08, 삭제 확인 HOME-10 포함) | `/planned-expenses` | `plannedExpenses` |
+| HOME-06 | 예정지출 추가 | `/planned-expenses/new` | `plannedExpenseNew` |
+| HOME-09 | 예정지출 수정 | `/planned-expenses/:expenseId/edit` (예: `/planned-expenses/sample-1/edit`) | `plannedExpenseEdit` |
 | PLAN-01 | 월간 플랜 대시보드 (하단 탭) | `/plan` | `monthlyPlan` |
 | PLAN-02 | 카드별 플랜 상세 | `/plan/cards/:cardId` (예: `/plan/cards/SHINHAN-2471`) | `cardPlanDetail` |
 | PLAN-03 | 업종별 플랜 상세 | `/plan/categories/:category` (예: `/plan/categories/DINING`) | `categoryPlanDetail` |
+| SETTINGS-03 | 카드 정보 및 연결 관리 (PLAN-02의 카드 설정 버튼) | `/plan/cards/:cardId/settings` | `cardSettings` |
 | RECOMMEND-01 | 카드 추천 (하단 탭) | `/recommendation` | `cardRecommendation` |
 | RECOMMEND-00 | 카드 추천 대화 기록 | `/recommendation/history` | `recommendationHistory` |
 | PLAN-02 | 카드별 플랜 상세 (카드 추천의 "다른 카드와 비교"에서) | `/recommendation/cards/:cardId` | `recommendationCardDetail` |
+| SETTINGS-03 | 카드 정보 및 연결 관리 (카드 추천에서 연 PLAN-02의 카드 설정 버튼) | `/recommendation/cards/:cardId/settings` | `recommendationCardSettings` |
 | REPORT | 리포트 (하단 탭, 준비 중) | `/report` | `report` |
 | SETTINGS | 설정 (하단 탭, 준비 중) | `/settings` | `settings` |
 
@@ -135,3 +140,7 @@ flutter test
 ## 참고
 
 - 다른 플랫폼이 필요해지면 `flutter create --platforms=<플랫폼> .`으로 다시 추가할 수 있습니다.
+
+## 시연 모드 (개발용)
+
+중간 발표 시연 영상용으로, 카드 선택(ONB-04)부터 월간 플랜(PLAN-01)까지 시연 자료의 값을 보여 주는 실행 방법입니다. 만드는 방법과 촬영할 때 주의할 점은 [tool/demo_fixture/README.md](tool/demo_fixture/README.md)를 보세요.

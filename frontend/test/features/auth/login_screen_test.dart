@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/core/network/api_exception.dart';
+import 'package:frontend/features/home/presentation/home_screen.dart';
+import 'package:frontend/features/auth/data/start_route_resolver.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/core/widgets/brand_symbol_mark.dart';
 import 'package:frontend/features/auth/application/auth_providers.dart';
@@ -63,6 +66,15 @@ Future<void> _fill(
   await tester.pump();
 }
 
+/// 시작 화면을 정하지 못하는 경우 (네트워크 오류 등)
+class _FailingStartRoute implements StartRouteResolver {
+  @override
+  Future<bool> hasSession() async => true;
+
+  @override
+  Future<AppRoute> resolve() => throw const ApiException(ApiErrorKind.network);
+}
+
 void main() {
   testWidgets('로고, 입력칸, 로그인 버튼, 하단 링크를 보여준다', (tester) async {
     await pumpAppAt(tester, AppRoute.login);
@@ -102,6 +114,30 @@ void main() {
 
   testWidgets('올바르게 입력하고 로그인하면 서비스 안내 화면으로 이동한다', (tester) async {
     await pumpAppAt(tester, AppRoute.login);
+
+    await _fill(tester);
+    await tester.tap(_loginButton);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ServiceIntroScreen), findsOneWidget);
+  });
+
+  testWidgets('이번 달 플랜이 있는 사용자는 로그인하면 홈으로 이동한다', (tester) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.login,
+      startRoute: const FakeStartRouteResolver(route: AppRoute.home),
+    );
+
+    await _fill(tester);
+    await tester.tap(_loginButton);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  testWidgets('시작 화면을 정하지 못하면 서비스 안내 화면으로 이동한다', (tester) async {
+    await pumpAppAt(tester, AppRoute.login, startRoute: _FailingStartRoute());
 
     await _fill(tester);
     await tester.tap(_loginButton);

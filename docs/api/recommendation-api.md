@@ -4,7 +4,7 @@
 > 기준 디자인: Figma "3. Monthly Plan & Card Recommendation" RECOMMEND-00 ~ 03
 > 관련 이슈: #82(화면), #84(이 문서)
 
-결제 전 카드 추천 대화 화면에 필요한 API 형식을 정리한 문서입니다. 나중에 OpenAI API와 연동할 것을 전제로 썼습니다.
+결제 전 카드 추천 대화 화면에 필요한 API 형식을 정리한 제안 문서입니다. 여기의 카드 추천 API는 아직 구현되지 않았습니다. 현재 구현된 예산 조정 대화는 [월 예산 챗봇 API](plan-chat-openai.md)를 참고하세요.
 **경로는 API 명세서 초안의 `POST /api/recommendations`를 기준으로 했고, 필드 이름과 JSON은 프론트 제안**이니 편하게 바꿔 주세요.
 프론트는 이 형식과 같은 모양의 가짜 데이터로 화면을 먼저 만들어 두었습니다 (`FakeRecommendationRepository`).
 

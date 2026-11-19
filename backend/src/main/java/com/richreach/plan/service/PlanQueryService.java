@@ -11,10 +11,17 @@ import com.richreach.plan.dto.PlanCategoriesResponse.CategoryPlan;
 import com.richreach.plan.dto.PlanResponse;
 import com.richreach.plan.dto.PlanResponse.CardTarget;
 import com.richreach.plan.entity.MonthlyPlan;
+import com.richreach.plan.config.PlanProperties;
 import com.richreach.plan.entity.PlanCardAllocation;
+import com.richreach.plan.entity.PlanJob;
 import com.richreach.plan.entity.PlanStrategy;
 import com.richreach.plan.repository.MonthlyPlanRepository;
 import com.richreach.plan.repository.PlanCardAllocationRepository;
+import com.richreach.plan.repository.PlanJobRepository;
+import com.richreach.transaction.service.TransactionSummaryService;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -45,6 +52,10 @@ public class PlanQueryService {
     private final MonthlyPlanRepository plans;
     private final PlanCardAllocationRepository allocations;
     private final OwnedCardQueryService ownedCards;
+    private final TransactionSummaryService transactions;
+    private final PlanJobRepository jobs;
+    private final PlanProperties properties;
+    private final Clock clock;
 
     /** 그 달에 보여줄 플랜. 월 형식이 틀리면 {@code COMMON-400}, 플랜이 없으면 {@code PLAN-001}이다. */
     @Transactional(readOnly = true)
@@ -68,7 +79,8 @@ public class PlanQueryService {
             .map(entry -> new CardTarget(entry.getKey(), cardNames.get(entry.getKey()), entry.getValue())).toList();
 
         return new PlanResponse(plan.getId(), plan.getPlanMonth(), plan.getExpectedBenefit(), baseline,
-            additionalBenefit(plan.getExpectedBenefit(), baseline), cardTargets);
+            additionalBenefit(plan.getExpectedBenefit(), baseline), cardTargets,
+            recalculationJobId(userId, planMonth));
     }
 
     /** 플랜의 업종별 사용계획. 없거나 다른 사용자의 플랜이면 {@code PLAN-001}이다. */
@@ -78,6 +90,9 @@ public class PlanQueryService {
             .orElseThrow(() -> new BusinessException(ErrorCode.PLAN_NOT_FOUND));
 
         Map<Long, String> cardNames = cardNames(userId);
+        // 이번 달 사용 금액은 플랜의 월 기준이고, 카드와 업종별로 취소·환불을 뺀 값이다.
+        Map<Long, Map<SpendingCategory, Long>> spent = transactions.cardCategorySpend(userId,
+            YearMonth.parse(plan.getPlanMonth()));
         Map<SpendingCategory, List<PlanCardAllocation>> byCategory = new EnumMap<>(SpendingCategory.class);
         for (PlanCardAllocation allocation : allocations.findByPlanId(plan.getId())) {
             byCategory.computeIfAbsent(allocation.getCategory(), category -> new ArrayList<>()).add(allocation);
@@ -87,11 +102,33 @@ public class PlanQueryService {
                 .sorted(Comparator.comparingLong(PlanCardAllocation::getTargetAmount).reversed()
                     .thenComparing(PlanCardAllocation::getUserCardId))
                 .map(a -> new CardAmount(a.getUserCardId(), cardNames.get(a.getUserCardId()), a.getTargetAmount(),
+                    spent.getOrDefault(a.getUserCardId(), Map.of()).getOrDefault(a.getCategory(), 0L),
                     a.getExpectedBenefit())).toList();
             return new CategoryPlan(entry.getKey(), cards.stream().mapToLong(CardAmount::targetAmount).sum(),
+                cards.stream().mapToLong(CardAmount::spentAmount).sum(),
                 cards.stream().mapToLong(CardAmount::expectedBenefit).sum(), cards);
         }).toList();
         return new PlanCategoriesResponse(plan.getId(), plan.getPlanMonth(), categories);
+    }
+
+    /** 그 달 플랜을 다시 계산하는 중인 작업의 ID. 진행 중인 것이 없거나 멈춘 것으로 보이는 작업이면 null이다. */
+    private String recalculationJobId(long userId, String planMonth) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        return jobs.findFirstByUserIdAndJobTypeAndPlanMonthAndStatusOrderByIdDesc(userId, PlanJob.TYPE_RECALCULATE,
+            planMonth, PlanJob.STATUS_IN_PROGRESS).filter(job -> !job.isTimedOut(properties.timeout(), now))
+            .map(PlanJob::getJobId).orElse(null);
+    }
+
+    /**
+     * 플랜의 업종 하나의 사용계획(PLAN-03). 플랜에 그 업종의 배분이 없으면 오류가 아니라 목표와 혜택이 0이고 카드가 없는 빈
+     * 응답이다. 업종 코드가 11개 업종이 아니면 {@code COMMON-400}, 없거나 다른 사용자의 플랜이면 {@code PLAN-001}이다.
+     */
+    @Transactional(readOnly = true)
+    public PlanCategoriesResponse.CategoryPlan getCategory(long userId, long planId, String categoryCode) {
+        SpendingCategory category = SpendingCategory.fromCode(categoryCode).orElseThrow(() -> new BusinessException(
+            ErrorCode.INVALID_INPUT_VALUE, "지원하지 않는 업종입니다."));
+        return getCategories(userId, planId).categories().stream().filter(plan -> plan.category() == category)
+            .findFirst().orElseGet(() -> new PlanCategoriesResponse.CategoryPlan(category, 0, 0, 0, List.of()));
     }
 
     /** 추가 혜택. 비교할 기준(기존 예상)이 없으면 null이다. */

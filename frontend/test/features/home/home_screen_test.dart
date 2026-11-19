@@ -58,7 +58,7 @@ void main() {
     expect(findText('820,000원'), findsOneWidget);
     expect(findText('음식·배달, 편의·마트 플랜이 변경됐어요'), findsOneWidget);
     expect(findText('결제 전 카드 추천'), findsOneWidget);
-    expect(findText('예정지출 추가'), findsOneWidget);
+    expect(findText('예정지출 관리'), findsOneWidget);
     expect(findText('카드별 목표 사용금액'), findsOneWidget);
     expect(findText('신한 Deep Dream'), findsWidgets);
   });
@@ -70,7 +70,7 @@ void main() {
     expect(findText('GS25'), findsOneWidget);
     expect(findText('KB My WE:SH · 편의·마트'), findsOneWidget);
     expect(findText('8,400원'), findsOneWidget);
-    expect(findText('혜택 420원'), findsOneWidget);
+    expect(findText('예상 혜택 420원'), findsOneWidget);
     expect(findText('스타벅스'), findsOneWidget);
     expect(findText('카카오T'), findsNothing);
   });

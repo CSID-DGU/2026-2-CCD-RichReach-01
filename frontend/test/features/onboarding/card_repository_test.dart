@@ -58,7 +58,7 @@ const _cards = [
     'cardId': 13,
     'cardProductId': null,
     'cardCompany': 'WOORI',
-    'cardName': '우리 새 카드',
+    'cardName': '우리 새 카드|우리은행',
     'maskedNumber': '',
     'cardType': 'UNKNOWN',
     'analysisStatus': 'UNAVAILABLE',
@@ -103,6 +103,8 @@ void main() {
     expect(cards[0].productId, 101);
     expect(cards[0].selected, isTrue);
     expect(cards[0].analyzable, isTrue);
+    // 카드사가 붙인 발급사(`|우리은행`)는 떼고 보여준다.
+    expect(cards[1].name, '우리 새 카드');
     expect(cards[1].type, CardType.unknown);
     expect(cards[1].analyzable, isFalse);
     expect(cards[1].productId, isNull);

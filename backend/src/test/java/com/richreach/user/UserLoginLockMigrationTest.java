@@ -1,5 +1,6 @@
 package com.richreach.user;
 
+import com.richreach.SharedMysql;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.flywaydb.core.Flyway;
@@ -8,23 +9,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /** V13까지 적용된 DB에 사용자가 이미 있는 상태에서 V14(로그인 실패 잠금 컬럼)를 적용해도 안전한지 확인한다. */
-@Testcontainers
 class UserLoginLockMigrationTest {
 
-    @Container
-    static final MySQLContainer MYSQL = new MySQLContainer(DockerImageName.parse("mysql:8.4"));
+    /** 공유 MySQL 컨테이너 안에 이 테스트만 쓰는 새 DB. (flyway clean으로 지워도 다른 테스트에 영향이 없다) */
+    static final SharedMysql.Database DB = SharedMysql.newDatabase();
 
     private JdbcTemplate jdbc;
 
     private Flyway flyway(String target) {
         return Flyway.configure()
-            .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
+            .dataSource(DB.jdbcUrl(), DB.username(), DB.password())
             .locations("classpath:db/migration")
             .cleanDisabled(false)
             .target(target)
@@ -35,7 +31,7 @@ class UserLoginLockMigrationTest {
     void migrateToV13() {
         flyway("latest").clean();
         flyway("13").migrate();
-        jdbc = new JdbcTemplate(new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword()));
+        jdbc = new JdbcTemplate(new DriverManagerDataSource(DB.jdbcUrl(), DB.username(), DB.password()));
     }
 
     @Test

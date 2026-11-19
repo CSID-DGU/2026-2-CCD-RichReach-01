@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/core/assets/app_assets.dart';
 import 'package:frontend/features/onboarding/data/card_repository.dart';
 import 'package:frontend/features/onboarding/domain/card_company.dart';
+import 'package:frontend/features/onboarding/domain/owned_card.dart';
 import 'package:frontend/features/onboarding/presentation/onboarding_images.dart';
 
 void main() {
@@ -49,6 +50,32 @@ void main() {
       '우리 카드의정석',
       '신한 Deep Dream',
     ]);
+  });
+
+  test('실제 상품 카드는 카드사와 이름에 든 상품명으로 이미지를 찾는다', () {
+    OwnedCard card(CardCompany company, String name) => OwnedCard(
+      id: '1',
+      name: name,
+      company: company,
+      maskedNumber: '0001',
+      type: CardType.check,
+      analysisStatus: AnalysisStatus.available,
+    );
+
+    expect(
+      cardImageAsset(card(CardCompany.shinhan, '신한카드 Hey Young 체크')),
+      AppAssets.cardShinhanHeyYoung,
+    );
+    expect(
+      largeCardImageAsset(card(CardCompany.nh, '올바른NEW HAVE체크카드')),
+      AppAssets.cardNhAllbareunNewHaveLarge,
+    );
+    expect(
+      cardImageAsset(card(CardCompany.bc, 'BC 이지캐시백 체크')),
+      AppAssets.cardBcEasyCashback,
+    );
+    // 카드사가 다르면 이름이 같아도 쓰지 않는다.
+    expect(cardImageAsset(card(CardCompany.kb, 'Hey Young')), isNull);
   });
 
   testWidgets('브랜드 SVG를 오류 없이 그린다', (tester) async {

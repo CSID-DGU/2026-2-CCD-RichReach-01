@@ -367,7 +367,7 @@ class PlanChangeBanner extends StatelessWidget {
   }
 }
 
-/// 섹션 제목과 오른쪽 링크 (예: "카드별 목표 사용금액 · 추천 근거 ›").
+/// 섹션 제목과 오른쪽 링크 (예: "최근 사용 내역 · 전체보기 ›").
 class SectionHeader extends StatelessWidget {
   const SectionHeader({super.key, required this.title, this.trailing});
 
@@ -442,11 +442,20 @@ class CardPlanRow extends StatelessWidget {
                       style: AppTextStyles.bodyStrong.copyWith(fontSize: 13),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      '${formatWon(plan.remainingAmount)} 남음',
-                      style: AppTextStyles.caption.copyWith(
-                        fontWeight: FontWeight.w500,
-                        height: 1.35,
+                    // 칸이 좁으면 줄을 바꾸지 않고 글자를 줄여 한 줄에 맞춘다.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        plan.overAmount > 0
+                            ? '${formatWon(plan.overAmount)} 초과'
+                            : '${formatWon(plan.remainingAmount)} 남음',
+                        maxLines: 1,
+                        style: AppTextStyles.caption.copyWith(
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                          color: plan.overAmount > 0 ? AppColors.error : null,
+                        ),
                       ),
                     ),
                   ],

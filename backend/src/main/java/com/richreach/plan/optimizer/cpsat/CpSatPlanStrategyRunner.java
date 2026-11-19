@@ -11,6 +11,7 @@ import com.richreach.benefit.config.BenefitProperties;
 import com.richreach.benefit.dto.BenefitQuery;
 import com.richreach.benefit.dto.BenefitResult;
 import com.richreach.benefit.service.BenefitCalculator;
+import com.richreach.benefit.service.BenefitRuleSupport;
 import com.richreach.card.dto.CalculationRule;
 import com.richreach.card.service.BenefitRuleQueryService;
 import com.richreach.global.category.SpendingCategory;
@@ -37,7 +38,7 @@ import org.springframework.stereotype.Component;
  * 월간 업종 예산을 사용자가 보유한 카드에 배분한다. 비율 혜택, 전월실적 구간,
  * 규칙별 월 한도와 공유 월 한도를 CP-SAT으로 모델링한다. 반환 금액은 기존
  * BenefitCalculator로 다시 계산한다. 가맹점·횟수·정액 혜택과 다음 달 실적 가치는
- * 현재 입력 계약에 없으므로 모델 밖이다.
+ * 현재 입력 계약에 없으므로 모델 밖이다. 일별·횟수·할인대상금액 한도 규칙도 제외한다.
  */
 @Component
 @RequiredArgsConstructor
@@ -64,9 +65,31 @@ public class CpSatPlanStrategyRunner implements PlanStrategyRunner {
 
     @Override
     public PlanStrategyResult run(PlanStrategyInput input) {
+        return runWithCommitted(input, Map.of());
+    }
+
+    /**
+     * Recalculate a monthly allocation while keeping already approved card spending fixed.
+     * The budget in {@code input} includes both approved and still planned spending.
+     */
+    public PlanStrategyResult runWithCommitted(PlanStrategyInput input,
+                                               Map<Long, Map<SpendingCategory, Long>> committed) {
+        Set<Long> allowed = new java.util.HashSet<>();
+        input.cards().forEach(card -> allowed.add(card.userCardId()));
+        return runWithCommitted(input, committed, allowed);
+    }
+
+    /** Cards omitted from {@code futureEligibleCardIds} retain their approved spend but receive no new target. */
+    public PlanStrategyResult runWithCommitted(PlanStrategyInput input,
+                                               Map<Long, Map<SpendingCategory, Long>> committed,
+                                               Set<Long> futureEligibleCardIds) {
         long started = System.nanoTime();
         if (input.cards().isEmpty()) {
             return PlanStrategyResult.failure(null, elapsedMs(started), "분석할 보유카드가 없습니다.");
+        }
+        if (!validCommitted(input, committed) || futureEligibleCardIds == null
+            || !input.cards().stream().map(CardInput::userCardId).toList().containsAll(futureEligibleCardIds)) {
+            return PlanStrategyResult.failure(null, elapsedMs(started), "확정된 거래가 예산이나 보유카드와 맞지 않습니다.");
         }
         List<CardInput> cards = input.cards().stream()
             .sorted(Comparator.comparingLong(CardInput::userCardId)).toList();
@@ -86,7 +109,10 @@ public class CpSatPlanStrategyRunner implements PlanStrategyRunner {
             for (CardInput card : cards) {
                 Map<SpendingCategory, IntVar> byCategory = new EnumMap<>(SpendingCategory.class);
                 for (SpendingCategory category : categories) {
-                    byCategory.put(category, model.newIntVar(0, input.budgetByCategory().get(category),
+                    long fixed = committed.getOrDefault(card.userCardId(), Map.of()).getOrDefault(category, 0L);
+                    long upper = futureEligibleCardIds.contains(card.userCardId())
+                        ? input.budgetByCategory().get(category) : fixed;
+                    byCategory.put(category, model.newIntVar(fixed, upper,
                         "spend_" + card.userCardId() + "_" + category));
                 }
                 spendVars.put(card.userCardId(), byCategory);
@@ -241,7 +267,7 @@ public class CpSatPlanStrategyRunner implements PlanStrategyRunner {
 
     private static boolean supported(CalculationRule rule, long previousMonthSpend) {
         if (rule.merchantSpecific() || rule.ratePercent() == null || rule.ratePercent().signum() < 0
-            || "MILE".equals(rule.rewardUnit())) {
+            || "MILE".equals(rule.rewardUnit()) || BenefitRuleSupport.hasUnmodelledLimits(rule)) {
             return false;
         }
         if ("REPLACES_BASE".equals(rule.ruleMode()) || "PREFER_HIGHER".equals(rule.ruleMode())
@@ -251,6 +277,27 @@ public class CpSatPlanStrategyRunner implements PlanStrategyRunner {
         return (rule.previousMonthMinKrw() == null || previousMonthSpend >= rule.previousMonthMinKrw())
             && (rule.previousMonthMaxExclusiveKrw() == null
                 || previousMonthSpend < rule.previousMonthMaxExclusiveKrw());
+    }
+
+    private static boolean validCommitted(PlanStrategyInput input,
+                                           Map<Long, Map<SpendingCategory, Long>> committed) {
+        if (committed == null) return false;
+        Set<Long> ids = new java.util.HashSet<>();
+        input.cards().forEach(card -> ids.add(card.userCardId()));
+        Map<SpendingCategory, Long> sums = new EnumMap<>(SpendingCategory.class);
+        try {
+            for (var card : committed.entrySet()) {
+                if (card.getKey() == null || !ids.contains(card.getKey()) || card.getValue() == null) return false;
+                for (var spend : card.getValue().entrySet()) {
+                    if (spend.getKey() == null || spend.getValue() == null || spend.getValue() < 0) return false;
+                    sums.merge(spend.getKey(), spend.getValue(), Math::addExact);
+                }
+            }
+        } catch (ArithmeticException e) {
+            return false;
+        }
+        return sums.entrySet().stream().allMatch(entry ->
+            entry.getValue() <= input.budgetByCategory().getOrDefault(entry.getKey(), 0L));
     }
 
     private static int elapsedMs(long started) {

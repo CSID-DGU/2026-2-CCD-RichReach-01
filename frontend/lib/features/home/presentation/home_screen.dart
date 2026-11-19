@@ -64,12 +64,6 @@ class _HomeContent extends ConsumerWidget {
   /// 이번 달 플랜. 아직 만들지 않았으면 null.
   final MonthlyPlan? plan;
 
-  void _comingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('$feature 화면은 준비 중이에요.')));
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final plan = this.plan;
@@ -118,12 +112,11 @@ class _HomeContent extends ConsumerWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _QuickAction(
-                  title: '예정지출 추가',
+                  title: '예정지출 관리',
                   description:
                       '평소와 다른 지출이 예정되어 있나요? '
                       '미리 입력하면 더 정확한 소비 플랜을 추천해 드려요.',
-                  // TODO: 예정지출 입력 화면 디자인이 나오면 연결한다.
-                  onTap: () => _comingSoon(context, '예정지출 추가'),
+                  onTap: () => context.pushNamed(AppRoute.plannedExpenses.name),
                 ),
               ),
             ],

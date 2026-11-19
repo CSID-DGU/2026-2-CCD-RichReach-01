@@ -1,0 +1,60 @@
+# 공용 개발 서버(AWS) 설정. 로컬 개발은 application-local.yml을 쓴다.
+# 값은 모두 환경변수로만 주입하고, 비밀값(DB 비밀번호, 암호화 키, JWT 서명 키)에는 기본값을 두지 않는다.
+# 비어 있으면 앱이 시작되지 않아서, 설정을 빠뜨린 채 떠 있는 일이 없다.
+#   필수: DB_HOST, MYSQL_PASSWORD, DATA_ENCRYPTION_KEY, JWT_SECRET, CORS_ALLOWED_ORIGINS
+# 이 프로파일에서는 시연 데이터 생성(DemoSeedRunner)과 비밀번호 재설정 인증번호 노출이 꺼져 있다.
+spring:
+  datasource:
+    # RDS 같은 외부 DB는 연결을 암호화한다. DB_SSL_MODE로 바꿀 수 있다. (REQUIRED, VERIFY_CA, VERIFY_IDENTITY, PREFERRED)
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${MYSQL_DATABASE:richreach}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&sslMode=${DB_SSL_MODE:REQUIRED}
+    username: ${MYSQL_USER:richreach}
+    password: ${MYSQL_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 2
+      connection-timeout: 10000      # 밀리초(10초)
+      max-lifetime: 1500000          # 밀리초(25분). RDS 연결 제한 시간보다 짧게 둔다
+
+  # 이 DB는 서버를 처음 켤 때 Flyway가 스키마를 만든다. 다른 사람이 구조를 관리하는 공용 DB에 붙일 때는
+  # SPRING_FLYWAY_ENABLED=false로 끈다. (backend/README.md 참고)
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
+
+server:
+  # 로드밸런서·프록시 뒤에서 실제 요청 주소와 프로토콜을 읽는다.
+  forward-headers-strategy: framework
+  # 종료할 때 처리 중인 요청을 마친 뒤 끈다.
+  shutdown: graceful
+
+richreach:
+  cors:
+    # 허용할 origin(쉼표로 구분). 비워 두면 CORS가 닫혀 브라우저 클라이언트가 접속하지 못한다.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+app:
+  jwt:
+    # 서명 키가 없으면 서버를 다시 켤 때마다 모든 로그인이 풀리므로 이 프로파일에서는 반드시 있어야 한다. (JwtSigningKey)
+    require-secret: true
+  encryption:
+    # CODEF connected_id 같은 민감정보 암호화 키(Base64, 32바이트). 기본값 없음.
+    # 한 번 정한 뒤 바꾸거나 잃어버리면 저장된 암호화 데이터를 읽을 수 없다. 백업해서 보관한다.
+    key: ${DATA_ENCRYPTION_KEY}
+
+# CODEF 연동 (값은 환경변수로만 주입한다. 비어 있으면 CODEF 호출 시 안내 오류가 난다.)
+codef:
+  client-id: ${CODEF_CLIENT_ID:}
+  client-secret: ${CODEF_CLIENT_SECRET:}
+  public-key: ${CODEF_PUBLIC_KEY:}
+
+# API 문서(Swagger). 프론트가 명세를 볼 수 있게 켜 두고, 외부에 공개하지 않으려면 SWAGGER_ENABLED=false로 끈다.
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
+
+# 운영 로그에는 SQL을 남기지 않는다. (바인딩 값에 소비 정보가 들어갈 수 있다)
+logging:
+  level:
+    root: info
+    org.hibernate.SQL: warn

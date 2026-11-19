@@ -3,12 +3,45 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/features/onboarding/domain/transaction.dart';
 import 'package:frontend/features/plan/data/monthly_plan_repository.dart';
+import 'package:frontend/features/plan/domain/plan_details.dart';
 import 'package:frontend/features/plan/presentation/card_plan_detail_screen.dart';
 import 'package:frontend/features/plan/presentation/category_plan_detail_screen.dart';
 import 'package:frontend/features/plan/presentation/monthly_plan_screen.dart';
 
 import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
+
+/// 카드별 상세의 실적·한도·혜택을 서버가 알 수 없다고 준 경우 (null).
+class _UnknownTermsPlans extends FakeMonthlyPlanRepository {
+  _UnknownTermsPlans()
+    : super(
+        currentMonth: testCurrentMonth,
+        delay: Duration.zero,
+        recalculateDelay: Duration.zero,
+      );
+
+  @override
+  Future<CardPlanDetail?> fetchCardPlan(DateTime month, String cardId) async {
+    final plan = await fetchPlan(month);
+    final detail = FakeMonthlyPlanRepository.cardPlanDetail(plan!, cardId);
+    if (detail == null) return null;
+    return CardPlanDetail(
+      card: detail.card,
+      targetAmount: detail.targetAmount,
+      usedAmount: detail.usedAmount,
+      performanceAmount: detail.usedAmount,
+      performanceRequirement: null,
+      benefitLimit: null,
+      remainingBenefitLimit: null,
+      expectedBenefit: null,
+      totalSpent: detail.usedAmount,
+      performanceExact: false,
+      exclusionNotes: const ['상품권 구입액은 실적에서 제외'],
+      benefits: const [],
+      categoryUsages: detail.categoryUsages,
+    );
+  }
+}
 
 void main() {
   final plan = FakeMonthlyPlanRepository.samplePlan(testCurrentMonth);
@@ -69,6 +102,29 @@ void main() {
   });
 
   group('PLAN-02 카드별 플랜 상세', () {
+    testWidgets('알 수 없는 실적·한도·혜택은 "-"로, 제외 조건은 안내로 보여준다', (tester) async {
+      await pumpAppAt(
+        tester,
+        AppRoute.monthlyPlan,
+        monthlyPlan: _UnknownTermsPlans(),
+      );
+      await tester.tap(findText('112,000원 남음'));
+      await tester.pumpAndSettle();
+
+      expect(findText('238,000 / -'), findsOneWidget);
+      // 남은 혜택 한도, 현재 예상 혜택
+      expect(findText('-'), findsNWidgets(2));
+      expect(
+        findText('* 실적에서 제외되는 결제가 있을 수 있어요 (상품권 구입액은 실적에서 제외)'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('총 사용'), findsNothing);
+
+      await tester.tap(findText('혜택 요약 보기'));
+      await tester.pumpAndSettle();
+      expect(findText('혜택 정보가 없어요'), findsOneWidget);
+    });
+
     testWidgets('대시보드의 카드를 누르면 카드별 상세가 열리고, 하단 네비게이션은 그대로다', (tester) async {
       await pumpAppAt(tester, AppRoute.monthlyPlan);
 

@@ -69,6 +69,8 @@ flutter:
     - assets/images/icons/
     - assets/images/icons/Navigation/
     - assets/images/onboarding/
+    # 시연 모드 자료 (tool/demo_fixture/README.md). 자료 파일은 git에 올리지 않는다.
+    - assets/demo/
 
   # Pretendard (SIL Open Font License 1.1, assets/fonts/pretendard/LICENSE.txt)
   fonts:

@@ -8,7 +8,6 @@ import com.richreach.global.response.PageResponse;
 import com.richreach.global.security.AuthenticatedUser;
 import com.richreach.transaction.dto.CardScope;
 import com.richreach.transaction.dto.ChangeCategoryRequest;
-import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionResponse;
 import com.richreach.transaction.dto.TransactionSummaryResponse;
 import com.richreach.transaction.service.TransactionCategoryService;
@@ -42,9 +41,13 @@ public class TransactionController {
     private final TransactionCategoryService categoryService;
 
     /**
-     * 기간별 소비 요약. {@code period}는 {@code 1M}, {@code 3M}, {@code 6M} 중 하나이고, 없거나 다른 값이면
-     * 400({@code TRANS-002})이다. 금액은 취소·환불을 뺀 값이며, 수집된 거래가 요청한 기간보다 짧으면 {@code partial=true}다.
+     * 기간별 또는 월별 소비 요약. {@code period}는 {@code 1M}, {@code 3M}, {@code 6M} 중 하나이고, 없거나 다른 값이면
+     * 400({@code TRANS-002})이다. 금액은 취소·환불을 뺀 값이며, 수집한 기간이 요청한 기간보다 짧으면 {@code partial=true}다.
      * 거래가 없으면 합계와 11개 업종이 모두 0인 응답이다.
+     *
+     * <p>{@code month=yyyy-MM}을 보내면 그달 1일부터 말일까지(이번 달은 오늘까지) 요약한다. {@code month}가 있으면
+     * {@code period}는 무시하고, 응답의 {@code period}는 null이며 {@code month}가 채워진다. 형식이 틀리거나 아직 오지 않은
+     * 월이면 400({@code COMMON-400})이다. 합계, 업종, 카드별 금액이 모두 같은 기간이다.
      *
      * <p>{@code cardScope}는 합계와 업종이 어느 카드의 거래를 볼지다. {@code SELECTED}(기본)는 분석 대상으로 고른 카드,
      * {@code ALL}은 모든 거래이고, 다른 값이면 400({@code COMMON-400})이다. 응답의 {@code cards}는 범위와 상관없이
@@ -53,10 +56,9 @@ public class TransactionController {
     @GetMapping("/summary")
     public ApiResponse<TransactionSummaryResponse> summary(@AuthenticationPrincipal AuthenticatedUser user,
                                                            @RequestParam(required = false) String period,
+                                                           @RequestParam(required = false) String month,
                                                            @RequestParam(required = false) String cardScope) {
-        SummaryPeriod summaryPeriod = SummaryPeriod.fromCode(period)
-            .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PERIOD));
-        return ApiResponse.ok(summaryService.summarize(user.userId(), summaryPeriod, parseScope(cardScope)));
+        return ApiResponse.ok(summaryService.summarize(user.userId(), period, month, cardScope));
     }
 
     /**
@@ -64,6 +66,9 @@ public class TransactionController {
      * <ul>
      *   <li>{@code period}: {@code 1M}, {@code 3M}, {@code 6M}. 요약과 같은 기준(승인일). 다른 값이면 400({@code TRANS-002}).
      *       없으면 전체 기간이다.</li>
+     *   <li>{@code month}: {@code yyyy-MM}. 그달 1일부터 말일까지(이번 달은 오늘까지) 승인일 기준으로 본다. 요약과 같은 규칙으로,
+     *       {@code month}가 있으면 {@code period}는 무시하고(잘못된 값이어도 오류가 아니다), 형식이 틀리거나 아직 오지 않은
+     *       월이면 400({@code COMMON-400})이다.</li>
      *   <li>{@code cardId}: 이 보유카드의 거래만. 내 카드가 아니면 결과가 비어 있다. 지정하면 {@code cardScope}보다 우선한다.</li>
      *   <li>{@code cardScope}: {@code cardId}가 없을 때 볼 카드. {@code SELECTED}(기본)는 분석 대상으로 고른 카드,
      *       {@code ALL}은 모든 거래다. 다른 값이면 400({@code COMMON-400}).</li>
@@ -77,6 +82,7 @@ public class TransactionController {
     @GetMapping
     public ApiResponse<PageResponse<TransactionResponse>> list(@AuthenticationPrincipal AuthenticatedUser user,
                                                                @RequestParam(required = false) String period,
+                                                               @RequestParam(required = false) String month,
                                                                @RequestParam(required = false) Long cardId,
                                                                @RequestParam(required = false) String cardScope,
                                                                @RequestParam(required = false) String category,
@@ -87,11 +93,9 @@ public class TransactionController {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE,
                 "page는 0 이상, size는 1부터 " + MAX_PAGE_SIZE + "까지여야 합니다.");
         }
-        SummaryPeriod summaryPeriod = period == null ? null : SummaryPeriod.fromCode(period)
-            .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PERIOD));
         SpendingCategory spendingCategory = category == null ? null : parseCategory(category);
 
-        var filter = new TransactionQueryService.Filter(summaryPeriod, cardId, parseScope(cardScope), spendingCategory,
+        var filter = new TransactionQueryService.Filter(period, month, cardId, CardScope.parse(cardScope), spendingCategory,
             includeCanceled);
         return ApiResponse.ok(PageResponse.from(queryService.list(user.userId(), filter, page, size)));
     }
@@ -119,16 +123,6 @@ public class TransactionController {
     public ApiResponse<TransactionResponse> resetCategory(@AuthenticationPrincipal AuthenticatedUser user,
                                                           @PathVariable long transactionId) {
         return ApiResponse.ok(categoryService.reset(user.userId(), transactionId));
-    }
-
-    /** 없으면 기본 범위, 알 수 없는 값이면 400이다. */
-    private static CardScope parseScope(String code) {
-        if (code == null) {
-            return CardScope.DEFAULT;
-        }
-        return CardScope.fromCode(code).orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE,
-            "지원하지 않는 카드 범위입니다. " + Arrays.stream(CardScope.values()).map(Enum::name)
-                .collect(Collectors.joining(", ")) + " 중 하나여야 합니다."));
     }
 
     private static SpendingCategory parseCategory(String code) {
