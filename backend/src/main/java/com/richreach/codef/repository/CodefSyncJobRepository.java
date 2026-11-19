@@ -30,6 +30,10 @@ public interface CodefSyncJobRepository extends JpaRepository<CodefSyncJob, Long
         """)
     Optional<CodefSyncJob> findWithAccountById(@Param("id") Long id);
 
+    /** 계정을 영속성 컨텍스트에 올리기 전에 사용자 행 잠금에 필요한 ID만 읽는다. */
+    @Query("select j.orgAccount.connection.user.id from CodefSyncJob j where j.id = :id")
+    Optional<Long> findUserIdById(@Param("id") Long id);
+
     /** 사용자의 카드사 계정별 가장 최근 카드 목록 수집 작업. */
     @Query("""
         select j from CodefSyncJob j join fetch j.orgAccount a

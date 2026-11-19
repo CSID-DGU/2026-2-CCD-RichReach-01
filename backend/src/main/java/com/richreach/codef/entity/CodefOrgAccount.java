@@ -14,9 +14,11 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 /** 연동 내에서 기관(카드사)별로 등록한 계정. */
 @Entity
+@DynamicUpdate
 @Table(name = "codef_org_accounts")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
