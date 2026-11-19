@@ -1,6 +1,7 @@
 # 카드 추천 API 형식 (초안)
 
-> 상태: **초안 (프론트 제안, 백엔드 리뷰 전)**
+> 상태: **프론트 화면 설계용 초안. 아래 JSON의 금액·근거·API 경로는 현재 서버 구현이 아님.**
+> 실제 구현된 금액·업종 수동 입력은 [수동 추천 API](manual-card-recommendation.md), 자연어·모호성·챗봇 확정의 후속 연결은 [백엔드 전달 명세](recommendation-chat-backend-handoff.md)를 기준으로 확인한다.
 > 기준 디자인: Figma "3. Monthly Plan & Card Recommendation" RECOMMEND-00 ~ 03
 > 관련 이슈: #82(화면), #84(이 문서)
 
