@@ -62,6 +62,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 카드 정보와 연결 관리(SETTINGS-03) API를 보안 필터와 실제 MySQL로 확인한다. 카드 정보 조회
@@ -122,6 +123,8 @@ class CardSettingsApiTest {
     private AuthTokenService authTokenService;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private TransactionTemplate transaction;
 
     private User user;
     private String token;
@@ -276,6 +279,23 @@ class CardSettingsApiTest {
         assertThat(orgAccounts.findById(account.getId()).orElseThrow().isAutoSyncEnabled()).isTrue();
     }
 
+    @Test
+    @DisplayName("계정을 읽은 뒤 사용자가 자동 동기화를 꺼도, 그 계정을 저장하는 쪽(동기화 결과 기록 등)이 설정을 되돌리지 않는다")
+    void savingTheAccountDoesNotOverwriteTheAutoSyncSetting() {
+        CodefOrgAccount account = connect(user, KB);
+
+        // 계정을 읽어 둔 트랜잭션 안에서 다른 곳이 자동 동기화를 끈 상황을 만든다. (읽은 시점의 값은 켬이다)
+        transaction.executeWithoutResult(status -> {
+            CodefOrgAccount loaded = orgAccounts.findById(account.getId()).orElseThrow();
+            jdbc.update("update codef_org_accounts set auto_sync_enabled = false where id = ?", account.getId());
+            loaded.markSynced(LocalDateTime.now(CLOCK));
+        });
+
+        CodefOrgAccount saved = orgAccounts.findById(account.getId()).orElseThrow();
+        assertThat(saved.getLastSyncedAt()).isNotNull();
+        assertThat(saved.isAutoSyncEnabled()).isFalse();
+    }
+
     // ---- 카드사 연결 해제 ----
 
     @Test
@@ -354,7 +374,8 @@ class CardSettingsApiTest {
     void blockedWhileSyncing() throws Exception {
         CodefOrgAccount kb = connect(user, KB);
         card(user, kb, CardCompany.KB, "KB 카드", "1111");
-        syncJobs.save(CodefSyncJob.startCardList(kb, "batch", LocalDateTime.now()));
+        // 서비스가 보는 고정 시계 기준으로 방금 시작한 작업이다. (실제 현재 시각을 쓰면 시스템 시간대에 따라 5분 안인지가 달라진다)
+        syncJobs.save(CodefSyncJob.startCardList(kb, "batch", LocalDateTime.now(CLOCK)));
 
         disconnect(token, kb.getId()).andExpect(status().isConflict())
             .andExpect(jsonPath("$.code").value("CONN-007"));

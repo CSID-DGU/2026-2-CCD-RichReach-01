@@ -14,9 +14,16 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
-/** 연동 내에서 기관(카드사)별로 등록한 계정. */
+/**
+ * 연동 내에서 기관(카드사)별로 등록한 계정.
+ *
+ * <p>{@link DynamicUpdate}로 바뀐 컬럼만 UPDATE한다. 동기화 결과 기록, 재연결, 사용자의 설정 변경(자동 동기화)은 서로 다른
+ * 컬럼을 바꾸는데, 한쪽이 계정을 읽은 뒤 다른 쪽이 커밋해도 읽어 둔 이전 값으로 덮어쓰지 않게 한다.
+ */
 @Entity
+@DynamicUpdate
 @Table(name = "codef_org_accounts")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
