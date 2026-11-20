@@ -28,6 +28,7 @@ public class CodefAccountClient {
     static final String CREATE_PATH = "/v1/account/create";
     static final String ADD_PATH = "/v1/account/add";
     static final String UPDATE_PATH = "/v1/account/update";
+    static final String DELETE_PATH = "/v1/account/delete";
 
     private static final String SUCCESS_CODE = "CF-00000";
 
@@ -47,6 +48,24 @@ public class CodefAccountClient {
     /** 이미 등록한 카드사의 로그인 정보를 다시 보낸다. (실패했던 카드사를 다시 연결할 때) */
     public AccountResult update(String connectedId, CardCompany company, String loginId, String password) {
         return call(UPDATE_PATH, connectedId, company, loginId, password);
+    }
+
+    /**
+     * 등록한 카드사 계정 하나를 CODEF에서 지운다. connectedId에 등록된 다른 카드사에는 영향이 없다. 지운 뒤에는 이 카드사의
+     * 데이터를 더 가져올 수 없다. 응답은 계정 등록과 같은 모양이라 같은 방식으로 읽는다. (CODEF 실제 응답은 아직 확인하지 못했다)
+     */
+    public AccountResult delete(String connectedId, CardCompany company) {
+        Map<String, Object> account = new LinkedHashMap<>();
+        account.put("countryCode", "KR");
+        account.put("businessType", "CD");
+        account.put("clientType", "P");
+        account.put("organization", company.organizationCode());
+        account.put("loginType", "1");
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("connectedId", connectedId);
+        body.put("accountList", List.of(account));
+        return parse(apiClient.post(DELETE_PATH, body));
     }
 
     private AccountResult call(String path, String connectedId, CardCompany company, String loginId,

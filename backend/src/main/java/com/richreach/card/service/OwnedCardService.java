@@ -105,6 +105,20 @@ public class OwnedCardService {
     }
 
     /**
+     * 카드사 계정 하나에서 수집한 카드를 모두 지운다. 사라진(비활성) 카드도 포함한다. 그 카드의 거래와 플랜 배분은 DB가 함께
+     * 지운다. (외래키 ON DELETE CASCADE) 카드사 연결을 해제할 때 부른다. 다른 사용자의 카드는 지우지 않는다.
+     *
+     * @return 지운 카드 수
+     */
+    @Transactional
+    public int deleteAllOfAccount(long userId, long orgAccountId) {
+        List<OwnedCard> cards = ownedCards.findByOrgAccountId(orgAccountId).stream()
+            .filter(card -> card.getUserId().equals(userId)).toList();
+        ownedCards.deleteAll(cards);
+        return cards.size();
+    }
+
+    /**
      * 저장 결과.
      *
      * @param created     새로 저장한 카드 수
