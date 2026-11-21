@@ -216,6 +216,8 @@ class ConnectionRetryApiTest {
         assertThat(response).doesNotContain(CONNECTED_ID).doesNotContain(LOGIN_ID).doesNotContain(PASSWORD);
         assertThat(connections.count()).isEqualTo(1);
         assertThat(orgAccounts.count()).isEqualTo(1);
+        // 다시 연결하면 가린 아이디(앞 2자)가 기록된다.
+        assertThat(orgAccounts.findById(account.getId()).orElseThrow().getLoginIdMasked()).isEqualTo("te***");
     }
 
     @Test

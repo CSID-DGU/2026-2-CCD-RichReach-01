@@ -14,9 +14,16 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
-/** 연동 내에서 기관(카드사)별로 등록한 계정. */
+/**
+ * 연동 내에서 기관(카드사)별로 등록한 계정.
+ *
+ * <p>{@link DynamicUpdate}로 바뀐 컬럼만 UPDATE한다. 동기화 결과 기록, 재연결, 사용자의 설정 변경(자동 동기화)은 서로 다른
+ * 컬럼을 바꾸는데, 한쪽이 계정을 읽은 뒤 다른 쪽이 커밋해도 읽어 둔 이전 값으로 덮어쓰지 않게 한다.
+ */
 @Entity
+@DynamicUpdate
 @Table(name = "codef_org_accounts")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -76,6 +83,14 @@ public class CodefOrgAccount {
     @Column(name = "tx_collected_card_ids", length = 255)
     private String txCollectedCardIds;
 
+    /** 화면에 보여줄 가린 카드사 아이디(앞 2자만 남김). 연결할 때 저장하고, 기록이 없으면 null. 원문은 저장하지 않는다. */
+    @Column(name = "login_id_masked", length = 30)
+    private String loginIdMasked;
+
+    /** 거래내역 자동 동기화를 쓸지 사용자가 정한 설정. 설정 값만 저장하고 실제 주기 실행은 별도다. */
+    @Column(name = "auto_sync_enabled", nullable = false)
+    private boolean autoSyncEnabled = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -104,6 +119,28 @@ public class CodefOrgAccount {
         this.txCollectedFrom = from;
         this.txCollectedTo = to;
         this.txCollectedCardIds = cardIds;
+    }
+
+    /** 연결(재연결)할 때 가린 아이디를 남긴다. 값이 없으면 기존 기록을 그대로 둔다. */
+    public void rememberLoginId(String maskedLoginId) {
+        if (maskedLoginId != null) {
+            this.loginIdMasked = maskedLoginId;
+        }
+    }
+
+    public void changeAutoSync(boolean enabled) {
+        this.autoSyncEnabled = enabled;
+    }
+
+    /**
+     * 연결을 해제한다. 행은 지우지 않고(동기화 작업 기록이 참조한다) 해제 상태로 표시하며, 수집 기록과 화면용 아이디는
+     * 지운다. 다시 연결하면 새 계정 행이 만들어진다.
+     */
+    public void disconnect() {
+        this.status = STATUS_DELETED;
+        this.lastErrorCode = null;
+        this.loginIdMasked = null;
+        recordCollectedRange(null, null, null);
     }
 
     /** 동기화에 실패한 오류 코드를 남긴다. 연결 상태(status)는 바꾸지 않는다. */
