@@ -16,9 +16,7 @@ public record TransactionsChangedEvent(long userId, YearMonth month, Reason reas
         /** 카드 동기화로 거래가 새로 저장되거나 갱신되었다. */
         SYNCED,
         /** 사용자가 거래의 업종을 고치거나 되돌렸다. */
-        CATEGORY_EDITED,
-        /** 사용자가 카드사 연결을 해제해 그 카드사의 카드와 거래가 지워졌다. */
-        CARD_DISCONNECTED
+        CATEGORY_EDITED
     }
 
 }

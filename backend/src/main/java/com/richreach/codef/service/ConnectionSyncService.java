@@ -181,13 +181,11 @@ public class ConnectionSyncService {
         OffsetDateTime syncedAt = account.getLastSyncedAt() == null ? null
             : account.getLastSyncedAt().atZone(clock.getZone()).toOffsetDateTime();
         if (latestJob == null) {
-            return new ConnectionSummaryResponse(account.getId(), company, NOT_SYNCED, 0, null, null, syncedAt,
-                account.getLoginIdMasked(), account.isAutoSyncEnabled());
+            return new ConnectionSummaryResponse(account.getId(), company, NOT_SYNCED, 0, null, null, syncedAt);
         }
         Result result = toResult(latestJob, company, now);
         return new ConnectionSummaryResponse(account.getId(), company, result.status(), result.cardCount(),
-            result.failureCode(), result.failureReason(), syncedAt, account.getLoginIdMasked(),
-            account.isAutoSyncEnabled());
+            result.failureCode(), result.failureReason(), syncedAt);
     }
 
     private Result toResult(CodefSyncJob job, LocalDateTime now) {

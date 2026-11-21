@@ -1,6 +1,6 @@
 # 온보딩·월간 플랜·홈·카드 정보 API 연동 문서
 
-> 상태: **회원가입 ~ 월간 플랜(AUTH-01 ~ PLAN-01)은 구현된 API로 연동했고, 실제 카드사 계정으로 처음부터 끝까지 확인했습니다.** 홈(HOME-01)과 거래내역(HOME-03~05)은 거래 목록 월 조회(#269)와 거래별 예상 혜택(#270)까지 연동했습니다(프론트 #289). 예정지출(HOME-06~10)은 서버 API로 저장합니다(#274, 프론트 #291). PLAN-02·03 실적·혜택(#273)과 PLAN-01 변경 안내·소비예산 재계산(#271·#272)도 연동했습니다(프론트 #293, #295). 카드 정보(SETTINGS-03)의 결제일·연결 계정·자동 동기화·연결 해제는 API(백엔드 #275)가 생겨 연동을 기다립니다(Q22). 새로 연동한 부분은 아직 실제 서버로 화면을 확인하지 않았습니다. (2026-11-18 기준)
+> 상태: **회원가입 ~ 월간 플랜(AUTH-01 ~ PLAN-01)은 구현된 API로 연동했고, 실제 카드사 계정으로 처음부터 끝까지 확인했습니다.** 홈(HOME-01)과 거래내역(HOME-03~05)은 거래 목록 월 조회(#269)와 거래별 예상 혜택(#270)까지 연동했습니다(프론트 #289). 예정지출(HOME-06~10)은 서버 API로 저장합니다(#274, 프론트 #291). PLAN-02·03 실적·혜택(#273)과 PLAN-01 변경 안내·소비예산 재계산(#271·#272)도 연동했습니다(프론트 #293, #295). 카드 정보(SETTINGS-03)는 결제일·연결 계정·자동 동기화·연결 해제 API가 없어 표시만 합니다(Q22). 새로 연동한 부분은 아직 실제 서버로 화면을 확인하지 않았습니다. (2026-11-18 기준)
 > 기준 디자인: Figma 온보딩 새 디자인 (AUTH-01 ~ ONB-07B), 월간 플랜(PLAN-01 ~ 03), 홈(HOME-01, HOME-03 ~ 10), 카드 정보(SETTINGS-03)
 > API 명세: [openapi.json](openapi.json) (서버 없이 보기, 아래 1-1 참고) / 서버를 띄웠다면 `http://localhost:8080/swagger-ui.html`
 > 필드의 최종 기준은 API 명세와 백엔드 코드입니다. 이 문서의 JSON은 화면 설명용 예시입니다.
@@ -31,7 +31,7 @@
 | 홈 | **HOME-01 홈** | PLAN-01과 같은 플랜·월 요약 + `GET /api/transactions` (최근 사용 내역) | ✅ (#270) | ✅ 예상 혜택까지 연동 (#252, #289), 빠른 실행 "예정지출 관리" → HOME-07 (#258) | - |
 | 홈 | **HOME-03~05 거래내역** (전체·카드별·카테고리) | `GET /api/transactions/summary?month=`, `GET /api/transactions?month=` | ✅ (#269, #270) | ✅ 월 조회·예상 혜택 연동 (#252, #289) | - |
 | 홈 | **HOME-06~10 예정지출** (추가·관리·수정·삭제) | `GET·POST /api/planned-expenses`, `PUT·DELETE /api/planned-expenses/{expenseId}` (Q21) | ✅ (#274) | ✅ 서버 API 연동 (#258·#262·#291) | - |
-| 설정 | **SETTINGS-03 카드 정보** (PLAN-02의 카드 설정 버튼) | `GET /api/cards/{cardId}/settings`, `PUT /api/connections/{connectionId}/auto-sync`, `DELETE /api/connections/{connectionId}`, `PUT /api/cards/selection` (Q22) | ✅ (#275) | 🟡 화면 완료, 선택 저장 외에는 아직 API 연동 전 | - |
+| 설정 | **SETTINGS-03 카드 정보** (PLAN-02의 카드 설정 버튼) | `PUT /api/cards/selection` (플랜 분석에 포함) + 결제일·연결 계정·자동 동기화·연결 해제 (API 없음, Q22) | 🟡 선택 저장만 | 🟡 선택 저장 외 표시만 (#258) | - |
 
 - ✅ 완료, 🟡 일부 가능, ⬜ 할 일, ⚠️ 확인 필요
 - "실제 서버 확인"은 로컬 백엔드와 에뮬레이터로 화면 흐름을 직접 확인했다는 뜻입니다. `-`는 아직 따로 확인하지 않은 것입니다.
@@ -764,49 +764,10 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 |---|---|---|---|
 | 카드 이미지, 혜택 요약 보기 | PLAN-02와 같음 | PLAN-02와 같음 | 🟡 PLAN-02와 같음 |
 | 카드 정보: 실적 기준, 이번 달 인정금액 | 카드 전월 실적 기준, 이번 달 실적 인정 금액 | `GET /api/plans/{planId}/card-targets`의 `performance` (#273, 인정 금액은 정확하지 않음) | ✅ 연동 (#293, 모르면 "-") |
-| 카드 정보: 결제일, 이용기간, 연결 계정 | 결제일(예: 매월 14일), 실적 이용기간(전월 1일~말일), 가린 카드사 아이디 | `GET /api/cards/{cardId}/settings` → `paymentDay`(항상 null, "-"), `performancePeriod`, `account.maskedLoginId` | 🟡 API 있음 (#275), 연동 전 |
-| 거래내역 자동 동기화 (토글) | 카드사별 자동 동기화 설정 | `PUT /api/connections/{connectionId}/auto-sync` (설정 값만 저장, 아래 참고), 현재 값은 `account.autoSyncEnabled` 또는 `GET /api/connections` | 🟡 API 있음 (#275), 연동 전 |
+| 카드 정보: 결제일, 이용기간, 연결 계정 | 결제일(예: 매월 14일), 실적 이용기간(전월 1일~말일), 가린 카드사 아이디 | 없음 (Q22) | ⬜ 실제 서버에서는 "-" |
+| 거래내역 자동 동기화 (토글) | 하루 한 번 동기화 설정 | 없음 (Q22) | ⬜ 화면 안에서만 바뀜 |
 | 플랜 분석에 포함 (토글) | 분석 대상 카드 여부 | `GET /api/cards` → `selected`, `PUT /api/cards/selection` | ✅ 연동됨 (실패하면 되돌리고 안내) |
-| 카드 연결 해제 | 카드사 연결 끊기 | `DELETE /api/connections/{connectionId}` (아래 참고) | 🟡 API 있음 (#275), 연동 전 |
-
-#### 카드 정보·연결 관리 API (#275)
-
-모두 로그인이 필요합니다. 공통 응답 형식은 `{ success, code, message, data }`입니다.
-
-**카드 정보 `GET /api/cards/{cardId}/settings`** — `cardId`는 `GET /api/cards`의 보유카드 ID입니다.
-
-```json
-{
-  "cardId": 12, "cardCompany": "KB", "cardName": "KB 국민 노리2", "maskedNumber": "1111", "selected": true,
-  "paymentDay": null,
-  "performancePeriod": { "from": "2026-10-01", "to": "2026-10-31" },
-  "account": {
-    "connectionId": 3, "cardCompany": "KB", "maskedLoginId": "ab***", "status": "ACTIVE",
-    "autoSyncEnabled": true, "lastSyncedAt": "2026-11-18T09:30:00+09:00"
-  }
-}
-```
-
-- `paymentDay`(결제일)는 카드사에서 아직 가져오지 않아 **항상 `null`**입니다. 화면은 "-"로 보여주세요.
-- `performancePeriod`는 모든 카드를 "전월 1일부터 말일까지"로 본 기본 기간입니다. 카드사별로 다른 기준(결제 주기 등)은 반영하지 않습니다.
-- `account.maskedLoginId`는 연결(재연결)할 때 앞 2자만 남기고 가려 저장한 값입니다(예: `ab***`). **이 기능이 생기기 전에 연결한 계정은 `null`**이고, 다시 연결하면 채워집니다. 카드사 아이디 원문은 저장하지 않습니다.
-- 내 카드가 아니거나 없는 카드(또는 동기화에서 사라진 카드)는 404 `CARD-001`입니다.
-
-**자동 동기화 `PUT /api/connections/{connectionId}/auto-sync`** — 본문 `{ "enabled": true }`. 응답 `data`는 `{ "connectionId": 3, "autoSyncEnabled": false }`입니다.
-
-- **설정 값만 저장합니다.** 이 값에 따라 서버가 주기적으로 동기화하는 기능은 별도 작업이라, 지금은 켜도 자동으로 동기화되지 않습니다. 동기화는 앱에서 `POST /api/connections/sync`로 시작합니다. 기본값은 켬입니다.
-- 현재 값은 `GET /api/connections`의 각 항목(`autoSyncEnabled`, `maskedLoginId`)과 카드 정보의 `account`에 있습니다.
-- `connectionId`는 `GET /api/connections`의 `connectionId`(카드사 계정 ID)입니다. 없거나 해제했거나 남의 연결이면 404 `CONN-001`, `enabled`가 없으면 400 `COMMON-400`입니다.
-
-**연결 해제 `DELETE /api/connections/{connectionId}`** — 성공하면 `data` 없이 성공 응답만 줍니다.
-
-- CODEF에서 그 카드사 계정을 지우고, **그 카드사에서 수집한 카드와 거래, 플랜 배분을 모두 지웁니다.** 다른 카드사는 그대로입니다. 이미 만든 월간 플랜과 변경 기록은 남습니다.
-- 해제하면 이번 달 플랜이 남은 카드로 **자동으로 다시 계산**됩니다(변경 기록의 `reasonCode`는 `CARD_DISCONNECTED`). 분석 대상 카드가 하나도 남지 않으면 재계산은 실패하고 이전 플랜이 그대로 남습니다. 이때는 카드 연결 화면으로 안내하세요.
-- 같은 카드사는 `POST /api/connections`로 다시 연결할 수 있습니다. (새 계정으로 만들어집니다)
-- 오류: 없거나 이미 해제했거나 남의 연결이면 404 `CONN-001`, 동기화가 진행 중이면 409 `CONN-007`(끝난 뒤 다시), **CODEF에서 지우지 못하면 502 `CONN-005`이고 이때 데이터는 그대로이니 다시 시도하면 됩니다.**
-- 해제 전에 **되돌릴 수 없다는 확인창**을 띄워 주세요. 카드와 거래 데이터가 지워집니다.
-- CODEF의 연결 해제 호출은 아직 실제 응답으로 확인하지 못했습니다. 실패하면 위 502로 안내됩니다.
-
+| 카드 연결 해제 | 카드사 연결 끊기 | 없음 (Q22, 백엔드 답변: 연결 해제 기능 없음) | ⬜ "준비 중" 안내 |
 
 ## 6. 홈 (HOME-01, HOME-03~10)
 
@@ -935,6 +896,7 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 | Q18 | `partial=true`(수집 기간 부족)일 때 화면에 안내가 필요한가요? **현재 동작**: 서버가 카드사에서 거래 수집을 마친 기간을 기록해서 `partial`을 판단합니다. 소비가 늦게 시작해 앞쪽 달에 거래가 없는 경우는 수집을 마쳤으므로 `partial=false`이고, 수집하지 못한 기간이 있으면 `true`입니다. `collectedFrom`은 모든 카드사 중 가장 늦은 수집 시작일입니다. **한계**: 수집 기록이 없는 카드사(수집 기능 이전에 연결했거나 아직 수집하지 못한 카드사)가 하나라도 있으면 이전처럼 가장 오래된 거래의 날짜로 추정하고, 다시 동기화하면 기록이 생깁니다. | ONB-05, 06 | 기획 확인 필요 |
 | Q19 | 거래 목록(`GET /api/transactions`)도 요약처럼 **`month=yyyy-MM`(그달 1일~말일, 이번 달은 오늘까지)** 로 조회할 수 있나요? 거래내역(HOME-03~05)은 이번 달 거래만 보여주는데, 지금은 `period`(최근 N개월)만 있어 요약과 목록의 기간이 맞지 않습니다. `month`와 `period`의 우선순위·오류 규칙은 요약과 같으면 됩니다. | HOME-03~05 | **답변: 됩니다 (#269).** `GET /api/transactions?month=2026-11`로 그달 1일~말일(이번 달은 오늘까지, 승인일 기준)을 조회합니다. 요약과 같은 규칙이라 `month`가 있으면 `period`는 무시하고, 형식이 틀리거나 아직 오지 않은 월이면 400(`COMMON-400`)입니다. `cardId`, `cardScope`, `category`, `includeCanceled`, `page`, `size`와 함께 쓸 수 있습니다. (머지 후 사용 가능) |
 | Q20 | 홈과 거래내역은 **분석 대상 카드(`SELECTED`, 기본값)** 와 **모든 카드(`ALL`)** 중 어느 카드의 거래를 보여줘야 하나요? 월간 플랜은 분석 대상 카드 기준이라, 홈의 계획 요약과 맞추려면 `SELECTED`, 실제 사용 내역 전체를 보려면 `ALL`입니다. | HOME-01, HOME-03~05 | 기획 확인 필요 (프론트 제안: `SELECTED`, 플랜 숫자와 맞춤) |
+| Q22 | **카드 정보(SETTINGS-03)** 의 결제일, 실적 이용기간, 연결 계정(가린 아이디), 거래내역 자동 동기화 설정, 카드 연결 해제 API 계획이 있나요? "플랜 분석에 포함"은 `PUT /api/cards/selection`으로 연동했고, 나머지는 "-"·화면 안 토글·"준비 중" 안내로 둡니다 (프론트 #258). | SETTINGS-03 | 답변 대기 |
 
 ### 7-2. 정리된 질문 (답변 반영)
 
@@ -955,4 +917,3 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 | Q13 | 온보딩 확정 예산 저장 | `POST /api/plans` 본문의 `budget` |
 | Q14 | 플랜 생성 상태 조회 | `GET /api/plans/jobs/{jobId}`, `progress` 0~100 |
 | Q21 | 예정지출(HOME-06~10) API와 플랜 반영 방식 | 백엔드 #274: `/api/planned-expenses`(추가·조회·수정·삭제). 추가·수정·삭제하면 이번 달 플랜의 남은 기간을 서버가 다시 계산한다. `예산 밖 추가 지출`은 업종 목표와 총예산에 더하고, `기존 예산 안에서 조정`은 총예산을 유지한 채 모든 업종 예산을 비율대로 줄여 그 업종에 더한다. 이번 달 예정지출만 고칠 수 있고 할부는 이번 달 금액(월 금액)만 반영한다 ([예정지출 API](#예정지출-api-274) 참고) |
-| Q22 | 카드 정보(SETTINGS-03)의 결제일, 실적 이용기간, 연결 계정, 자동 동기화 설정, 연결 해제 | 백엔드 #275: `GET /api/cards/{cardId}/settings`(결제일은 아직 null, 실적 기간은 전월 1일~말일 기본값, 가린 아이디는 연결할 때 저장), `PUT /api/connections/{id}/auto-sync`(설정 값만 저장), `DELETE /api/connections/{id}`(CODEF 계정과 카드·거래 삭제, 플랜 재계산). 자동 동기화의 주기 실행과 결제일 수집은 후속 ([상세](#카드-정보연결-관리-api-275)) |

@@ -117,47 +117,6 @@
         }
       }
     },
-    "/api/connections/{accountId}/auto-sync": {
-      "put": {
-        "tags": [
-          "connection-controller"
-        ],
-        "operationId": "changeAutoSync",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AutoSyncRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseAutoSyncResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/cards/selection": {
       "put": {
         "tags": [
@@ -1273,37 +1232,6 @@
         }
       }
     },
-    "/api/cards/{cardId}/settings": {
-      "get": {
-        "tags": [
-          "owned-card-controller"
-        ],
-        "operationId": "settings",
-        "parameters": [
-          {
-            "name": "cardId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCardSettingsResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/cards/{cardId}/benefits": {
       "get": {
         "tags": [
@@ -1348,37 +1276,6 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListCardCompanyResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/connections/{accountId}": {
-      "delete": {
-        "tags": [
-          "connection-controller"
-        ],
-        "operationId": "disconnect",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseVoid"
                 }
               }
             }
@@ -1521,46 +1418,6 @@
           },
           "budgetMethod": {
             "type": "string"
-          }
-        }
-      },
-      "AutoSyncRequest": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "enabled"
-        ]
-      },
-      "ApiResponseAutoSyncResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/AutoSyncResponse"
-          }
-        }
-      },
-      "AutoSyncResponse": {
-        "type": "object",
-        "properties": {
-          "connectionId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "autoSyncEnabled": {
-            "type": "boolean"
           }
         }
       },
@@ -3307,12 +3164,6 @@
           "lastSyncedAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "maskedLoginId": {
-            "type": "string"
-          },
-          "autoSyncEnabled": {
-            "type": "boolean"
           }
         }
       },
@@ -3414,110 +3265,6 @@
             "format": "date"
           },
           "collectedTo": {
-            "type": "string",
-            "format": "date"
-          }
-        }
-      },
-      "ApiResponseCardSettingsResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/CardSettingsResponse"
-          }
-        }
-      },
-      "CardSettingsResponse": {
-        "type": "object",
-        "properties": {
-          "cardId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "cardCompany": {
-            "type": "string",
-            "enum": [
-              "KB",
-              "HYUNDAI",
-              "NH",
-              "CITI",
-              "WOORI",
-              "BC",
-              "SHINHAN"
-            ]
-          },
-          "cardName": {
-            "type": "string"
-          },
-          "maskedNumber": {
-            "type": "string"
-          },
-          "selected": {
-            "type": "boolean"
-          },
-          "paymentDay": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "performancePeriod": {
-            "$ref": "#/components/schemas/Period"
-          },
-          "account": {
-            "$ref": "#/components/schemas/LinkedAccountResponse"
-          }
-        }
-      },
-      "LinkedAccountResponse": {
-        "type": "object",
-        "properties": {
-          "connectionId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "cardCompany": {
-            "type": "string",
-            "enum": [
-              "KB",
-              "HYUNDAI",
-              "NH",
-              "CITI",
-              "WOORI",
-              "BC",
-              "SHINHAN"
-            ]
-          },
-          "maskedLoginId": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "autoSyncEnabled": {
-            "type": "boolean"
-          },
-          "lastSyncedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "Period": {
-        "type": "object",
-        "properties": {
-          "from": {
-            "type": "string",
-            "format": "date"
-          },
-          "to": {
             "type": "string",
             "format": "date"
           }

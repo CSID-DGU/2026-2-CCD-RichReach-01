@@ -10,9 +10,7 @@ public enum PlanChangeReason {
     /** 사용자가 이번 달 소비예산을 고쳤다. */
     BUDGET_CHANGED("소비예산이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요."),
     /** 사용자가 이번 달 예정지출을 추가·수정·삭제했다. */
-    PLANNED_EXPENSE_CHANGED("예정지출이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요."),
-    /** 사용자가 카드사 연결을 해제했다. */
-    CARD_DISCONNECTED("카드 연결이 해제되어 남은 기간의 카드 사용 계획을 다시 계산했어요.");
+    PLANNED_EXPENSE_CHANGED("예정지출이 바뀌어 남은 기간의 카드 사용 계획을 다시 계산했어요.");
 
     private final String text;
 

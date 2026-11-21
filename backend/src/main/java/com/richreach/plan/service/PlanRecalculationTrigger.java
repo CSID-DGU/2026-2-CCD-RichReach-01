@@ -39,7 +39,6 @@ public class PlanRecalculationTrigger {
         PlanChangeReason reason = switch (event.reason()) {
             case SYNCED -> PlanChangeReason.TRANSACTION_SYNCED;
             case CATEGORY_EDITED -> PlanChangeReason.CATEGORY_EDITED;
-            case CARD_DISCONNECTED -> PlanChangeReason.CARD_DISCONNECTED;
         };
         start(event.userId(), event.month(), reason);
     }

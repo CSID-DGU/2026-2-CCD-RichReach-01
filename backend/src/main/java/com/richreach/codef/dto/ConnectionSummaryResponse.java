@@ -12,9 +12,6 @@ import java.time.OffsetDateTime;
  * @param failureCode   가장 최근 동기화가 실패했을 때 화면 처리용 코드. 아니면 null
  * @param failureReason 가장 최근 동기화가 실패했을 때 사용자에게 보여줄 문구. 아니면 null
  * @param lastSyncedAt  마지막으로 동기화에 성공한 시각. 한 번도 없으면 null
- * @param maskedLoginId 가린 카드사 아이디(앞 2자만 남김, 예: {@code ab***}). 이 값을 저장하기 전에 연결한 계정은 null이고,
- *                      다시 연결하면 채워진다.
- * @param autoSyncEnabled 거래내역 자동 동기화 설정. 설정 값만 저장하며 실제 주기 실행은 별도로 제공한다.
  */
 public record ConnectionSummaryResponse(
     Long connectionId,
@@ -23,8 +20,6 @@ public record ConnectionSummaryResponse(
     int cardCount,
     String failureCode,
     String failureReason,
-    OffsetDateTime lastSyncedAt,
-    String maskedLoginId,
-    boolean autoSyncEnabled) {
+    OffsetDateTime lastSyncedAt) {
 
 }
