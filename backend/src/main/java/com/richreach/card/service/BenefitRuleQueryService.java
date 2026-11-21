@@ -1,6 +1,7 @@
 package com.richreach.card.service;
 
 import com.richreach.card.dto.CalculationRule;
+import com.richreach.benefit.dto.TransactionBenefitRule;
 import com.richreach.card.entity.BenefitRule;
 import com.richreach.card.entity.PerformanceTier;
 import com.richreach.card.repository.BenefitRuleRepository;
@@ -42,7 +43,26 @@ public class BenefitRuleQueryService {
         return found.stream().map(rule -> toCalculationRule(rule, tierByRule.get(rule.getId()))).toList();
     }
 
+    /** Full transaction predicates. No supported-family filtering or silent dropping. */
+    @Transactional(readOnly = true)
+    public List<TransactionBenefitRule> findForTransactions(long cardProductId) {
+        Map<Long, PerformanceTier> byRule = new HashMap<>();
+        for (PerformanceTier tier : tiers.findByCardProductId(cardProductId))
+            byRule.put(tier.getBenefitRule().getId(), tier);
+        return rules.findByCardProductId(cardProductId).stream().map(rule -> {
+            PerformanceTier tier = byRule.get(rule.getId());
+            var spec = TransactionBenefitRule.parse(rule.getConditions());
+            return new TransactionBenefitRule(rule.getSourceBenefitId(), spec.path("family").asText(),
+                rule.getRatePercent(), rule.getAmount(), rule.getMonthlyLimit(), rule.getDailyLimit(),
+                rule.getDailyCountLimit(), rule.getMonthlyCountLimit(), rule.getAnnualCountLimit(),
+                tier == null ? null : tier.getPreviousMonthMinKrw(), rule.getCapGroupId(),
+                rule.getSharedMonthlyLimit(), rule.getRewardUnit(), rule.isRuleEngineReady(), spec);
+        }).toList();
+    }
+
     private CalculationRule toCalculationRule(BenefitRule rule, PerformanceTier tier) {
+        if(rule.getConditions()!=null && rule.getConditions().contains("\"card-benefit-v1\""))
+            throw new IllegalStateException("Structured transaction rules require findForTransactions and transaction-level input");
         MappedCategories mapped = categoryMapper.map(rule.getCategory());
         boolean merchantSpecific = notBlank(rule.getMerchants()) || notBlank(rule.getTargetsNormalized());
         return new CalculationRule(rule.getId(), mapped.categories(), mapped.allMerchants(), merchantSpecific,

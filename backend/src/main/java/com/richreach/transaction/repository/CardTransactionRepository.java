@@ -24,6 +24,10 @@ public interface CardTransactionRepository extends JpaRepository<CardTransaction
 
     List<CardTransaction> findByUserId(Long userId);
 
+    /** A bounded, chronological read for transaction-level plan previews. */
+    List<CardTransaction> findByUserIdAndApprovedAtGreaterThanEqualAndApprovedAtLessThanOrderByApprovedAtAscIdAsc(
+        Long userId, LocalDateTime from, LocalDateTime to);
+
     /** id가 afterId보다 큰 거래를 id 순서로 한 묶음씩. 모든 거래를 나누어 훑을 때(재분류) 쓴다. */
     List<CardTransaction> findByIdGreaterThanOrderById(Long afterId, Pageable pageable);
 
