@@ -46,6 +46,7 @@ public class CardSyncWorker {
     private static final java.time.Duration COLLECT_MARGIN = java.time.Duration.ofSeconds(15);
 
     private final CodefSyncJobRepository jobs;
+    private final ConnectionUserLock userLock;
     private final CodefCardClient cards;
     private final OwnedCardService ownedCards;
     private final ApprovalCollector collector;
@@ -136,27 +137,30 @@ public class CardSyncWorker {
 
     private void record(long jobId, Consumer<CodefSyncJob> update, boolean synced,
                         ApprovalCollector.Result collection) {
-        // 카드사 계정을 한 번에 읽는 조회를 써서, 결과를 기록할 때 계정을 따로 읽는 쿼리가 더 나가지 않게 한다.
-        transaction.executeWithoutResult(status -> jobs.findWithAccountById(jobId).ifPresent(job -> {
-            if (!job.isInProgress() || job.isTimedOut(properties.timeout(), now())) {
-                log.warn("이미 끝났거나 제한 시간이 지난 작업이라 결과를 반영하지 않습니다: jobId={}", jobId);
-                return;
-            }
-            update.accept(job);
-            CodefOrgAccount account = job.getOrgAccount();
-            if (collection != null) {
-                job.recordTransactions(collection.status(), collection.saved(), collection.unmatched(),
-                    collection.from(), collection.to());
-                // 수집을 마친 기간을 카드사 계정에 기록한다. 다음 동기화가 이어서 수집하고, 거래 요약이 부분 수집 여부를 가리는 데 쓴다.
-                ApprovalCollector.Range range = collection.range();
-                account.recordCollectedRange(range == null ? null : range.from(), range == null ? null : range.to(),
-                    range == null ? null : range.cardIds());
-            }
-            if (synced) {
-                account.markSynced(now());
-            } else {
-                account.recordSyncError(job.getResultCode());
-            }
+        // 계정을 읽기 전에 같은 사용자 잠금을 잡아 자동 동기화 설정 변경과 저장 순서를 직렬화한다.
+        transaction.executeWithoutResult(status -> jobs.findUserIdById(jobId).ifPresent(userId -> {
+            userLock.lock(userId);
+            jobs.findWithAccountById(jobId).ifPresent(job -> {
+                if (!job.isInProgress() || job.isTimedOut(properties.timeout(), now())) {
+                    log.warn("이미 끝났거나 제한 시간이 지난 작업이라 결과를 반영하지 않습니다: jobId={}", jobId);
+                    return;
+                }
+                update.accept(job);
+                CodefOrgAccount account = job.getOrgAccount();
+                if (collection != null) {
+                    job.recordTransactions(collection.status(), collection.saved(), collection.unmatched(),
+                        collection.from(), collection.to());
+                    // 수집을 마친 기간을 카드사 계정에 기록한다. 다음 동기화가 이어서 수집하고, 거래 요약이 부분 수집 여부를 가리는 데 쓴다.
+                    ApprovalCollector.Range range = collection.range();
+                    account.recordCollectedRange(range == null ? null : range.from(), range == null ? null : range.to(),
+                        range == null ? null : range.cardIds());
+                }
+                if (synced) {
+                    account.markSynced(now());
+                } else {
+                    account.recordSyncError(job.getResultCode());
+                }
+            });
         }));
     }
 
