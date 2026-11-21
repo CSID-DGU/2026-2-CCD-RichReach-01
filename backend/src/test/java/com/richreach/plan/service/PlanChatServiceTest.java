@@ -53,12 +53,13 @@ class PlanChatServiceTest {
     }
 
     @Test
-    void rejectsInvalidModelCategoryInsteadOfReturningProposal() {
+    void clarifiesInvalidModelCategoryInsteadOfReturningProposal() {
         client.result = new ChatResult("수정안", false, List.of(new BudgetEdit("UNKNOWN", 30_000)), null);
 
-        assertThatThrownBy(() -> service.preview(request("예산 바꿔줘")))
-            .isInstanceOf(BusinessException.class)
-            .extracting("errorCode").isEqualTo(ErrorCode.PLAN_CHAT_UNAVAILABLE);
+        var response = service.preview(request("예산 바꿔줘"));
+        assertThat(response.needsClarification()).isTrue();
+        assertThat(response.reply()).isEqualTo(PlanChatService.CLARIFICATION_REPLY);
+        assertThat(response.proposedPlan()).isNull();
     }
 
     @Test

@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 public class PlanChatService {
 
     private static final Set<String> PREFERENCES = Set.of("MONTHLY_PLAN", "IMMEDIATE_DISCOUNT");
+    static final String CLARIFICATION_REPLY = "수정할 업종과 금액을 구체적으로 알려주세요.";
     private final OpenAiPlanChatClient client;
 
     public PlanChatResponse preview(PlanChatRequest request) {
@@ -38,20 +39,21 @@ public class PlanChatService {
             request.currentPreference(), history);
 
         if (result.needsClarification()) {
-            return new PlanChatResponse(result.reply(), true, false, null, null);
+            return clarify();
         }
         Map<SpendingCategory, Long> proposed = new EnumMap<>(SpendingCategory.class);
         proposed.putAll(current.byCategory());
         Set<SpendingCategory> seen = new HashSet<>();
-        if (result.edits().size() > SpendingCategory.values().length) throw unavailable();
+        if (result.edits().size() > SpendingCategory.values().length) return clarify();
         for (BudgetEdit edit : result.edits()) {
-            SpendingCategory category = SpendingCategory.fromCode(edit.category()).orElseThrow(this::unavailable);
-            if (!seen.add(category) || edit.amount() < 0 || edit.amount() > PlanBudget.MAX_TOTAL) throw unavailable();
+            SpendingCategory category = SpendingCategory.fromCode(edit.category()).orElse(null);
+            if (category == null || !seen.add(category) || edit.amount() < 0
+                || edit.amount() > PlanBudget.MAX_TOTAL) return clarify();
             if (edit.amount() == 0) proposed.remove(category);
             else proposed.put(category, edit.amount());
         }
         String preference = result.preference() == null ? request.currentPreference() : result.preference();
-        if (!PREFERENCES.contains(preference)) throw unavailable();
+        if (!PREFERENCES.contains(preference)) return clarify();
         List<CategoryBudget> categories = new ArrayList<>();
         long total = 0;
         for (SpendingCategory category : SpendingCategory.values()) {
@@ -59,13 +61,13 @@ public class PlanChatService {
             total = Math.addExact(total, amount);
             categories.add(new CategoryBudget(category.name(), amount));
         }
-        if (total <= 0 || total > PlanBudget.MAX_TOTAL) throw unavailable();
+        if (total <= 0 || total > PlanBudget.MAX_TOTAL) return clarify();
         PlanCreateRequest proposal = new PlanCreateRequest(current.month().toString(),
             new PlanCreateRequest.Budget(total, categories));
         try {
             PlanBudget.parse(proposal);
         } catch (BusinessException e) {
-            throw unavailable();
+            return clarify();
         }
         boolean changed = total != current.total() || !proposed.equals(current.byCategory())
             || !preference.equals(request.currentPreference());
@@ -85,7 +87,7 @@ public class PlanChatService {
         return List.copyOf(history);
     }
 
-    private BusinessException unavailable() {
-        return new BusinessException(ErrorCode.PLAN_CHAT_UNAVAILABLE);
+    private PlanChatResponse clarify() {
+        return new PlanChatResponse(CLARIFICATION_REPLY, true, false, null, null);
     }
 }

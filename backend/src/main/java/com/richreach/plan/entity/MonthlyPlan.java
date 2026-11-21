@@ -75,6 +75,10 @@ public class MonthlyPlan extends BaseEntity {
     @Column(name = "llm_explanation", columnDefinition = "TEXT")
     private String llmExplanation;
 
+    /** 사용자에게 확정된 추천 방향. 기존 플랜은 MONTHLY_PLAN으로 해석한다. */
+    @Column(name = "recommendation_preference", length = 20)
+    private String recommendationPreference;
+
     public static MonthlyPlan create(Long userId, Long profileId, YearMonth planMonth, PlanStrategy strategy,
                                      int version, long totalSpend, long expectedBenefit) {
         if (version < 1) {
@@ -91,7 +95,19 @@ public class MonthlyPlan extends BaseEntity {
         plan.version = version;
         plan.totalSpend = totalSpend;
         plan.expectedBenefit = expectedBenefit;
+        plan.recommendationPreference = "MONTHLY_PLAN";
         return plan;
+    }
+
+    public String effectiveRecommendationPreference() {
+        return recommendationPreference == null ? "MONTHLY_PLAN" : recommendationPreference;
+    }
+
+    public void setRecommendationPreference(String preference) {
+        if (!"MONTHLY_PLAN".equals(preference) && !"IMMEDIATE_DISCOUNT".equals(preference)) {
+            throw new IllegalArgumentException("지원하지 않는 추천 방향입니다.");
+        }
+        this.recommendationPreference = preference;
     }
 
     /** 최적화 계산 결과를 기록한다. */
