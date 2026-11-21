@@ -58,6 +58,7 @@ public class ConnectionRetryService {
         authenticator.update(account.getConnection().getConnectedId(), company, request.loginId(), request.password());
 
         account.markConnected();
+        account.rememberLoginId(LoginIdMasker.mask(request.loginId()));
         orgAccounts.save(account);
         return new ConnectionResponse(account.getId(), company, ConnectionResponse.CONNECTED);
     }

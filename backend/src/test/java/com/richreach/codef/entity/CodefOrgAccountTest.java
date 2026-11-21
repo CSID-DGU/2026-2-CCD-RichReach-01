@@ -25,6 +25,47 @@ class CodefOrgAccountTest {
     }
 
     @Test
+    @DisplayName("자동 동기화는 기본으로 켜져 있고 바꿀 수 있다")
+    void autoSyncIsOnByDefault() {
+        CodefOrgAccount account = CodefOrgAccount.connected(null, "0301", NOW);
+
+        assertThat(account.isAutoSyncEnabled()).isTrue();
+        account.changeAutoSync(false);
+        assertThat(account.isAutoSyncEnabled()).isFalse();
+    }
+
+    @Test
+    @DisplayName("가린 아이디는 값이 있을 때만 바꾸고, 없으면 기존 기록을 그대로 둔다")
+    void rememberLoginIdKeepsTheExistingValueWhenNull() {
+        CodefOrgAccount account = CodefOrgAccount.connected(null, "0301", NOW);
+
+        account.rememberLoginId("ab***");
+        account.rememberLoginId(null);
+        assertThat(account.getLoginIdMasked()).isEqualTo("ab***");
+        account.rememberLoginId("cd***");
+        assertThat(account.getLoginIdMasked()).isEqualTo("cd***");
+    }
+
+    @Test
+    @DisplayName("연결을 해제하면 DELETED가 되고 연결로 보지 않으며 수집 기록과 가린 아이디, 오류 코드가 지워진다")
+    void disconnectClearsTheAccount() {
+        CodefOrgAccount account = CodefOrgAccount.connected(null, "0301", NOW);
+        account.rememberLoginId("ab***");
+        account.recordCollectedRange(NOW.toLocalDate().minusMonths(2), NOW.toLocalDate(), "1,2");
+        account.recordSyncError("CF-12207");
+
+        account.disconnect();
+
+        assertThat(account.getStatus()).isEqualTo(CodefOrgAccount.STATUS_DELETED);
+        assertThat(account.isConnected()).isFalse();
+        assertThat(account.getLoginIdMasked()).isNull();
+        assertThat(account.getLastErrorCode()).isNull();
+        assertThat(account.getTxCollectedFrom()).isNull();
+        assertThat(account.getTxCollectedTo()).isNull();
+        assertThat(account.getTxCollectedCardIds()).isNull();
+    }
+
+    @Test
     @DisplayName("잠긴 계정은 연결로 보지 않고 isLocked가 true다")
     void lockedAccountIsNotConnected() {
         CodefOrgAccount account = new CodefOrgAccount(null, null, "0301", "CD", "P", "1",

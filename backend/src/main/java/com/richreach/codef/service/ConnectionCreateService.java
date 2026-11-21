@@ -77,6 +77,7 @@ public class ConnectionCreateService {
         CodefOrgAccount orgAccount = account.orElseGet(
             () -> CodefOrgAccount.connected(saved, company.organizationCode(), now));
         orgAccount.markConnected();
+        orgAccount.rememberLoginId(LoginIdMasker.mask(request.loginId()));
         orgAccounts.save(orgAccount);
 
         return new ConnectionResponse(orgAccount.getId(), company, ConnectionResponse.CONNECTED);
