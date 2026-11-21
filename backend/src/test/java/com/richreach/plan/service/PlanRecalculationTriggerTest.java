@@ -36,16 +36,6 @@ class PlanRecalculationTriggerTest {
     }
 
     @Test
-    @DisplayName("카드사 연결 해제 알림은 CARD_DISCONNECTED 원인으로 재계산을 요청한다")
-    void cardDisconnected() {
-        PlanRecalculationTrigger trigger = new PlanRecalculationTrigger(service, Runnable::run);
-
-        trigger.on(new TransactionsChangedEvent(4L, MONTH, Reason.CARD_DISCONNECTED));
-
-        verify(service).requestAndRun(4L, MONTH, PlanChangeReason.CARD_DISCONNECTED);
-    }
-
-    @Test
     @DisplayName("예정지출 변경 알림은 PLANNED_EXPENSE_CHANGED 원인으로 재계산을 요청한다")
     void plannedExpenseChanged() {
         PlanRecalculationTrigger trigger = new PlanRecalculationTrigger(service, Runnable::run);

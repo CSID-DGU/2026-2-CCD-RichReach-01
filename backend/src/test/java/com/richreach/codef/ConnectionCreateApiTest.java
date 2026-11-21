@@ -232,9 +232,6 @@ class ConnectionCreateApiTest {
         assertThat(accounts.get(0).getOrganization()).isEqualTo("0301");
         assertThat(accounts.get(0).getStatus()).isEqualTo("ACTIVE");
         assertThat(accounts.get(0).getLoginType()).isEqualTo("1");
-        // 화면에 보여줄 가린 아이디(앞 2자)만 저장하고, 원문은 어디에도 저장하지 않는다.
-        assertThat(accounts.get(0).getLoginIdMasked()).isEqualTo("te***");
-        assertThat(accounts.get(0).isAutoSyncEnabled()).isTrue();
         assertThat(JsonPath.<Number>read(response, "$.data.connectionId").longValue())
             .isEqualTo(accounts.get(0).getId());
         assertThat(response).doesNotContain(CONNECTED_ID).doesNotContain(LOGIN_ID).doesNotContain(PASSWORD);

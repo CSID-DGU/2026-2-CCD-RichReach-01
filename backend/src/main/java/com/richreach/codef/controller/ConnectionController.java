@@ -1,7 +1,5 @@
 package com.richreach.codef.controller;
 
-import com.richreach.codef.dto.AutoSyncRequest;
-import com.richreach.codef.dto.AutoSyncResponse;
 import com.richreach.codef.dto.ConnectionAgreementRequest;
 import com.richreach.codef.dto.ConnectionAgreementResponse;
 import com.richreach.codef.dto.ConnectionCreateRequest;
@@ -12,9 +10,7 @@ import com.richreach.codef.dto.ConnectionSyncRequest;
 import com.richreach.codef.dto.ConnectionSyncStartResponse;
 import com.richreach.codef.dto.ConnectionSyncStatusResponse;
 import com.richreach.codef.service.ConnectionAgreementService;
-import com.richreach.codef.service.ConnectionAutoSyncService;
 import com.richreach.codef.service.ConnectionCreateService;
-import com.richreach.codef.service.ConnectionDisconnectService;
 import com.richreach.codef.service.ConnectionRetryService;
 import com.richreach.codef.service.ConnectionSyncService;
 import com.richreach.global.response.ApiResponse;
@@ -23,11 +19,9 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,8 +36,6 @@ public class ConnectionController {
     private final ConnectionCreateService createService;
     private final ConnectionSyncService syncService;
     private final ConnectionRetryService retryService;
-    private final ConnectionDisconnectService disconnectService;
-    private final ConnectionAutoSyncService autoSyncService;
 
     /**
      * 카드 연동 동의(카드정보 조회, 거래내역 조회, 개인정보 수집 및 이용)를 저장한다. 3개 모두 필요하고
@@ -110,30 +102,6 @@ public class ConnectionController {
     @GetMapping
     public ApiResponse<List<ConnectionSummaryResponse>> list(@AuthenticationPrincipal AuthenticatedUser user) {
         return ApiResponse.ok(syncService.list(user.userId()));
-    }
-
-    /**
-     * 카드사 연결을 해제한다. CODEF에서 그 카드사 계정을 지우고, 그 카드사에서 수집한 카드와 거래, 플랜 배분을 지운다. 이미 만든
-     * 월간 플랜은 남고, 이번 달 플랜은 남은 카드로 다시 계산된다. 같은 카드사는 다시 연결할 수 있다.
-     * 없거나 이미 해제했거나 다른 사용자의 연결이면 404({@code CONN-001}), 동기화가 진행 중이면 409({@code CONN-007}),
-     * CODEF에서 지우지 못하면 502({@code CONN-005})이고 이때 데이터는 그대로이니 다시 시도하면 된다.
-     */
-    @DeleteMapping("/{accountId}")
-    public ApiResponse<Void> disconnect(@AuthenticationPrincipal AuthenticatedUser user,
-                                        @PathVariable Long accountId) {
-        disconnectService.disconnect(user.userId(), accountId);
-        return ApiResponse.ok();
-    }
-
-    /**
-     * 카드사별 거래내역 자동 동기화 설정을 바꾼다. 설정 값만 저장하고, 설정에 따른 주기 실행은 별도로 제공한다.
-     * 없거나 해제했거나 다른 사용자의 연결이면 404({@code CONN-001})이다.
-     */
-    @PutMapping("/{accountId}/auto-sync")
-    public ApiResponse<AutoSyncResponse> changeAutoSync(@AuthenticationPrincipal AuthenticatedUser user,
-                                                        @PathVariable Long accountId,
-                                                        @Valid @RequestBody AutoSyncRequest request) {
-        return ApiResponse.ok(autoSyncService.change(user.userId(), accountId, request.enabled()));
     }
 
 }
