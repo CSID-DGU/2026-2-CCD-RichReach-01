@@ -8,7 +8,7 @@
 
 1. `GET /api/plans/analysis`에서 지난 소비의 업종별 집계와 `suggestedBudget`을 받습니다.
 2. 프론트가 이 예산을 초안으로 보여주고 사용자가 직접 수정할 수 있게 합니다.
-3. 사용자가 채팅하면 이 초안을 `POST /api/plans/chat/preview`에 함께 보냅니다.
+3. 사용자가 채팅하면 이 초안을 `POST /api/plans/chat/preview`에 함께 보냅니다. 이미 월간 플랜이 있으면 `GET /api/plans?month=`의 `confirmedBudget`에서 초안을 시작합니다.
 4. 답변에 수정안이 있으면 프론트가 변경 전·후 금액을 보여주고 사용자의 확정을 받습니다.
 5. 월초에 플랜이 아직 없으면 기존 `POST /api/plans`로 생성합니다. 월중에 이미 플랜이 있으면 사용자 확인 뒤 `POST /api/plans/chat/confirm`으로 확정하고, 반환된 `jobId`로 재계산 완료를 확인합니다.
 
@@ -40,7 +40,7 @@ Content-Type: application/json
 }
 ```
 
-요청의 예산은 현재 화면 초안입니다. 프론트가 사용자의 확정 전까지 그 값을 관리합니다. 월 예산을 나타내는 집계 값만 기본 문맥에 포함되며, 서버는 카드번호나 거래내역 원문을 자동으로 첨부하지 않습니다.
+요청의 예산은 현재 화면 초안입니다. 프론트가 사용자의 확정 전까지 그 값을 관리합니다. **월중 수정의 출발점은 `GET /api/plans?month=` 응답의 `confirmedBudget`(예정지출 반영 전 확정 예산)**입니다. `GET /api/plans/{planId}/categories`의 `targetAmount`와 카드별 목표액은 예정지출 반영 후의 계획일 수 있으므로 `currentPlan.budget`으로 합산하지 않습니다. 예정지출은 재계산 때 서버가 한 번 얹습니다. 월 예산을 나타내는 집계 값만 기본 문맥에 포함되며, 서버는 카드번호나 거래내역 원문을 자동으로 첨부하지 않습니다.
 
 ## 응답
 
@@ -77,6 +77,8 @@ Content-Type: application/json
 ## 월중 수정안 확정
 
 `preview`가 `requiresConfirmation=true`로 돌려준 `proposedPlan`과 `proposedPreference`를 화면에서 비교해 보여주고, 사용자가 확정 버튼을 누른 뒤에만 호출합니다. `basePlanId`는 수정안을 만들 때 조회한 `GET /api/plans?month=yyyy-MM`의 `planId`입니다. 다른 사용자의 플랜이나 이후 변경된 플랜을 기준으로 확정하지 않도록 서버가 다시 확인합니다.
+
+`proposedPlan.budget`도 예정지출 반영 전 확정 예산입니다. 예를 들어 확정 예산이 10만 원이고 `EXTRA` 예정지출이 3만 원이라면, 화면의 카드 목표 합계는 13만 원이 될 수 있지만 챗봇 수정안의 출발 예산은 10만 원입니다. 13만 원을 `proposedPlan`으로 보내면 서버가 3만 원을 다시 얹어 중복 반영됩니다.
 
 ```http
 POST /api/plans/chat/confirm

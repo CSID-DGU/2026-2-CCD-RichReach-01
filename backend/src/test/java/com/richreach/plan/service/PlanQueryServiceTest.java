@@ -1,9 +1,22 @@
 package com.richreach.plan.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.richreach.card.service.OwnedCardQueryService;
+import com.richreach.global.category.SpendingCategory;
+import com.richreach.plan.config.PlanProperties;
 import com.richreach.plan.entity.MonthlyPlan;
+import com.richreach.plan.entity.PlanCardAllocation;
 import com.richreach.plan.entity.PlanStrategy;
+import com.richreach.plan.entity.SpendingProfileItem;
+import com.richreach.plan.repository.MonthlyPlanRepository;
+import com.richreach.plan.repository.PlanCardAllocationRepository;
+import com.richreach.plan.repository.PlanJobRepository;
+import com.richreach.plan.repository.SpendingProfileItemRepository;
+import com.richreach.transaction.service.TransactionSummaryService;
+import java.time.Clock;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +25,47 @@ import org.junit.jupiter.api.Test;
 
 /** 플랜 조회의 추가 혜택 계산과 최신 version 선택을 DB 없이 확인한다. */
 class PlanQueryServiceTest {
+
+    @Test
+    @DisplayName("챗봇에 전달할 확정 예산은 예정지출이 포함된 카드 목표액이 아닌 소비 프로필에서 읽는다")
+    void confirmedBudgetExcludesPlannedExpenseOverlay() {
+        MonthlyPlanRepository plans = mock(MonthlyPlanRepository.class);
+        PlanCardAllocationRepository allocations = mock(PlanCardAllocationRepository.class);
+        SpendingProfileItemRepository profileItems = mock(SpendingProfileItemRepository.class);
+        OwnedCardQueryService cards = mock(OwnedCardQueryService.class);
+        TransactionSummaryService transactions = mock(TransactionSummaryService.class);
+        PlanJobRepository jobs = mock(PlanJobRepository.class);
+        PlanProperties properties = mock(PlanProperties.class);
+        MonthlyPlan plan = mock(MonthlyPlan.class);
+        SpendingProfileItem cafe = mock(SpendingProfileItem.class);
+        PlanCardAllocation target = mock(PlanCardAllocation.class);
+
+        when(plan.getStrategy()).thenReturn(PlanStrategy.CP_SAT);
+        when(plan.getVersion()).thenReturn(1);
+        when(plan.getId()).thenReturn(51L);
+        when(plan.getProfileId()).thenReturn(17L);
+        when(plan.getPlanMonth()).thenReturn("2026-11");
+        when(plan.effectiveRecommendationPreference()).thenReturn("MONTHLY_PLAN");
+        when(plans.findByUserIdAndPlanMonth(1L, "2026-11")).thenReturn(List.of(plan));
+        when(cafe.getCategory()).thenReturn(SpendingCategory.CAFE);
+        when(cafe.getExpectedAmount()).thenReturn(100_000L);
+        when(profileItems.findByProfileId(17L)).thenReturn(List.of(cafe));
+        when(target.getUserCardId()).thenReturn(3L);
+        when(target.getTargetAmount()).thenReturn(130_000L);
+        when(allocations.findByPlanId(51L)).thenReturn(List.of(target));
+
+        PlanQueryService service = new PlanQueryService(plans, allocations, cards, transactions, jobs,
+            profileItems, properties, Clock.systemUTC());
+        var response = service.getMonthlyPlan(1L, "2026-11");
+
+        assertThat(response.cardTargets().getFirst().targetAmount()).isEqualTo(130_000L);
+        assertThat(response.confirmedBudget().total()).isEqualTo(100_000L);
+        assertThat(response.confirmedBudget().byCategory()).hasSize(SpendingCategory.values().length)
+            .anySatisfy(item -> {
+                assertThat(item.category()).isEqualTo("CAFE");
+                assertThat(item.amount()).isEqualTo(100_000L);
+            });
+    }
 
     private static MonthlyPlan plan(PlanStrategy strategy, int version, long benefit) {
         return MonthlyPlan.create(1L, 1L, YearMonth.of(2026, 12), strategy, version, 1_000_000, benefit);

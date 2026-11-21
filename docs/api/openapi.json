@@ -205,6 +205,37 @@
         }
       }
     },
+    "/api/plans/chat/confirm": {
+      "post": {
+        "tags": [
+          "plan-chat-controller"
+        ],
+        "operationId": "confirmChatPlan",
+        "description": "사용자가 확인한 예정지출 반영 전 예산을 확정하고 남은 월간 플랜 재계산을 시작한다.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanChatConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanChatConfirmResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/plans/chat/preview": {
       "post": {
         "tags": [
@@ -1516,7 +1547,8 @@
             "type": "string"
           },
           "currentPlan": {
-            "$ref": "#/components/schemas/PlanCreateRequest"
+            "$ref": "#/components/schemas/PlanCreateRequest",
+            "description": "월중에는 GET /api/plans의 confirmedBudget에서 시작한, 예정지출 반영 전 예산 초안"
           },
           "currentPreference": {
             "type": "string"
@@ -1575,6 +1607,44 @@
           "proposedPreference": {
             "type": "string"
           }
+        }
+      },
+      "PlanChatConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "basePlanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmed": {
+            "type": "boolean"
+          },
+          "proposedPlan": {
+            "$ref": "#/components/schemas/PlanCreateRequest",
+            "description": "예정지출 반영 전 확정 예산"
+          },
+          "proposedPreference": {
+            "type": "string",
+            "enum": ["MONTHLY_PLAN", "IMMEDIATE_DISCOUNT"]
+          }
+        },
+        "required": ["basePlanId", "confirmed", "proposedPlan", "proposedPreference"]
+      },
+      "ApiResponsePlanChatConfirmResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/PlanChatConfirmResponse" }
+        }
+      },
+      "PlanChatConfirmResponse": {
+        "type": "object",
+        "properties": {
+          "reply": { "type": "string" },
+          "needsClarification": { "type": "boolean" },
+          "jobId": { "type": "string", "nullable": true }
         }
       },
       "ConnectionCreateRequest": {
@@ -2206,7 +2276,8 @@
             "format": "int64"
           },
           "reasonCode": {
-            "type": "string"
+            "type": "string",
+            "description": "챗봇 수정안을 확정한 변경은 CHAT_CONFIRMED. 안내 문구는 reasonText의 서버 고정 문구를 사용한다."
           },
           "reasonText": {
             "type": "string"
@@ -2554,6 +2625,14 @@
           },
           "recalculationJobId": {
             "type": "string"
+          },
+          "recommendationPreference": {
+            "type": "string",
+            "enum": ["MONTHLY_PLAN", "IMMEDIATE_DISCOUNT"]
+          },
+          "confirmedBudget": {
+            "$ref": "#/components/schemas/Budget",
+            "description": "예정지출을 얹기 전 사용자가 확정한 11개 업종 예산. 챗봇 수정안의 출발점이다."
           }
         }
       },

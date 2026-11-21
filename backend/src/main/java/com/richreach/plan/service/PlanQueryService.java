@@ -6,6 +6,8 @@ import com.richreach.global.category.SpendingCategory;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
 import com.richreach.plan.dto.PlanCategoriesResponse;
+import com.richreach.plan.dto.PlanCreateRequest;
+import com.richreach.plan.dto.PlanCreateRequest.CategoryBudget;
 import com.richreach.plan.dto.PlanCategoriesResponse.CardAmount;
 import com.richreach.plan.dto.PlanCategoriesResponse.CategoryPlan;
 import com.richreach.plan.dto.PlanResponse;
@@ -15,9 +17,11 @@ import com.richreach.plan.config.PlanProperties;
 import com.richreach.plan.entity.PlanCardAllocation;
 import com.richreach.plan.entity.PlanJob;
 import com.richreach.plan.entity.PlanStrategy;
+import com.richreach.plan.entity.SpendingProfileItem;
 import com.richreach.plan.repository.MonthlyPlanRepository;
 import com.richreach.plan.repository.PlanCardAllocationRepository;
 import com.richreach.plan.repository.PlanJobRepository;
+import com.richreach.plan.repository.SpendingProfileItemRepository;
 import com.richreach.transaction.service.TransactionSummaryService;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -54,6 +58,7 @@ public class PlanQueryService {
     private final OwnedCardQueryService ownedCards;
     private final TransactionSummaryService transactions;
     private final PlanJobRepository jobs;
+    private final SpendingProfileItemRepository profileItems;
     private final PlanProperties properties;
     private final Clock clock;
 
@@ -80,7 +85,24 @@ public class PlanQueryService {
 
         return new PlanResponse(plan.getId(), plan.getPlanMonth(), plan.getExpectedBenefit(), baseline,
             additionalBenefit(plan.getExpectedBenefit(), baseline), cardTargets,
-            recalculationJobId(userId, planMonth), plan.effectiveRecommendationPreference());
+            recalculationJobId(userId, planMonth), plan.effectiveRecommendationPreference(),
+            confirmedBudget(plan.getProfileId()));
+    }
+
+    /** 플랜의 소비 프로필은 예정지출을 얹기 전 확정 예산이다. 카드 목표액에서 역산하면 중복 반영된다. */
+    private PlanCreateRequest.Budget confirmedBudget(long profileId) {
+        Map<SpendingCategory, Long> amounts = new EnumMap<>(SpendingCategory.class);
+        for (SpendingProfileItem item : profileItems.findByProfileId(profileId)) {
+            amounts.put(item.getCategory(), item.getExpectedAmount());
+        }
+        List<CategoryBudget> categories = new ArrayList<>();
+        long total = 0;
+        for (SpendingCategory category : SpendingCategory.values()) {
+            long amount = amounts.getOrDefault(category, 0L);
+            categories.add(new CategoryBudget(category.name(), amount));
+            total = Math.addExact(total, amount);
+        }
+        return new PlanCreateRequest.Budget(total, categories);
     }
 
     /** 플랜의 업종별 사용계획. 없거나 다른 사용자의 플랜이면 {@code PLAN-001}이다. */

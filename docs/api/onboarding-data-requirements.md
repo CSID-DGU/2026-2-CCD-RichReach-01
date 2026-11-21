@@ -545,6 +545,23 @@ ONB-04에서 고른 **분석 대상 카드**의 거래를 보여줍니다. 요�
   "expectedBenefit": 32400,
   "baselineBenefit": 21600,
   "additionalBenefit": 10800,
+  "recommendationPreference": "MONTHLY_PLAN",
+  "confirmedBudget": {
+    "total": 820000,
+    "byCategory": [
+      { "category": "DINING", "amount": 200000 },
+      { "category": "CAFE", "amount": 60000 },
+      { "category": "CONVENIENCE_STORE", "amount": 0 },
+      { "category": "SHOPPING", "amount": 0 },
+      { "category": "TRANSPORT", "amount": 0 },
+      { "category": "FUEL_VEHICLE", "amount": 0 },
+      { "category": "LIFE_HEALTH", "amount": 0 },
+      { "category": "TELECOM_SUBSCRIPTION", "amount": 0 },
+      { "category": "CULTURE_TRAVEL", "amount": 0 },
+      { "category": "EDUCATION", "amount": 0 },
+      { "category": "ETC", "amount": 560000 }
+    ]
+  },
   "cardTargets": [
     { "cardId": 1, "cardName": "신한 Deep Dream", "targetAmount": 350000 },
     { "cardId": 2, "cardName": "KB My WE:SH", "targetAmount": 270000 },
@@ -561,6 +578,8 @@ ONB-04에서 고른 **분석 대상 카드**의 거래를 보여줍니다. 요�
   - 막대는 카드별 비중입니다. (Q7) 앱이 가장 큰 목표 금액을 가득 찬 막대로 두고 나머지를 비율대로 그립니다.
   - 카드 이미지·종류·번호는 `GET /api/cards`에서 `cardId`로 찾습니다.
   - 카드가 삭제되어 `cardName`이 `null`이면 보유카드 이름, 그것도 없으면 "카드 정보 없음"을 씁니다.
+- **`confirmedBudget`**: 사용자가 확정한 업종별 예산입니다. 실제 응답의 `byCategory`에는 11개 업종이 모두 들어가며, 예산이 없는 업종은 0원입니다. 이 값에는 예정지출(#274)을 아직 얹지 않았습니다. 챗봇 수정안을 만들 때는 이 값을 출발점으로 사용합니다. `cardTargets`나 업종별 목표액은 예정지출을 반영한 결과일 수 있어 역산해 사용하면 중복 반영됩니다.
+- **`recommendationPreference`**: 확정된 추천 방향(`MONTHLY_PLAN` 또는 `IMMEDIATE_DISCOUNT`)입니다. 플랜 재계산 자체는 CP-SAT이고, 결제 전 카드 추천에 이 방향을 적용하는 기능은 아직 연결되지 않았습니다.
 - 오류: 그 달의 플랜이 없거나 다른 사용자의 플랜이면 404 `PLAN-001`, `month` 형식이 틀리면 400 `COMMON-400`입니다.
 - 마일리지처럼 금액으로 바꾸기 어려운 혜택을 따로 알려줄 필드는 혜택 규칙 확정 후 다룹니다.
 
@@ -622,6 +641,8 @@ API가 있는 부분은 연동했고(#223, #237), 없는 부분은 화면을 그
 - `cardTargets`와 업종별 상세의 금액은 **이번 달 전체 목표**(이미 쓴 금액 + 남은 목표)입니다. 의미는 그대로예요.
 - **이번 달 플랜만** 다시 계산합니다. 지난 달 거래가 늦게 들어와도 끝난 달의 플랜은 바뀌지 않아요.
 - **재계산 중 표시**: `GET /api/plans?month=` 응답의 `recalculationJobId`가 null이 아니면 다시 계산하는 중입니다. `GET /api/plans/jobs/{jobId}`로 `status`(`IN_PROGRESS`, `COMPLETED`, `FAILED`)를 보다가 `COMPLETED`가 되면 플랜을 다시 조회하세요. 실패해도 이전 플랜은 그대로예요.
+
+**챗봇 수정안 확정 (#277, 백엔드 PR #302, 프론트 연결 전)**: 월초에 플랜이 없으면 소비 분석의 `suggestedBudget`을 초안으로 쓰고, 월중에는 `GET /api/plans?month=`의 `confirmedBudget`과 `recommendationPreference`를 초안으로 씁니다. `POST /api/plans/chat/preview`는 대화 답변과 수정안만 돌려주며 저장하지 않습니다. 사용자가 수정안을 확인하면 `POST /api/plans/chat/confirm`에 `basePlanId`, `confirmed: true`, `proposedPlan`, `proposedPreference`를 보냅니다. `proposedPlan.budget`은 **예정지출 반영 전 확정 예산**입니다. 서버는 예정지출(#274)을 재계산 중 한 번만 반영합니다. 성공 응답의 `jobId`로 `GET /api/plans/jobs/{jobId}`를 조회하고 `COMPLETED`이면 월간 플랜을 다시 읽습니다. 변경 기록의 `reasonCode`는 `CHAT_CONFIRMED`, `reasonText`는 서버 고정 문구입니다. 실패하면 이전 플랜을 유지합니다. 자세한 요청·응답은 [월 예산 챗봇 API](plan-chat-openai.md)를 참고하세요.
 
 **변경 기록** `GET /api/plans/{planId}/changes` ("○○ 플랜이 변경됐어요" 안내와 HOME-02 변경 내용 확인창)
 
