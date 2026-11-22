@@ -23,12 +23,14 @@ class StagingRunner implements ApplicationRunner {
 
     private final StagingService stagingService;
     private final CardPromotionService promotionService;
+    private final CardImageLoader imageLoader;
     private final String csvDir;
 
-    StagingRunner(StagingService stagingService, CardPromotionService promotionService,
+    StagingRunner(StagingService stagingService, CardPromotionService promotionService, CardImageLoader imageLoader,
                   @Value("${richreach.staging.csv-dir:}") String csvDir) {
         this.stagingService = stagingService;
         this.promotionService = promotionService;
+        this.imageLoader = imageLoader;
         this.csvDir = csvDir;
     }
 
@@ -41,5 +43,7 @@ class StagingRunner implements ApplicationRunner {
         stagingService.loadAll(Path.of(csvDir));
         // MVP로 표시된 카드만 최종 테이블로 옮긴다. mvp_cards.csv가 없으면 옮길 카드가 없어 아무것도 바뀌지 않는다.
         promotionService.promote();
+        // 카드 이미지 주소는 파일이 있을 때만 채운다. 승격이 끝난 뒤여야 새로 들어온 카드에도 반영된다.
+        imageLoader.load(Path.of(csvDir).resolve(CardImageLoader.CARD_IMAGES_FILE));
     }
 }
