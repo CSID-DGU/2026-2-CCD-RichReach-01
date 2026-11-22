@@ -126,7 +126,7 @@ public class ConnectionController {
     }
 
     /**
-     * 카드사별 거래내역 자동 동기화 설정을 바꾼다. 설정 값만 저장하고, 설정에 따른 주기 실행은 별도로 제공한다.
+     * 카드사별 거래내역 자동 동기화 설정을 바꾼다. 설정 값만 저장한다. 서버에서 자동 동기화를 켠 경우({@code codef.auto-sync.enabled=true}) 이 값이 켜진 계정을 서버가 주기적으로 동기화한다.
      * 없거나 해제했거나 다른 사용자의 연결이면 404({@code CONN-001})이다.
      */
     @PutMapping("/{accountId}/auto-sync")

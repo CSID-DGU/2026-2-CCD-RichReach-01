@@ -126,6 +126,7 @@ docker compose up -d mysql  # .env의 새 값으로 다시 생성
 | `BACKEND_BIND` | | 기본 `127.0.0.1`. ALB가 EC2 사설 IP:8080으로 직접 연결할 때만 그 사설 IP를 넣는다. (`0.0.0.0` 금지, 아래 "앞단 구성" 참고) |
 | `BENEFIT_RULE_SELECTION` | | 기본 `READY_ONLY`. 시연용으로만 `ALL` |
 | `OPENAI_API_KEY` | | 월 예산 대화 미리보기. 없으면 해당 기능만 쓸 수 없다. |
+| `CODEF_AUTO_SYNC_ENABLED` | | 기본 `false`. `true`면 서버가 매일 새벽(기본 06:00 KST, `CODEF_AUTO_SYNC_CRON`으로 바꿈) 자동 동기화를 켠 사용자의 카드사 계정을 한 명씩 동기화한다. 서버가 사용자를 대신해 카드사를 호출하므로 의도적으로 켤 때만 쓴다. 서버 한 대에서만 켠다. |
 
 값은 서버의 **`.env.dev` 파일 하나**로 넣는다. (커밋되지 않는다) Compose는 AWS Systems Manager Parameter Store를 직접 읽지 않으므로, Parameter Store에 보관한 값을 쓰려면 사람이 서버에서 `.env.dev`로 옮겨 적는다. **저장소, 이미지, 채팅, PR에는 값을 남기지 않는다.**
 
