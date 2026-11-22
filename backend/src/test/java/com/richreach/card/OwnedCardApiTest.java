@@ -188,6 +188,7 @@ class OwnedCardApiTest {
     @DisplayName("목록은 카드 정보, 끝 4자리 번호, 분석 상태, 기본 선택을 내려준다 (매칭된 카드는 선택됨, 아닌 카드는 분석 불가)")
     void listShape() throws Exception {
         long productId = insertProduct("노리 체크카드", "check");
+        jdbc.update("update card_products set image_url = ? where id = ?", "https://img.example/nori.png", productId);
         sync(user, kbAccount,
             new CollectedCard("KB국민카드 노리 체크카드", "1234-5678-9012-3456", "체크"),
             new CollectedCard("전혀 다른 카드", "2222333344445555", "신용"));
@@ -203,8 +204,9 @@ class OwnedCardApiTest {
             .andExpect(jsonPath("$.data[0].cardType").value("CHECK"))
             .andExpect(jsonPath("$.data[0].analysisStatus").value("AVAILABLE"))
             .andExpect(jsonPath("$.data[0].selected").value(true))
-            .andExpect(jsonPath("$.data[0].imageUrl").doesNotExist())
+            .andExpect(jsonPath("$.data[0].imageUrl").value("https://img.example/nori.png"))
             .andExpect(jsonPath("$.data[1].cardProductId").doesNotExist())
+            .andExpect(jsonPath("$.data[1].imageUrl").doesNotExist())
             .andExpect(jsonPath("$.data[1].maskedNumber").value("5555"))
             .andExpect(jsonPath("$.data[1].cardType").value("CREDIT"))
             .andExpect(jsonPath("$.data[1].analysisStatus").value("UNAVAILABLE"))
