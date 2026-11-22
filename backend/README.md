@@ -174,27 +174,45 @@ curl -fs http://localhost:8080/actuator/health        # {"status":"UP"}
 > `Downloads\319종_카드혜택_전체자료` 폴더에는 `mvp_cards.csv`가 없어서 그 폴더만으로는 승격이 안 됩니다. 로컬에서 쓰는 12장 폴더를 사용하세요.
 > CSV는 `.gitignore`(`*.csv`)로 저장소에 올라가지 않습니다. 서버로 직접 복사합니다.
 
-**절차 (EC2에서)**
+**절차**
+
+내 PC와 서버(EC2)를 번갈아 씁니다. **명령을 어느 창에서 치는지** 구분하세요.
+
+| 표시 | 창 | 프롬프트 모양 |
+|---|---|---|
+| 🖥️ 내 PC | PowerShell 또는 Git Bash | `PS C:\...>` 또는 `...MINGW64...$` |
+| ☁️ 서버 | SSH로 접속한 창 | `ubuntu@ip-...:~$` |
 
 ```bash
-# 1) 서버에 폴더를 만들고 CSV를 복사한다. (내 PC에서 scp, 폴더 이름은 자유)
+# 1) ☁️ 서버: CSV를 받을 폴더를 만들고 소유자를 본인으로 바꾼다. (앱을 시작하기 전에)
 sudo mkdir -p /opt/richreach-data/staging
-sudo chown "$USER" /opt/richreach-data/staging
-#   (내 PC) scp -r "<csv_8_added_12 폴더>/." <사용자>@<EC2 주소>:/opt/richreach-data/staging/
-chmod -R a+rX /opt/richreach-data/staging     # 컨테이너의 앱 사용자가 읽을 수 있게 한다
-ls /opt/richreach-data/staging                 # CSV 9개가 보여야 한다
+sudo chown "$USER":"$USER" /opt/richreach-data/staging
+ls -ld /opt/richreach-data/staging             # 소유자가 ubuntu(본인)여야 한다
 
-# 2) .env.dev에 두 줄을 추가한다. (값에는 컨테이너 안 경로를 쓴다)
+# 2) 🖥️ 내 PC: CSV 폴더를 서버 홈으로 복사한다. (서버 창이 아니라 내 PC 창에서 친다)
+scp -i "<키 파일 경로>" -r "<csv_8_added_12 폴더>" ubuntu@<EC2 주소>:~/
+
+# 3) ☁️ 서버: 받은 CSV를 적재 폴더로 옮기고 읽기 권한을 준다.
+cp ~/csv_8_added_12/*.csv /opt/richreach-data/staging/
+chmod -R a+rX /opt/richreach-data/staging      # 컨테이너의 앱 사용자가 읽을 수 있게 한다
+ls -l /opt/richreach-data/staging               # CSV 9개가 보여야 한다
+
+# 4) ☁️ 서버: .env.dev에 두 줄을 추가한다. (값에는 컨테이너 안 경로를 쓴다)
 #      STAGING_LOAD_ON_STARTUP=true
 #      STAGING_CSV_DIR=/data/staging
 #    시연용으로 혜택까지 보려면 BENEFIT_RULE_SELECTION=ALL 도 넣는다. (아래 참고)
 
-# 3) 앱을 다시 시작해 한 번 적재한다.
-docker compose --env-file .env.dev -f docker-compose.dev.yml up -d --build
+# 5) ☁️ 서버: 앱을 다시 시작해 한 번 적재한다. (코드를 바꾸지 않았으면 --build는 필요 없다)
+docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
 
-# 4) 로그에서 결과를 확인한다.
+# 6) ☁️ 서버: 로그에서 결과를 확인한다.
 docker logs richreach-backend 2>&1 | grep -E "staging|promotion"
 ```
+
+- **1)번을 건너뛰면** 앱을 시작할 때 Docker가 이 폴더를 `root` 소유로 만들어서, 3)번의 복사가 `Permission denied`로 실패하고 `chmod`도 `Operation not permitted`가 됩니다. 그때도 1)번의 `sudo chown`으로 해결합니다.
+- **2)번은 내 PC 창에서** 칩니다. 서버 창에서 치면 `Identity file ... not accessible`이 나옵니다. (서버에는 내 PC의 키 파일이 없습니다) Git Bash에서는 경로에 `\` 대신 `/`를 쓰세요. (`C:/Users/...`) 경로에 공백이나 한글이 있으면 큰따옴표로 감쌉니다.
+- `scp`로 `/opt/...`에 바로 보내지 말고 **홈(`~/`)으로 보낸 뒤 3)번처럼 옮기세요.** `/opt` 아래는 권한이 달라 복사가 막힙니다.
+- 4)번에서 `.env.dev`는 `KEY=값` 모양으로 **`=` 양옆에 공백 없이**, 같은 키를 **두 번 쓰지 않습니다.** (`KEY = 값`처럼 공백이 있으면 앱이 값을 못 읽을 수 있습니다) 편집한 뒤에는 `sed 's/=.*/=(값 숨김)/' .env.dev`로 키 이름만 확인하면 값이 노출되지 않습니다.
 
 로그에 아래처럼 나오면 성공입니다.
 
@@ -204,10 +222,11 @@ docker logs richreach-backend 2>&1 | grep -E "staging|promotion"
 ```
 
 - `MVP로 선택된 카드가 없어 옮긴 것이 없습니다` 경고: `mvp_cards.csv`가 없거나 내용이 비었다.
-- `CSV 파일이 없습니다: ...`로 시작이 중단: 마운트 경로나 파일 이름이 틀렸다. `docker exec richreach-backend ls /data/staging`으로 컨테이너 안에서 보이는지 확인한다.
+- `CSV 파일이 없습니다: ...`로 시작이 중단: 서버의 `/opt/richreach-data/staging`가 **비어 있거나** 파일 이름이 틀렸다. `ls -l /opt/richreach-data/staging`로 호스트 폴더를, `docker exec richreach-backend ls /data/staging`으로 컨테이너 안을 확인한다. 이 오류가 나는 동안에는 컨테이너가 **다시 시작을 반복**하고(`restart: unless-stopped`) 같은 오류가 로그에 계속 쌓인다. CSV를 채운 뒤 `docker compose --env-file .env.dev -f docker-compose.dev.yml restart`로 다시 시작한다.
 - `STAGING_CSV_DIR가 비어 있습니다`: `.env.dev`에 `STAGING_CSV_DIR=/data/staging`이 없다.
+- 로그에 `WARN`으로 `같은 키가 N건 겹칩니다`, `알려진 누락`, `catalog_without_raw` 같은 줄이 나오는 것은 원본 자료의 알려진 특성이라 정상이다. (`[staging-check]`가 `OK`가 아닌 줄이 `WARN`이어도 적재는 진행된다)
 
-**끝난 뒤 반드시 끕니다.** `.env.dev`에서 `STAGING_LOAD_ON_STARTUP`을 지우거나 `false`로 바꾸고 다시 시작하세요. (켜 둬도 같은 행을 갱신(upsert)해서 중복은 생기지 않지만 시작할 때마다 시간이 듭니다)
+**끝난 뒤 반드시 끕니다.** `.env.dev`에서 `STAGING_LOAD_ON_STARTUP`을 지우거나 `false`로 바꾸고 다시 시작하세요. (켜 둬도 같은 행을 갱신(upsert)해서 중복은 생기지 않지만, 시작할 때마다 시간이 들고 CSV가 없으면 앱이 시작에 실패합니다) 서버 홈에 받아 둔 임시 복사본도 지웁니다: `sudo rm -rf ~/csv_8_added_12`
 
 **DB에서 확인 (선택)**: EC2에서 `mysql -h <RDS 엔드포인트> -u <사용자> -p --ssl-mode=REQUIRED <DB 이름>`으로 접속해 확인합니다. 비밀번호는 입력창에 직접 칩니다.
 
