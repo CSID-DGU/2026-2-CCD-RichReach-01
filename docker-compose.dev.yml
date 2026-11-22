@@ -17,6 +17,12 @@ services:
       - .env.dev
     environment:
       SPRING_PROFILES_ACTIVE: dev
+    volumes:
+      # 카드 상품·혜택 CSV를 앱이 읽는 폴더. 서버(호스트)의 폴더를 컨테이너 안 /data/staging에 읽기 전용으로 연결한다.
+      # 평소에는 쓰지 않는다. 적재할 때만 .env.dev에 STAGING_LOAD_ON_STARTUP=true, STAGING_CSV_DIR=/data/staging을 넣는다.
+      # (backend/README.md "AWS 카드 상품·혜택 데이터 적재" 참고) 호스트 폴더는 미리 만들어 두고 CSV를 넣는다.
+      # CSV는 저장소에 올리지 않으니 서버로 직접 복사한다. 다른 경로를 쓰려면 .env.dev에 STAGING_HOST_DIR을 넣는다.
+      - "${STAGING_HOST_DIR:-/opt/richreach-data/staging}:/data/staging:ro"
     ports:
       # 기본은 서버 안(127.0.0.1)에서만 받는다. 앞단(호스트 nginx)이 여기로 넘긴다.
       # ALB가 EC2의 사설 IP:8080으로 직접 연결하면 .env.dev에 BACKEND_BIND=<EC2 사설 IP>를 넣는다.

@@ -160,6 +160,70 @@ curl -fs http://localhost:8080/actuator/health        # {"status":"UP"}
 - 구성 A에서 ALB를 같이 쓰려면 ALB 대상 그룹이 **nginx의 포트**를 향하게 하고, 앱 포트(8080)는 루프백에만 둔다.
 - 대상 그룹의 상태 검사 경로는 `/actuator/health`이고(로그인 없이 열린다), 호스트에서 `curl 127.0.0.1:8080`이 되는 것만으로는 ALB가 접근할 수 있는지 알 수 없으니 ALB 쪽 상태가 `healthy`인지 따로 확인한다.
 
+### AWS 카드 상품·혜택 데이터 적재
+
+배포한 DB에는 Flyway가 원본 카탈로그(`card_catalog_raw`, 319종)만 넣습니다. 분석과 혜택 계산에 쓰는 **카드 상품(`card_products`)과 혜택 규칙(`benefit_rules`)은 비어 있어서**, 이 상태로는 보유카드가 카드 상품에 매칭되지 않아 플랜이 비어 나옵니다. 로컬에서 쓰는 카드 12장(혜택 규칙 21개)을 **앱이 시작할 때 한 번 적재하고 승격**합니다. 앱이 EC2에서 RDS로 직접 넣으므로 RDS에 따로 접속할 필요는 없습니다. (적재 방식은 로컬과 같은 `StagingRunner`입니다)
+
+**준비물**: CSV 폴더 하나. 안에 아래 9개 파일이 모두 있어야 합니다. (`csv_8_added_12` 폴더)
+
+| 파일 | 설명 |
+|---|---|
+| `card_catalog_319.csv`, `source_scopes.csv`, `card_benefits_all.csv`, `card_conditions_all.csv`, `common_standards.csv`, `target_names.csv`, `review_queue.csv`, `special_cases.csv` | 스테이징 CSV 8종. **하나라도 없으면 아무것도 넣지 않고 시작이 중단된다.** |
+| `mvp_cards.csv` | 최종 테이블로 승격할 카드(`issuer_code,card_id`). **없으면 승격되는 카드가 0개**다. |
+
+> `Downloads\319종_카드혜택_전체자료` 폴더에는 `mvp_cards.csv`가 없어서 그 폴더만으로는 승격이 안 됩니다. 로컬에서 쓰는 12장 폴더를 사용하세요.
+> CSV는 `.gitignore`(`*.csv`)로 저장소에 올라가지 않습니다. 서버로 직접 복사합니다.
+
+**절차 (EC2에서)**
+
+```bash
+# 1) 서버에 폴더를 만들고 CSV를 복사한다. (내 PC에서 scp, 폴더 이름은 자유)
+sudo mkdir -p /opt/richreach-data/staging
+sudo chown "$USER" /opt/richreach-data/staging
+#   (내 PC) scp -r "<csv_8_added_12 폴더>/." <사용자>@<EC2 주소>:/opt/richreach-data/staging/
+chmod -R a+rX /opt/richreach-data/staging     # 컨테이너의 앱 사용자가 읽을 수 있게 한다
+ls /opt/richreach-data/staging                 # CSV 9개가 보여야 한다
+
+# 2) .env.dev에 두 줄을 추가한다. (값에는 컨테이너 안 경로를 쓴다)
+#      STAGING_LOAD_ON_STARTUP=true
+#      STAGING_CSV_DIR=/data/staging
+#    시연용으로 혜택까지 보려면 BENEFIT_RULE_SELECTION=ALL 도 넣는다. (아래 참고)
+
+# 3) 앱을 다시 시작해 한 번 적재한다.
+docker compose --env-file .env.dev -f docker-compose.dev.yml up -d --build
+
+# 4) 로그에서 결과를 확인한다.
+docker logs richreach-backend 2>&1 | grep -E "staging|promotion"
+```
+
+로그에 아래처럼 나오면 성공입니다.
+
+```
+[staging] MVP 카드 12개 표시, ...
+[promotion] MVP 카드 12개 -> card_products 12, benefit_rules 21, performance_tiers 21, ...
+```
+
+- `MVP로 선택된 카드가 없어 옮긴 것이 없습니다` 경고: `mvp_cards.csv`가 없거나 내용이 비었다.
+- `CSV 파일이 없습니다: ...`로 시작이 중단: 마운트 경로나 파일 이름이 틀렸다. `docker exec richreach-backend ls /data/staging`으로 컨테이너 안에서 보이는지 확인한다.
+- `STAGING_CSV_DIR가 비어 있습니다`: `.env.dev`에 `STAGING_CSV_DIR=/data/staging`이 없다.
+
+**끝난 뒤 반드시 끕니다.** `.env.dev`에서 `STAGING_LOAD_ON_STARTUP`을 지우거나 `false`로 바꾸고 다시 시작하세요. (켜 둬도 같은 행을 갱신(upsert)해서 중복은 생기지 않지만 시작할 때마다 시간이 듭니다)
+
+**DB에서 확인 (선택)**: EC2에서 `mysql -h <RDS 엔드포인트> -u <사용자> -p --ssl-mode=REQUIRED <DB 이름>`으로 접속해 확인합니다. 비밀번호는 입력창에 직접 칩니다.
+
+```sql
+select count(*) from card_products;          -- 12
+select count(*) from benefit_rules;           -- 21
+select count(*) from performance_tiers;       -- 21
+select issuer_code, card_id, recommendable from card_products order by 1, 2;
+```
+
+**알아둘 점**
+- 승격된 12장 중 **혜택 규칙이 있는 카드는 6장**(BC 2, 카카오뱅크 1, KB 노리 체크 1, 우리 K-패스 1)입니다. 신한 6장과 하나 1장은 규칙이 0개입니다.
+- `recommendable`이 모두 0인 것은 `card_status`가 미확정(비어 있음)이거나 발급 중단·선불카드여서 신규 추천 후보에서 빠지는 것이고, 보유카드 분석에는 영향이 없습니다.
+- 사람이 원문과 대조해 확인한 혜택 규칙(`rule_engine_ready`)이 아직 0개라서, 서버를 기본값(`BENEFIT_RULE_SELECTION=READY_ONLY`)으로 두면 **혜택이 0원**으로 나옵니다. 시연이면 `.env.dev`에 `BENEFIT_RULE_SELECTION=ALL`을 넣습니다. (확인되지 않은 규칙을 포함한 참고용 값입니다)
+- 이 12장이 아닌 카드(예: IBK 발급 BC카드)는 카드 상품에 매칭되지 않아 분석과 재계산에서 빠집니다.
+
 ### 보안 설정 체크리스트
 
 - RDS 보안 그룹은 **EC2의 보안 그룹에서 오는 3306만** 허용한다. (퍼블릭 액세스 끔)
