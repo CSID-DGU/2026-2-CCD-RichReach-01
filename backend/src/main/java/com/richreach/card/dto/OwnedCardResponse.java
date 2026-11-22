@@ -17,7 +17,8 @@ import java.util.Locale;
  * @param analysisStatus 혜택으로 분석할 수 있는지. 카드 상품에 매칭된 카드만 분석할 수 있다.
  * @param selected       분석 대상인지. 선택되어 있고 분석할 수 있어야 {@code true}다. 분석할 수 없는 카드는 선택할 수 없고,
  *                       재동기화로 매칭이 풀린 카드는 저장된 선택이 남아 있어도 {@code false}로 내려간다.
- * @param imageUrl       카드 이미지. 아직 제공하지 않아 항상 {@code null}이다.
+ * @param imageUrl       카드 앞면 이미지 주소(https). 카드 상품에 매칭됐고 이미지를 알고 있을 때만 값이 있고, 아니면
+ *                       {@code null}이다. 앱은 {@code null}이면 기본 이미지를 보여준다.
  */
 public record OwnedCardResponse(
     Long cardId,
@@ -52,7 +53,7 @@ public record OwnedCardResponse(
             kindOf(card),
             card.isAnalyzable() ? AnalysisStatus.AVAILABLE : AnalysisStatus.UNAVAILABLE,
             card.isAnalysisTarget(),
-            null);
+            product == null ? null : product.getImageUrl());
     }
 
     /**

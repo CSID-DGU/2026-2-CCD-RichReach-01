@@ -59,6 +59,10 @@ public class CardProduct extends BaseEntity {
     @Column(name = "source_url", length = 500)
     private String sourceUrl;
 
+    /** 카드 앞면 이미지 주소(https). 모르면 null이다. 승격이 아니라 CardImageLoader가 채운다. */
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "source_snapshot_date", nullable = false)
     private LocalDate sourceSnapshotDate;
 
