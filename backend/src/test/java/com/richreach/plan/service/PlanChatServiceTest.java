@@ -14,6 +14,7 @@ import com.richreach.plan.dto.PlanCreateRequest.Budget;
 import com.richreach.plan.dto.PlanCreateRequest.CategoryBudget;
 import com.richreach.global.category.SpendingCategory;
 import com.richreach.global.openai.OpenAiProperties;
+import com.richreach.global.openai.OpenAiResponsesClient;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -85,8 +86,9 @@ class PlanChatServiceTest {
         int calls;
 
         FakeClient() {
-            super(RestClient.create(), new OpenAiProperties("", "gpt-5-nano", "https://api.openai.com",
-                Duration.ofSeconds(3), Duration.ofSeconds(20)), JsonMapper.builder().build());
+            super(new OpenAiResponsesClient(RestClient.create(), new OpenAiProperties("", "gpt-5-nano",
+                "https://api.openai.com", Duration.ofSeconds(3), Duration.ofSeconds(20)),
+                JsonMapper.builder().build()), JsonMapper.builder().build());
         }
 
         @Override
