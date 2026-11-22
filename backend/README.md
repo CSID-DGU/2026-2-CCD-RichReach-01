@@ -171,6 +171,7 @@ curl -fs http://localhost:8080/actuator/health        # {"status":"UP"}
 |---|---|
 | `card_catalog_319.csv`, `source_scopes.csv`, `card_benefits_all.csv`, `card_conditions_all.csv`, `common_standards.csv`, `target_names.csv`, `review_queue.csv`, `special_cases.csv` | 스테이징 CSV 8종. **하나라도 없으면 아무것도 넣지 않고 시작이 중단된다.** |
 | `mvp_cards.csv` | 최종 테이블로 승격할 카드(`issuer_code,card_id`). **없으면 승격되는 카드가 0개**다. |
+| `card_images.csv` (선택) | 카드 이미지 주소. 있으면 승격이 끝난 뒤 `card_products.image_url`을 채운다. 없으면 이미지는 `null`이다. (아래 "카드 이미지" 참고) |
 
 > `Downloads\319종_카드혜택_전체자료` 폴더에는 `mvp_cards.csv`가 없어서 그 폴더만으로는 승격이 안 됩니다. 로컬에서 쓰는 12장 폴더를 사용하세요.
 > CSV는 `.gitignore`(`*.csv`)로 저장소에 올라가지 않습니다. 서버로 직접 복사합니다.
@@ -226,6 +227,22 @@ docker logs richreach-backend 2>&1 | grep -E "staging|promotion"
 [staging] MVP 카드 12개 표시, ...
 [promotion] MVP 카드 12개 -> card_products 12, benefit_rules 21, performance_tiers 21, ...
 ```
+
+**카드 이미지 (#308)**: 팀에서 모은 "331종 카드 이미지 URL" CSV를 **`card_images.csv`라는 이름으로** 같은 폴더(`/opt/richreach-data/staging`)에 함께 복사하면, 위 5)번에서 승격이 끝난 뒤 자동으로 반영됩니다. (파일 이름이 다르면 읽지 않습니다) 서버에서 3)번을 할 때 아래처럼 이름을 바꿔 복사하세요.
+
+```bash
+# 🖥️ 내 PC: 이미지 CSV를 서버 홈으로 복사한다. (2번과 같은 방식)
+scp -i "<키 파일 경로>" "<331종_카드_이미지_URL.csv 경로>" ubuntu@<EC2 주소>:~/
+
+# ☁️ 서버: 이름을 card_images.csv로 바꿔 적재 폴더에 둔다.
+cp ~/331종_카드_이미지_URL.csv /opt/richreach-data/staging/card_images.csv
+chmod a+r /opt/richreach-data/staging/card_images.csv
+```
+
+- 쓰는 행은 `image_type=CARD_FRONT`, `url_status=VERIFIED_IMAGE`이고 주소가 `https://`로 시작하는 행뿐입니다. 제3자 게시물 이미지(`THIRD_PARTY_CARD_FRONT`, 우리 K-패스 쿠키 체크 `839035` 등)는 사용 권리를 확인하지 못해서 **넣지 않고 `null`로 둡니다.** 앱은 `imageUrl`이 `null`이면 기본 이미지를 보여줘야 합니다.
+- 카드 상품에 없는 카드(승격하지 않은 카드)는 건너뜁니다. 12장만 승격했으면 331행 중 최대 11장에 이미지가 들어갑니다. 나중에 카드를 더 승격한 뒤 다시 적재하면 채워집니다. 여러 번 적재해도 결과가 같고, 파일에 없는 카드의 기존 이미지는 지우지 않습니다.
+- 이미지 파일이 아니라 **카드사 서버의 주소만** 저장합니다. 카드사가 주소를 바꾸면 이미지가 깨질 수 있고, 외부 서비스에 공개하기 전에 이미지 사용 권리를 확인해야 합니다.
+- 로그: `[card-images] 카드 이미지 반영 11개, 카드 상품에 없어 건너뜀 319개, 쓰지 않은 행 1개`
 
 - `MVP로 선택된 카드가 없어 옮긴 것이 없습니다` 경고: `mvp_cards.csv`가 없거나 내용이 비었다.
 - `CSV 파일이 없습니다: ...`로 시작이 중단: 서버의 `/opt/richreach-data/staging`가 **비어 있거나** 파일 이름이 틀렸다. `ls -l /opt/richreach-data/staging`로 호스트 폴더를, `docker exec richreach-backend ls /data/staging`으로 컨테이너 안을 확인한다. 이 오류가 나는 동안에는 컨테이너가 **다시 시작을 반복**하고(`restart: unless-stopped`) 같은 오류가 로그에 계속 쌓인다. CSV를 채운 뒤 `docker compose --env-file .env.dev -f docker-compose.dev.yml restart`로 다시 시작한다. (설정은 바꾸지 않고 파일만 채운 경우이고, `.env.dev`를 바꿨다면 `restart`가 아니라 `up -d`를 쓴다)
