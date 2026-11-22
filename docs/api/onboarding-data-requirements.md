@@ -786,7 +786,7 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 | 카드 이미지, 혜택 요약 보기 | PLAN-02와 같음 | PLAN-02와 같음 | 🟡 PLAN-02와 같음 |
 | 카드 정보: 실적 기준, 이번 달 인정금액 | 카드 전월 실적 기준, 이번 달 실적 인정 금액 | `GET /api/plans/{planId}/card-targets`의 `performance` (#273, 인정 금액은 정확하지 않음) | ✅ 연동 (#293, 모르면 "-") |
 | 카드 정보: 결제일, 이용기간, 연결 계정 | 결제일(예: 매월 14일), 실적 이용기간(전월 1일~말일), 가린 카드사 아이디 | `GET /api/cards/{cardId}/settings` → `paymentDay`(항상 null, "-"), `performancePeriod`, `account.maskedLoginId` | 🟡 API 있음 (#275), 연동 전 |
-| 거래내역 자동 동기화 (토글) | 카드사별 자동 동기화 설정 | `PUT /api/connections/{connectionId}/auto-sync` (설정 값만 저장, 아래 참고), 현재 값은 `account.autoSyncEnabled` 또는 `GET /api/connections` | 🟡 API 있음 (#275), 연동 전 |
+| 거래내역 자동 동기화 (토글) | 카드사별 자동 동기화 설정 | `PUT /api/connections/{connectionId}/auto-sync` (아래 참고), 현재 값은 `account.autoSyncEnabled` 또는 `GET /api/connections` | 🟡 API 있음 (#275), 연동 전 |
 | 플랜 분석에 포함 (토글) | 분석 대상 카드 여부 | `GET /api/cards` → `selected`, `PUT /api/cards/selection` | ✅ 연동됨 (실패하면 되돌리고 안내) |
 | 카드 연결 해제 | 카드사 연결 끊기 | `DELETE /api/connections/{connectionId}` (아래 참고) | 🟡 API 있음 (#275), 연동 전 |
 
@@ -815,7 +815,7 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 
 **자동 동기화 `PUT /api/connections/{connectionId}/auto-sync`** — 본문 `{ "enabled": true }`. 응답 `data`는 `{ "connectionId": 3, "autoSyncEnabled": false }`입니다.
 
-- **설정 값만 저장합니다.** 이 값에 따라 서버가 주기적으로 동기화하는 기능은 별도 작업이라, 지금은 켜도 자동으로 동기화되지 않습니다. 동기화는 앱에서 `POST /api/connections/sync`로 시작합니다. 기본값은 켬입니다.
+- 이 API는 설정 값만 저장합니다. 기본값은 켬입니다. 서버가 이 값에 따라 매일 새벽(기본 06:00 KST) 동기화하는 기능(#311)은 **서버에서 `CODEF_AUTO_SYNC_ENABLED=true`로 켠 환경에서만** 동작합니다. 꺼진 환경에서는 켜도 자동으로 동기화되지 않으니 앱에서 `POST /api/connections/sync`로 시작합니다. 정상(ACTIVE) 연결만 대상이고, 최근 20시간 안에 수집을 시도한 계정(직접 동기화 포함)과 일시 제한 중인 계정은 건너뜁니다. 사용자는 한 명씩 차례로 처리합니다.
 - 현재 값은 `GET /api/connections`의 각 항목(`autoSyncEnabled`, `maskedLoginId`)과 카드 정보의 `account`에 있습니다.
 - `connectionId`는 `GET /api/connections`의 `connectionId`(카드사 계정 ID)입니다. 없거나 해제했거나 남의 연결이면 404 `CONN-001`, `enabled`가 없으면 400 `COMMON-400`입니다.
 
@@ -976,4 +976,4 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 | Q13 | 온보딩 확정 예산 저장 | `POST /api/plans` 본문의 `budget` |
 | Q14 | 플랜 생성 상태 조회 | `GET /api/plans/jobs/{jobId}`, `progress` 0~100 |
 | Q21 | 예정지출(HOME-06~10) API와 플랜 반영 방식 | 백엔드 #274: `/api/planned-expenses`(추가·조회·수정·삭제). 추가·수정·삭제하면 이번 달 플랜의 남은 기간을 서버가 다시 계산한다. `예산 밖 추가 지출`은 업종 목표와 총예산에 더하고, `기존 예산 안에서 조정`은 총예산을 유지한 채 모든 업종 예산을 비율대로 줄여 그 업종에 더한다. 이번 달 예정지출만 고칠 수 있고 할부는 이번 달 금액(월 금액)만 반영한다 ([예정지출 API](#예정지출-api-274) 참고) |
-| Q22 | 카드 정보(SETTINGS-03)의 결제일, 실적 이용기간, 연결 계정, 자동 동기화 설정, 연결 해제 | 백엔드 #275: `GET /api/cards/{cardId}/settings`(결제일은 아직 null, 실적 기간은 전월 1일~말일 기본값, 가린 아이디는 연결할 때 저장), `PUT /api/connections/{id}/auto-sync`(설정 값만 저장), `DELETE /api/connections/{id}`(CODEF 계정과 카드·거래 삭제, 플랜 재계산). 자동 동기화의 주기 실행과 결제일 수집은 후속 ([상세](#카드-정보연결-관리-api-275)) |
+| Q22 | 카드 정보(SETTINGS-03)의 결제일, 실적 이용기간, 연결 계정, 자동 동기화 설정, 연결 해제 | 백엔드 #275: `GET /api/cards/{cardId}/settings`(결제일은 아직 null, 실적 기간은 전월 1일~말일 기본값, 가린 아이디는 연결할 때 저장), `PUT /api/connections/{id}/auto-sync`(설정 값만 저장), `DELETE /api/connections/{id}`(CODEF 계정과 카드·거래 삭제, 플랜 재계산). 자동 동기화의 주기 실행은 #311(서버 설정으로 켬), 결제일 수집은 후속 ([상세](#카드-정보연결-관리-api-275)) |

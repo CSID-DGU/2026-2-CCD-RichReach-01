@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
 
 @Configuration
 @EnableConfigurationProperties({CodefProperties.class, CodefSyncProperties.class, CodefDebugProperties.class,
-    CodefCollectProperties.class})
+    CodefCollectProperties.class, CodefAutoSyncProperties.class})
 public class CodefConfig {
 
     /**

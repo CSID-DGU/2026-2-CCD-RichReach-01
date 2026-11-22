@@ -63,6 +63,13 @@ richreach:
     user-email: ${DEMO_SEED_USER_EMAIL:}
     reset: ${DEMO_SEED_RESET:false}
 
+# 거래내역 자동 동기화. 서버가 사용자를 대신해 카드사를 호출하는 기능이라 기본은 꺼짐이고, 서버 환경에서 의도적으로 켠다.
+# (자세한 설정은 CodefAutoSyncProperties 참고. 켜려면 CODEF_AUTO_SYNC_ENABLED=true)
+codef:
+  auto-sync:
+    enabled: ${CODEF_AUTO_SYNC_ENABLED:false}
+    cron: ${CODEF_AUTO_SYNC_CRON:0 0 6 * * *}
+
 # DB 접속 정보(spring.datasource.*)는 프로파일별 설정(application-local.yml 등)에서 환경변수로 주입한다.
 
 management:
