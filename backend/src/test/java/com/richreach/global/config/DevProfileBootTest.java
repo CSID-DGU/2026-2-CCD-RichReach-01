@@ -70,6 +70,8 @@ class DevProfileBootTest {
     @DisplayName("dev 프로파일에서는 시연 데이터 생성기가 만들어지지 않고 인증번호도 응답에 담지 않는다")
     void devOnlyFeaturesAreOff() {
         assertThat(context.containsBean("demoSeedRunner")).isFalse();
+        // 서버가 카드사를 대신 호출하는 자동 동기화는 켜지 않으면 스케줄 자체가 만들어지지 않는다.
+        assertThat(context.containsBean("codefAutoSyncScheduler")).isFalse();
         assertThat(environment.getProperty("app.auth.password-reset.expose-code", Boolean.class)).isFalse();
         assertThat(environment.getProperty("app.jwt.require-secret", Boolean.class)).isTrue();
     }
