@@ -222,11 +222,20 @@ docker logs richreach-backend 2>&1 | grep -E "staging|promotion"
 ```
 
 - `MVP로 선택된 카드가 없어 옮긴 것이 없습니다` 경고: `mvp_cards.csv`가 없거나 내용이 비었다.
-- `CSV 파일이 없습니다: ...`로 시작이 중단: 서버의 `/opt/richreach-data/staging`가 **비어 있거나** 파일 이름이 틀렸다. `ls -l /opt/richreach-data/staging`로 호스트 폴더를, `docker exec richreach-backend ls /data/staging`으로 컨테이너 안을 확인한다. 이 오류가 나는 동안에는 컨테이너가 **다시 시작을 반복**하고(`restart: unless-stopped`) 같은 오류가 로그에 계속 쌓인다. CSV를 채운 뒤 `docker compose --env-file .env.dev -f docker-compose.dev.yml restart`로 다시 시작한다.
+- `CSV 파일이 없습니다: ...`로 시작이 중단: 서버의 `/opt/richreach-data/staging`가 **비어 있거나** 파일 이름이 틀렸다. `ls -l /opt/richreach-data/staging`로 호스트 폴더를, `docker exec richreach-backend ls /data/staging`으로 컨테이너 안을 확인한다. 이 오류가 나는 동안에는 컨테이너가 **다시 시작을 반복**하고(`restart: unless-stopped`) 같은 오류가 로그에 계속 쌓인다. CSV를 채운 뒤 `docker compose --env-file .env.dev -f docker-compose.dev.yml restart`로 다시 시작한다. (설정은 바꾸지 않고 파일만 채운 경우이고, `.env.dev`를 바꿨다면 `restart`가 아니라 `up -d`를 쓴다)
 - `STAGING_CSV_DIR가 비어 있습니다`: `.env.dev`에 `STAGING_CSV_DIR=/data/staging`이 없다.
 - 로그에 `WARN`으로 `같은 키가 N건 겹칩니다`, `알려진 누락`, `catalog_without_raw` 같은 줄이 나오는 것은 원본 자료의 알려진 특성이라 정상이다. (`[staging-check]`가 `OK`가 아닌 줄이 `WARN`이어도 적재는 진행된다)
 
-**끝난 뒤 반드시 끕니다.** `.env.dev`에서 `STAGING_LOAD_ON_STARTUP`을 지우거나 `false`로 바꾸고 다시 시작하세요. (켜 둬도 같은 행을 갱신(upsert)해서 중복은 생기지 않지만, 시작할 때마다 시간이 들고 CSV가 없으면 앱이 시작에 실패합니다) 서버 홈에 받아 둔 임시 복사본도 지웁니다: `sudo rm -rf ~/csv_8_added_12`
+**끝난 뒤 반드시 끕니다.** `.env.dev`에서 `STAGING_LOAD_ON_STARTUP`을 지우거나 `false`로 바꾼 뒤, **컨테이너를 다시 만들어 적용합니다.** (켜 둬도 같은 행을 갱신(upsert)해서 중복은 생기지 않지만, 시작할 때마다 시간이 들고 CSV가 없으면 앱이 시작에 실패합니다)
+
+```bash
+docker compose --env-file .env.dev -f docker-compose.dev.yml up -d     # 설정(.env.dev)이 바뀌었으면 컨테이너를 다시 만든다
+```
+
+- `docker compose restart`는 **`.env.dev`를 다시 읽지 않아서**, 설정을 끈 뒤 `restart`만 하면 컨테이너에 `STAGING_LOAD_ON_STARTUP=true`가 그대로 남아 매번 다시 적재합니다. **`.env.dev`를 바꿨을 때는 `up -d`, 파일만 채우고 설정은 그대로일 때는 `restart`** 를 씁니다.
+- 적용됐는지는 로그에 `[staging]`, `[promotion]` 줄이 더 이상 나오지 않는 것으로 확인합니다: `docker logs --tail 30 richreach-backend 2>&1 | grep -E "staging|promotion|Started"`
+
+서버 홈에 받아 둔 임시 복사본도 지웁니다: `sudo rm -rf ~/csv_8_added_12`
 
 **DB에서 확인 (선택)**: EC2에서 `mysql -h <RDS 엔드포인트> -u <사용자> -p --ssl-mode=REQUIRED <DB 이름>`으로 접속해 확인합니다. 비밀번호는 입력창에 직접 칩니다.
 
