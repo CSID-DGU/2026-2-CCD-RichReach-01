@@ -8,11 +8,13 @@ import com.richreach.plan.dto.PlanChangesResponse;
 import com.richreach.plan.dto.PlanCreateRequest;
 import com.richreach.plan.dto.PlanJobStartResponse;
 import com.richreach.plan.dto.PlanJobStatusResponse;
+import com.richreach.plan.dto.PlanMonthDraftResponse;
 import com.richreach.plan.dto.PlanResponse;
 import com.richreach.plan.service.PlanBudgetService;
 import com.richreach.plan.service.PlanCardTargetsService;
 import com.richreach.plan.service.PlanChangeQueryService;
 import com.richreach.plan.service.PlanGenerationService;
+import com.richreach.plan.service.PlanMonthDraftService;
 import com.richreach.plan.service.PlanQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -37,6 +39,7 @@ public class PlanController {
     private final PlanChangeQueryService changeService;
     private final PlanBudgetService budgetService;
     private final PlanCardTargetsService cardTargetsService;
+    private final PlanMonthDraftService monthDraftService;
 
     /**
      * 월간 플랜 생성을 시작한다. 계산은 오래 걸릴 수 있어서 작업을 시작하고 바로 {@code jobId}를 돌려주며, 진행 상태는
@@ -86,6 +89,16 @@ public class PlanController {
     public ApiResponse<PlanResponse> monthly(@AuthenticationPrincipal AuthenticatedUser user,
                                              @RequestParam(required = false) String month) {
         return ApiResponse.ok(queryService.getMonthlyPlan(user.userId(), month));
+    }
+
+    /**
+     * 새 달 예산 초안. 새 달이 되면 이번 달 플랜이 없으므로({@code GET /api/plans}가 404 {@code PLAN-001}), 지난달에 확정한
+     * 예산(없으면 최근 소비로 추천한 예산)을 이번 달 기본값으로 돌려준다. 저장하지 않고 플랜도 자동으로 만들지 않는다. 사용자가
+     * 고친 뒤 {@code POST /api/plans}로 만든다. 지난달 소비와 예산 어느 쪽도 없으면 {@code source=NONE}, {@code budget=null}이다.
+     */
+    @GetMapping("/month-draft")
+    public ApiResponse<PlanMonthDraftResponse> monthDraft(@AuthenticationPrincipal AuthenticatedUser user) {
+        return ApiResponse.ok(monthDraftService.draft(user.userId()));
     }
 
     /** 플랜의 업종별 사용계획. 없거나 다른 사용자의 플랜이면 404({@code PLAN-001})이다. */

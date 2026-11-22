@@ -1254,6 +1254,26 @@
         }
       }
     },
+    "/api/plans/month-draft": {
+      "get": {
+        "tags": [
+          "plan-controller"
+        ],
+        "operationId": "monthDraft",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePlanMonthDraftResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/connections/sync/{jobId}": {
       "get": {
         "tags": [
@@ -3156,6 +3176,49 @@
           },
           "data": {
             "$ref": "#/components/schemas/PlanAnalysisResponse"
+          }
+        }
+      },
+      "ApiResponsePlanMonthDraftResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlanMonthDraftResponse"
+          }
+        }
+      },
+      "PlanMonthDraftResponse": {
+        "type": "object",
+        "description": "새 달이 되어 이번 달 플랜이 없을 때 보여줄 이번 달 예산 초안. 저장하지 않는다.",
+        "properties": {
+          "targetMonth": {
+            "type": "string"
+          },
+          "planExists": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string",
+            "description": "PREVIOUS_BUDGET, ANALYSIS, NONE"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/Budget"
+          },
+          "previousMonth": {
+            "type": "string"
+          },
+          "previousMonthSpent": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

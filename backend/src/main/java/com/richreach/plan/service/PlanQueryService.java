@@ -89,6 +89,19 @@ public class PlanQueryService {
             confirmedBudget(plan.getProfileId()));
     }
 
+    /**
+     * 그 달에 사용자가 확정한 예산(예정지출을 얹기 전). 그 달의 플랜이 없으면 비어 있다. 월 전환에서 이번 달 초안의 출발점(지난달 확정 예산)으로
+     * 쓴다. 보여줄 플랜({@link PlanPrimarySelector})의 소비 프로필을 읽으므로 {@link #getMonthlyPlan}의 {@code confirmedBudget}과
+     * 같은 값이다.
+     */
+    @Transactional(readOnly = true)
+    public Optional<PlanCreateRequest.Budget> findConfirmedBudget(long userId, YearMonth month) {
+        Map<PlanStrategy, MonthlyPlan> latest = latestByStrategy(plans.findByUserIdAndPlanMonth(userId,
+            month.toString()));
+        return PlanPrimarySelector.select(latest.keySet()).map(latest::get)
+            .map(plan -> confirmedBudget(plan.getProfileId()));
+    }
+
     /** 플랜의 소비 프로필은 예정지출을 얹기 전 확정 예산이다. 카드 목표액에서 역산하면 중복 반영된다. */
     private PlanCreateRequest.Budget confirmedBudget(long profileId) {
         Map<SpendingCategory, Long> amounts = new EnumMap<>(SpendingCategory.class);
