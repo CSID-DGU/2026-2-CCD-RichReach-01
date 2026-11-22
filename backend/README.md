@@ -197,12 +197,17 @@ cp ~/csv_8_added_12/*.csv /opt/richreach-data/staging/
 chmod -R a+rX /opt/richreach-data/staging      # 컨테이너의 앱 사용자가 읽을 수 있게 한다
 ls -l /opt/richreach-data/staging               # CSV 9개가 보여야 한다
 
-# 4) ☁️ 서버: .env.dev에 두 줄을 추가한다. (값에는 컨테이너 안 경로를 쓴다)
+# 4) ☁️ 서버: 저장소 루트(docker-compose.dev.yml과 .env.dev가 있는 폴더)로 이동해서 .env.dev에 두 줄을 추가한다.
+#    (값에는 컨테이너 안 경로를 쓴다) SSH로 접속하면 홈 폴더에서 시작하므로 먼저 이동해야 한다.
+cd ~/richreach                                  # 예: 소스를 ~/richreach에 풀었다면. 다른 폴더에 풀었다면 그 폴더로 이동
+ls -a                                           # docker-compose.dev.yml 과 .env.dev 가 보여야 한다
+#    편집 (nano .env.dev) 후 아래 두 줄을 추가한다.
 #      STAGING_LOAD_ON_STARTUP=true
 #      STAGING_CSV_DIR=/data/staging
 #    시연용으로 혜택까지 보려면 BENEFIT_RULE_SELECTION=ALL 도 넣는다. (아래 참고)
 
-# 5) ☁️ 서버: 앱을 다시 시작해 한 번 적재한다. (코드를 바꾸지 않았으면 --build는 필요 없다)
+# 5) ☁️ 서버: 4)번과 같은 폴더에서 앱을 다시 시작해 한 번 적재한다. (코드를 바꾸지 않았으면 --build는 필요 없다)
+#    --env-file과 -f의 상대 경로는 명령을 실행한 폴더 기준이라, 다른 폴더에서 치면 파일을 찾지 못한다.
 docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
 
 # 6) ☁️ 서버: 로그에서 결과를 확인한다.
