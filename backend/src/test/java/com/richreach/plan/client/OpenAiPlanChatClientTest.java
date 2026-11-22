@@ -11,6 +11,7 @@ import com.richreach.global.category.SpendingCategory;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
 import com.richreach.global.openai.OpenAiProperties;
+import com.richreach.global.openai.OpenAiResponsesClient;
 import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -40,7 +41,7 @@ class OpenAiPlanChatClientTest {
             .andExpect(jsonPath("$.text.format.strict").value(true))
             .andRespond(withSuccess(RESPONSE, MediaType.APPLICATION_JSON));
 
-        var client = new OpenAiPlanChatClient(builder.build(), properties("test-key"), JsonMapper.builder().build());
+        var client = planClient(builder);
         var result = client.chat("카페 3만 원으로", "2026-12", Map.of(SpendingCategory.CAFE, 20_000L),
             "MONTHLY_PLAN", java.util.List.of());
 
@@ -55,13 +56,19 @@ class OpenAiPlanChatClientTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("https://api.openai.com/v1/responses"))
             .andRespond(withSuccess("{\"status\":\"incomplete\",\"output\":[]}", MediaType.APPLICATION_JSON));
-        var client = new OpenAiPlanChatClient(builder.build(), properties("test-key"), JsonMapper.builder().build());
+        var client = planClient(builder);
 
         assertThatThrownBy(() -> client.chat("카페 3만 원으로", "2026-12",
             Map.of(SpendingCategory.CAFE, 20_000L), "MONTHLY_PLAN", java.util.List.of()))
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode").isEqualTo(ErrorCode.PLAN_CHAT_UNAVAILABLE);
         server.verify();
+    }
+
+    private static OpenAiPlanChatClient planClient(RestClient.Builder builder) {
+        JsonMapper mapper = JsonMapper.builder().build();
+        return new OpenAiPlanChatClient(
+            new OpenAiResponsesClient(builder.build(), properties("test-key"), mapper), mapper);
     }
 
     private static OpenAiProperties properties(String key) {
