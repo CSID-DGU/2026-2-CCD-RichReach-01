@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -45,6 +46,17 @@ public interface CodefOrgAccountRepository extends JpaRepository<CodefOrgAccount
         order by a.connection.user.id, a.id
         """)
     List<AutoSyncCandidate> findAutoSyncCandidates(@Param("since") LocalDateTime since);
+
+    /**
+     * 회원 탈퇴 때 사용자의 카드사 계정을 해제한 것까지 모두 지운다. 이 계정에서 수집한 보유카드는 DB의 ON DELETE CASCADE로 같이
+     * 지워진다. 작업 기록을 먼저 지운 뒤에 불러야 한다. 지운 행 수를 돌려준다.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+        delete from CodefOrgAccount a
+        where a.connection.id in (select c.id from CodefConnection c where c.user.id = :userId)
+        """)
+    int deleteAllByUserId(@Param("userId") Long userId);
 
     /** 연동 안에서 해당 기관(카드사)에 등록된 계정. 해제(DELETED)한 계정은 없는 것으로 본다. */
     Optional<CodefOrgAccount> findByConnectionIdAndOrganizationAndStatusNot(Long connectionId, String organization,
