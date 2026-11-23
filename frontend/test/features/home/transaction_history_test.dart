@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/features/home/data/spending_repository.dart';
 import 'package:frontend/features/home/domain/spending_transaction.dart';
+import 'package:frontend/features/home/presentation/transaction_history_screen.dart';
+import 'package:frontend/features/onboarding/domain/card_company.dart';
+import 'package:frontend/features/onboarding/domain/owned_card.dart';
 
 import '../../helpers/finders.dart';
 import '../../helpers/pump_app.dart';
@@ -32,6 +35,37 @@ class _NoBenefitSpending implements SpendingRepository {
             approvedAt: t.approvedAt,
           ),
       ],
+    );
+  }
+}
+
+/// 가짜 데이터에 이번 달 거래가 없는 카드를 더한 저장소.
+class _WithEmptyCard implements SpendingRepository {
+  const _WithEmptyCard({this.withTransactions = true});
+
+  final bool withTransactions;
+
+  static const emptyCard = OwnedCard(
+    id: 'bc-empty',
+    name: 'BC 바로 카드',
+    company: CardCompany.bc,
+    maskedNumber: '9999',
+    type: CardType.check,
+    analysisStatus: AnalysisStatus.available,
+  );
+
+  @override
+  Future<SpendingHistory> fetchHistory(DateTime month) async {
+    final history = await const FakeSpendingRepository(delay: Duration.zero)
+        .fetchHistory(month);
+    return SpendingHistory(
+      month: history.month,
+      totalAmount: history.totalAmount,
+      count: history.count,
+      totalBenefit: history.totalBenefit,
+      synced: history.synced,
+      transactions: withTransactions ? history.transactions : const [],
+      cards: [...history.cards, emptyCard],
     );
   }
 }
@@ -110,6 +144,44 @@ void main() {
     // 카드사 순서 KB → 우리 → 신한
     expect(findText('카카오T'), findsOneWidget);
     expect(findText('GS25'), findsNothing);
+  });
+
+  testWidgets('HOME-04 이번 달 거래가 없는 카드도 이미지로 보여주고, 고르면 거래가 없다고 안내한다', (
+    tester,
+  ) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.transactionHistory,
+      spending: const _WithEmptyCard(),
+    );
+    await _tapChip(tester, '카드별');
+
+    // 카드사 순서 KB → 우리 → BC → 신한. 처음에는 가장 최근에 결제한 KB.
+    for (final name in ['KB My WE:SH', '우리 카드의정석']) {
+      await tester.fling(
+        find.bySemanticsLabel(name),
+        const Offset(-200, 0),
+        1000,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.bySemanticsLabel('BC 바로 카드'), findsOneWidget);
+    expect(findText('거래내역이 없어요.'), findsOneWidget);
+    expect(findText('GS25'), findsNothing);
+  });
+
+  testWidgets('HOME-04 이번 달 거래가 하나도 없어도 카드를 보여준다', (tester) async {
+    await pumpAppAt(
+      tester,
+      AppRoute.transactionHistory,
+      spending: const _WithEmptyCard(withTransactions: false),
+    );
+    await _tapChip(tester, '카드별');
+
+    // 카드사 순서의 첫 카드(KB)를 고른다.
+    expect(find.byType(CardCarousel), findsOneWidget);
+    expect(findText('거래내역이 없어요.'), findsOneWidget);
   });
 
   testWidgets('HOME-05 카테고리는 고른 업종의 거래만 보여준다', (tester) async {

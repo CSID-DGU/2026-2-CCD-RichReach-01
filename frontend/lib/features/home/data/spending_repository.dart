@@ -82,6 +82,7 @@ class FakeSpendingRepository implements SpendingRepository {
       totalBenefit: 18600,
       synced: true,
       transactions: transactions,
+      cards: cards.values.toList(),
     );
   }
 }
@@ -90,7 +91,7 @@ class FakeSpendingRepository implements SpendingRepository {
 /// - 총 사용금액·건수·예상 혜택 합계: `GET /api/transactions/summary?month=` (그달 1일~말일, 이번 달은 오늘까지)
 /// - 거래 목록과 거래별 예상 혜택: `GET /api/transactions?month=` (백엔드 #269·#270)
 /// - 동기화 완료: `GET /api/connections`의 카드사가 모두 `SUCCESS`
-/// - 카드 이미지·이름: `GET /api/cards`에서 `cardId`로 찾는다.
+/// - 카드 이미지·이름: `GET /api/cards`에서 `cardId`로 찾는다. 분석 대상 카드는 거래가 없어도 카드 목록에 넣는다.
 ///
 /// 범위는 서버 기본값(분석 대상 카드, `cardScope=SELECTED`)이라 월간 플랜의 사용 금액과 같다 (Q20).
 /// 예상 혜택은 카드 혜택 규칙으로 계산한 추정값이다. 계산할 수 없는 거래(`null`)는 0으로 두어 표시하지 않는다.
@@ -129,6 +130,11 @@ class ApiSpendingRepository implements SpendingRepository {
       synced:
           statuses.isNotEmpty &&
           statuses.every((status) => status == 'SUCCESS'),
+      // 거래 목록 범위(cardScope=SELECTED)와 같은 분석 대상 카드. 그달 거래가 없어도 넣는다.
+      cards: [
+        for (final card in cards)
+          if (card.selected) card,
+      ],
       transactions: [
         for (final item in items)
           // 보유카드 목록에 없는 카드(해지 등)의 거래는 카드를 보여줄 수 없어 뺀다.
