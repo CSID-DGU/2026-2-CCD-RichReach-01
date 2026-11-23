@@ -259,6 +259,7 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
       targetAmount: target.targetAmount,
       usedAmount: target.spentAmount,
       performanceAmount: performance?.currentMonthAmount ?? target.spentAmount,
+      previousPerformanceAmount: performance?.previousMonthSpend,
       performanceRequirement: performance?.requirement,
       benefitLimit: target.monthlyLimit,
       remainingBenefitLimit: target.remainingLimit,
@@ -480,10 +481,11 @@ class _CardTargetJson {
   }
 }
 
-/// card-targets의 `performance` (전월 실적 기준과 이번 달 실적).
+/// card-targets의 `performance` (전월 실적 기준, 전월 실적, 이번 달 실적).
 class _PerformanceJson {
   const _PerformanceJson({
     required this.tiers,
+    required this.previousMonthSpend,
     required this.currentMonthAmount,
     required this.exact,
     required this.achievedTier,
@@ -493,6 +495,11 @@ class _PerformanceJson {
 
   /// 전월실적 구간 하한 목록 (작은 것부터)
   final List<int> tiers;
+
+  /// 전월 사용 금액 (이번 달 혜택 구간을 정한다)
+  final int? previousMonthSpend;
+
+  /// 이번 달 사용 금액 (다음 달 혜택 구간을 정한다)
   final int? currentMonthAmount;
   final bool exact;
   final int? achievedTier;
@@ -505,6 +512,7 @@ class _PerformanceJson {
   static _PerformanceJson fromJson(Map json) => _PerformanceJson(
     tiers: [for (final tier in json['tiers'] as List? ?? const []) tier as int]
       ..sort(),
+    previousMonthSpend: json['previousMonthSpend'] as int?,
     currentMonthAmount: json['currentMonthAmount'] as int?,
     exact: json['currentMonthAmountExact'] as bool? ?? true,
     achievedTier: json['achievedTier'] as int?,
@@ -936,6 +944,7 @@ class FakeMonthlyPlanRepository implements MonthlyPlanRepository {
       targetAmount: cardPlan.targetAmount,
       usedAmount: cardPlan.usedAmount,
       performanceAmount: cardPlan.usedAmount,
+      previousPerformanceAmount: cardPlan.usedAmount,
       performanceRequirement: terms.performanceRequirement,
       benefitLimit: terms.benefitLimit,
       remainingBenefitLimit: terms.remainingBenefitLimit,

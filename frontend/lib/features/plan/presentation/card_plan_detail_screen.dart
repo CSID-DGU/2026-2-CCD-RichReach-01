@@ -457,7 +457,7 @@ class _GoalCard extends StatelessWidget {
                 flex: 136,
                 child: stat(
                   '전월 실적 인정액',
-                  '${formatNumber(detail.performanceAmount)} / '
+                  '${_numberOrDash(detail.previousPerformanceAmount)} / '
                       '${_wonOrDash(detail.performanceRequirement)}',
                   size: 10,
                 ),
@@ -557,6 +557,10 @@ class _CategoryUsageCard extends StatelessWidget {
 
 /// 금액. 서버가 알 수 없다고 한 값(null)은 0이나 "한도 없음"이 아니라 "-"로 보여준다.
 String _wonOrDash(int? amount) => amount == null ? '-' : formatWon(amount);
+
+/// 숫자만 (원 없이). 알 수 없으면 "-".
+String _numberOrDash(int? amount) =>
+    amount == null ? '-' : formatNumber(amount);
 
 /// 목표 사용금액 카드 아래 안내.
 /// - 실적 인정 금액이 정확하면: 총 사용 중 실적에서 빠진 금액
