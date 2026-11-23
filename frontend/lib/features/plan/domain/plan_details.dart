@@ -50,6 +50,7 @@ class CardPlanDetail {
     required this.totalSpent,
     required this.benefits,
     required this.categoryUsages,
+    this.previousPerformanceAmount,
     this.performanceExact = true,
     this.exclusionNotes = const [],
   });
@@ -64,6 +65,10 @@ class CardPlanDetail {
 
   /// 원 단위 이번 달 실적 인정 금액 (다음 달 혜택 구간을 정한다)
   final int performanceAmount;
+
+  /// 원 단위 전월 실적 인정 금액 (이번 달 혜택 구간을 정한다, PLAN-02 "전월 실적 인정액").
+  /// 알 수 없으면 null.
+  final int? previousPerformanceAmount;
 
   /// 원 단위 혜택을 받기 위한 실적 기준 (가장 낮은 구간). 알 수 없으면 null.
   final int? performanceRequirement;

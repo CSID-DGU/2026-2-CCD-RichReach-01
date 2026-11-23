@@ -591,6 +591,8 @@ void main() {
     );
     expect((card!.targetAmount, card.usedAmount), (500000, 200000));
     expect(card.performanceAmount, 200000);
+    // PLAN-02 "전월 실적 인정액"은 이번 달이 아니라 전월 사용 금액
+    expect(card.previousPerformanceAmount, 310000);
     // 가장 낮은 실적 구간이 실적 기준이다.
     expect(card.performanceRequirement, 300000);
     expect(card.expectedBenefit, 4000);
