@@ -235,4 +235,32 @@ void main() {
 
     expect(history.totalBenefit, isNull);
   });
+
+  test('거래가 없어도 분석 대상 카드는 카드 목록에 넣고, 분석 대상이 아닌 카드는 뺀다', () async {
+    final server = _FakeServer(
+      (options) => switch (options.uri.path) {
+        ApiPaths.transactionSummary => _summary,
+        ApiPaths.connections => const [],
+        _ => _page(const [], false),
+      },
+    );
+    final noTransactions = _card('5', CardCompany.shinhan, 'Hey Young');
+    final notSelected = OwnedCard(
+      id: '6',
+      name: 'IBK포인트',
+      company: CardCompany.bc,
+      maskedNumber: '0006',
+      type: CardType.check,
+      analysisStatus: AnalysisStatus.available,
+      selected: false,
+    );
+
+    final history = await _repository(
+      server,
+      cards: [noTransactions, notSelected],
+    ).fetchHistory(DateTime(2026, 11));
+
+    expect(history.transactions, isEmpty);
+    expect(history.cards.map((c) => c.name), ['Hey Young']);
+  });
 }

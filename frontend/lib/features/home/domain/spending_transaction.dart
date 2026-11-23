@@ -34,6 +34,7 @@ class SpendingHistory {
     required this.totalBenefit,
     required this.synced,
     required this.transactions,
+    this.cards = const [],
   });
 
   final DateTime month;
@@ -50,4 +51,8 @@ class SpendingHistory {
 
   /// 사용 내역. 최근 결제가 앞에 온다.
   final List<SpendingTransaction> transactions;
+
+  /// 거래 목록 범위에 드는 보유카드(분석 대상 카드). 그달 거래가 없는 카드도 들어 있어
+  /// HOME-04 카드별에서 고를 수 있다. 모르면 빈 목록이고, 화면은 거래의 카드로 채운다.
+  final List<OwnedCard> cards;
 }
