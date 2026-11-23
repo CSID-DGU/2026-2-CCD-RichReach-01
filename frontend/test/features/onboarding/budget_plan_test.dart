@@ -129,15 +129,69 @@ class _FailingPlan implements PlanRepository {
 
 void main() {
   group('예산 총액 변경', () {
-    test('업종별 예산을 지금 비율대로 만 원 단위로 나누고, 남는 금액은 기타에 더한다', () {
+    test('업종별 예산을 지금 비율대로 천 원 단위로 나누고, 남는 천 원은 버린 몫이 큰 업종부터 더한다', () {
       final changed = _sampleBudget().withTotal(1000000);
 
+      // 230,000 / 180,000 / 120,000 / 100,000 / 190,000 (합 820,000)의 비율
       expect(changed.total, 1000000);
-      expect(changed.byCategory[SpendingCategory.dining], 280000);
-      expect(changed.byCategory[SpendingCategory.shopping], 210000);
-      expect(changed.byCategory[SpendingCategory.transport], 140000);
-      expect(changed.byCategory[SpendingCategory.convenienceStore], 120000);
+      expect(changed.byCategory[SpendingCategory.dining], 280000); // 280,487.8
+      expect(
+        changed.byCategory[SpendingCategory.shopping],
+        220000,
+      ); // 219,512.2
+      expect(
+        changed.byCategory[SpendingCategory.transport],
+        146000,
+      ); // 146,341.5
+      expect(
+        changed.byCategory[SpendingCategory.convenienceStore],
+        122000,
+      ); // 121,951.2
+      expect(changed.byCategory[SpendingCategory.etc], 232000); // 231,707.3
+      expect(changed.byCategory[SpendingCategory.cafe], 0);
       expect(changed.byCategory.values.fold<int>(0, (s, a) => s + a), 1000000);
+    });
+
+    test('예산이 작은 업종도 0원이 되지 않고, 기타에 금액이 몰리지 않는다', () {
+      // 실제 서버 확인에서 549,000원 → 600,000원으로 바꿨을 때 교통·통신이 0원이 됐던 예산
+      final budget = MonthlyBudget(
+        month: DateTime(2026, 11),
+        total: 549000,
+        byCategory: {
+          for (final c in SpendingCategory.values) c: 0,
+          SpendingCategory.dining: 64000,
+          SpendingCategory.cafe: 52000,
+          SpendingCategory.convenienceStore: 33000,
+          SpendingCategory.shopping: 112000,
+          SpendingCategory.transport: 3000,
+          SpendingCategory.lifeHealth: 31000,
+          SpendingCategory.telecomSubscription: 2000,
+          SpendingCategory.cultureTravel: 26000,
+          SpendingCategory.etc: 226000,
+        },
+      );
+
+      final changed = budget.withTotal(600000);
+
+      expect(changed.byCategory[SpendingCategory.transport], 3000);
+      expect(changed.byCategory[SpendingCategory.telecomSubscription], 2000);
+      expect(changed.byCategory[SpendingCategory.cultureTravel], 29000);
+      expect(changed.byCategory[SpendingCategory.etc], 247000);
+      expect(changed.byCategory.values.fold<int>(0, (s, a) => s + a), 600000);
+    });
+
+    test('천 원 아래 끝자리는 가장 큰 업종에 더하고, 예산이 모두 0원이면 기타에 둔다', () {
+      final changed = _sampleBudget().withTotal(1000500);
+      expect(changed.byCategory[SpendingCategory.dining], 281500);
+      expect(changed.byCategory.values.fold<int>(0, (s, a) => s + a), 1000500);
+
+      final empty = MonthlyBudget(
+        month: DateTime(2026, 11),
+        total: 0,
+        byCategory: {for (final c in SpendingCategory.values) c: 0},
+      ).withTotal(300000);
+      expect(empty.byCategory[SpendingCategory.etc], 300000);
+      expect(empty.total, 300000);
     });
 
     test('업종별 예산을 바꾸면 총액은 업종별 예산의 합이 된다', () {
@@ -356,7 +410,7 @@ void main() {
 
       expect(findText('1,000,000'), findsOneWidget);
       expect(findText('280,000원'), findsOneWidget);
-      expect(findText('250,000원'), findsOneWidget);
+      expect(findText('232,000원'), findsOneWidget); // 기타 (만 원 내림 몫이 몰리지 않는다)
     });
 
     testWidgets('업종별 예산을 수정하면 소비예산이 그 합으로 바뀐다', (tester) async {
