@@ -69,6 +69,9 @@ public class RecommendationChatService {
             String question = amount == null && category == null ? ASK_BOTH : amount == null ? ASK_AMOUNT : ASK_CATEGORY;
             return clarify(question, merchant, parsed.answerMode());
         }
+        if (parsed.needsClarification() && request.confirmedCategory() == null) {
+            return clarify(ASK_CATEGORY, merchant, parsed.answerMode());
+        }
         ManualRecommendationResponse result = manual.recommend(userId,
             new ManualRecommendationRequest(category.name(), amount));
         String reply = result.message();
