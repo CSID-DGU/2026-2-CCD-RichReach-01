@@ -7,6 +7,7 @@ import '../../../core/network/api_config.dart';
 import '../../../core/network/api_providers.dart';
 import '../../onboarding/application/onboarding_data_providers.dart';
 import '../../onboarding/domain/transaction.dart';
+import '../data/card_settings_repository.dart';
 import '../data/monthly_plan_repository.dart';
 import '../domain/monthly_plan.dart';
 import '../domain/plan_details.dart';
@@ -16,6 +17,13 @@ final currentMonthProvider = Provider<DateTime>((ref) {
   final now = appNow();
   return DateTime(now.year, now.month);
 });
+
+/// 카드 정보·연결 관리 저장소 (SETTINGS-03). `USE_FAKE_API=false`면 백엔드 API를 쓴다.
+final cardSettingsRepositoryProvider = Provider<CardSettingsRepository>(
+  (ref) => ApiConfig.useFakeApi
+      ? FakeCardSettingsRepository()
+      : ApiCardSettingsRepository(ref.watch(apiClientProvider)),
+);
 
 /// 월간 플랜 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
 final monthlyPlanRepositoryProvider = Provider<MonthlyPlanRepository>(

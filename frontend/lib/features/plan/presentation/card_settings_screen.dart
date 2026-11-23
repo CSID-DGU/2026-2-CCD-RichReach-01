@@ -3,46 +3,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/formatters/money_formatter.dart';
-import '../../../core/network/api_config.dart';
+
+import 'package:go_router/go_router.dart';
+
+import '../../../app/app_route.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../auth/application/auth_providers.dart';
 import '../../onboarding/application/onboarding_data_providers.dart';
 import '../../onboarding/presentation/load_failure_view.dart';
 import '../application/monthly_plan_providers.dart';
+import '../data/card_settings_repository.dart';
 import '../domain/plan_details.dart';
 import 'card_plan_detail_screen.dart';
 import 'plan_detail_widgets.dart';
 
-/// 카드 정보 중 서버에 아직 API가 없는 값 (결제일, 이용기간, 연결 계정).
-/// 실제 서버를 쓸 때는 모두 null이고 화면에 "-"로 보여준다.
-class CardAccountInfo {
-  const CardAccountInfo({this.paymentDay, this.usagePeriod, this.account});
-
-  /// 예: "매월 14일"
-  final String? paymentDay;
-
-  /// 실적을 세는 기간. 예: "전월 1일–말일"
-  final String? usagePeriod;
-
-  /// 가린 카드사 아이디. 예: "shinhan_****"
-  final String? account;
-
-  /// Figma SETTINGS-03의 예시 값
-  static const sample = CardAccountInfo(
-    paymentDay: '매월 14일',
-    usagePeriod: '전월 1일–말일',
-    account: 'shinhan_****',
-  );
-}
-
 /// SETTINGS-03 카드 정보 및 연결 관리. PLAN-02의 카드 설정 버튼으로 들어온다.
 ///
 /// - 카드 이미지·혜택 요약, 실적 기준, 이번 달 인정금액: 카드별 플랜(PLAN-02)과 같은 데이터
+/// - 결제일·이용기간·연결 계정, 자동 동기화: `GET /api/cards/{cardId}/settings` (백엔드 #275)
+///   결제일은 서버가 아직 주지 않아 "-"이다. 불러오지 못해도 화면은 보여주고 값만 "-"로 둔다.
+/// - 자동 동기화 토글: `PUT /api/connections/{connectionId}/auto-sync`
 /// - 플랜 분석에 포함: `PUT /api/cards/selection`으로 분석 대상 카드를 바꾼다.
-/// - 결제일·이용기간·연결 계정, 거래내역 자동 동기화, 카드 연결 해제는 API가 없다.
-///   자동 동기화는 화면 안에서만 바뀌고, 연결 해제는 "준비 중" 안내를 보여준다.
+/// - 카드 연결 해제: 확인창 뒤 `DELETE /api/connections/{connectionId}`. 그 카드사의 카드·거래가 지워지고
+///   서버가 이번 달 플랜을 다시 계산한다. 해제 뒤에는 시작 화면 규칙(Q8)으로 이동한다.
 class CardSettingsScreen extends ConsumerWidget {
   const CardSettingsScreen({super.key, required this.cardId});
 
@@ -67,12 +53,7 @@ class CardSettingsScreen extends ConsumerWidget {
             ? const Center(
                 child: Text('카드를 찾지 못했어요.', style: AppTextStyles.description),
               )
-            : _CardSettingsContent(
-                detail: detail,
-                info: ApiConfig.useFakeApi
-                    ? CardAccountInfo.sample
-                    : const CardAccountInfo(),
-              ),
+            : _CardSettingsContent(detail: detail),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => LoadFailureView(
           message: '카드 정보를 불러오지 못했어요.',
@@ -84,10 +65,9 @@ class CardSettingsScreen extends ConsumerWidget {
 }
 
 class _CardSettingsContent extends ConsumerStatefulWidget {
-  const _CardSettingsContent({required this.detail, required this.info});
+  const _CardSettingsContent({required this.detail});
 
   final CardPlanDetail detail;
-  final CardAccountInfo info;
 
   @override
   ConsumerState<_CardSettingsContent> createState() =>
@@ -95,8 +75,94 @@ class _CardSettingsContent extends ConsumerStatefulWidget {
 }
 
 class _CardSettingsContentState extends ConsumerState<_CardSettingsContent> {
-  /// 거래내역 자동 동기화. API가 없어 화면 안에서만 바뀐다.
-  bool _autoSync = true;
+  /// 카드사 계정 정보 (결제일·이용기간·연결 계정·자동 동기화). 불러오기 전이거나 실패하면 null.
+  CardSettings? _settings;
+  bool _savingAutoSync = false;
+  bool _disconnecting = false;
+
+  CardSettingsRepository get _repository =>
+      ref.read(cardSettingsRepositoryProvider);
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final settings = await _repository.fetch(widget.detail.card.id);
+      if (mounted) setState(() => _settings = settings);
+    } catch (_) {
+      // 계정 정보를 불러오지 못해도 카드 정보는 보여주고, 그 값만 "-"로 둔다.
+    }
+  }
+
+  Future<void> _toggleAutoSync(bool value) async {
+    final settings = _settings;
+    final connectionId = settings?.connectionId;
+    if (settings == null || connectionId == null) return;
+    setState(() {
+      _settings = settings.copyWith(autoSyncEnabled: value);
+      _savingAutoSync = true;
+    });
+    try {
+      final saved = await _repository.setAutoSync(connectionId, enabled: value);
+      if (mounted) {
+        setState(() => _settings = settings.copyWith(autoSyncEnabled: saved));
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _settings = settings);
+      _showMessage(
+        error is ApiException ? error.userMessage : '설정을 저장하지 못했어요.',
+      );
+    } finally {
+      if (mounted) setState(() => _savingAutoSync = false);
+    }
+  }
+
+  /// 되돌릴 수 없다는 확인창 뒤 연결을 끊고, 시작 화면 규칙(Q8)으로 이동한다.
+  Future<void> _disconnect() async {
+    final connectionId = _settings?.connectionId;
+    if (connectionId == null) return;
+    final card = widget.detail.card;
+    final confirmed = await confirmCardDisconnect(context, card.company.name);
+    if (!confirmed || !mounted) return;
+
+    setState(() => _disconnecting = true);
+    try {
+      await _repository.disconnect(connectionId);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _disconnecting = false);
+      _showMessage(
+        error is ApiException
+            ? error.userMessage
+            : '연결을 해제하지 못했어요. 잠시 후 다시 시도해 주세요.',
+      );
+      return;
+    }
+    if (!mounted) return;
+    // 카드·거래·플랜이 바뀌었으니 다시 불러온다.
+    ref
+      ..invalidate(monthlyPlanProvider)
+      ..invalidate(cardPlanDetailProvider);
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    AppRoute route;
+    try {
+      route = await ref.read(startRouteResolverProvider).resolve();
+    } catch (_) {
+      route = AppRoute.monthlyPlan;
+    }
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('${card.company.name} 연결을 해제했어요.')),
+      );
+    router.go(route == AppRoute.home ? AppRoute.monthlyPlan.path : route.path);
+  }
 
   /// 플랜 분석에 포함 (분석 대상 카드)
   late bool _selected = widget.detail.card.selected;
@@ -143,7 +209,7 @@ class _CardSettingsContentState extends ConsumerState<_CardSettingsContent> {
   @override
   Widget build(BuildContext context) {
     final detail = widget.detail;
-    final info = widget.info;
+    final settings = _settings;
     return ListView(
       padding: detailPadding,
       children: [
@@ -160,14 +226,14 @@ class _CardSettingsContentState extends ConsumerState<_CardSettingsContent> {
           ),
           child: Column(
             children: [
-              _InfoRow('결제일', info.paymentDay),
-              _InfoRow('이용기간', info.usagePeriod),
+              _InfoRow('결제일', settings?.paymentDay),
+              _InfoRow('이용기간', settings?.usagePeriod),
               _InfoRow('실적 기준', switch (detail.performanceRequirement) {
                 final amount? => '월 ${formatWon(amount)}',
                 null => null,
               }),
               _InfoRow('이번 달 인정금액', formatWon(detail.performanceAmount)),
-              _InfoRow('연결 계정', info.account),
+              _InfoRow('연결 계정', settings?.maskedLoginId),
             ],
           ),
         ),
@@ -184,8 +250,11 @@ class _CardSettingsContentState extends ConsumerState<_CardSettingsContent> {
               _ToggleRow(
                 title: '거래내역 자동 동기화',
                 description: '하루 한 번 최신 거래를 가져와요',
-                value: _autoSync,
-                onChanged: (value) => setState(() => _autoSync = value),
+                value: settings?.autoSyncEnabled ?? true,
+                // 계정 정보를 불러오기 전이거나 저장 중이면 잠근다.
+                onChanged: settings?.connectionId == null || _savingAutoSync
+                    ? null
+                    : _toggleAutoSync,
               ),
               const SizedBox(height: 3),
               _ToggleRow(
@@ -202,7 +271,10 @@ class _CardSettingsContentState extends ConsumerState<_CardSettingsContent> {
           padding: const EdgeInsets.symmetric(horizontal: 7),
           child: AppButton(
             label: '카드 연결 해제',
-            onPressed: () => _showMessage('카드 연결 해제는 준비 중이에요.'),
+            loading: _disconnecting,
+            onPressed: settings?.connectionId == null || _disconnecting
+                ? null
+                : _disconnect,
           ),
         ),
       ],
@@ -299,4 +371,85 @@ class _ToggleRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 카드 연결 해제 확인창. "해제"를 누르면 true.
+Future<bool> confirmCardDisconnect(BuildContext context, String company) async {
+  final buttonText = AppTextStyles.label.copyWith(
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    height: 22 / 15,
+  );
+  final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
+  final result = await showDialog<bool>(
+    context: context,
+    barrierColor: const Color(0x99808081),
+    builder: (context) => Dialog(
+      backgroundColor: AppColors.background,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '$company 연결을 해제할까요?',
+              style: AppTextStyles.title.copyWith(
+                fontSize: 20,
+                height: 28 / 20,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '이 카드사에서 불러온 카드와 거래내역이 모두 지워지고, '
+              '이번 달 플랜은 남은 카드로 다시 계산돼요. 이 작업은 되돌릴 수 없어요.',
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: AppColors.surface,
+                        foregroundColor: AppColors.textPrimary,
+                        side: const BorderSide(color: AppColors.border),
+                        shape: shape,
+                        textStyle: buttonText,
+                      ),
+                      child: const Text('취소'),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: AppColors.onPrimary,
+                        shape: shape,
+                        textStyle: buttonText,
+                      ),
+                      child: const Text('해제'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  return result ?? false;
 }

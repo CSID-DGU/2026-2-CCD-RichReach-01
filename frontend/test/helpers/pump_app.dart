@@ -11,6 +11,7 @@ import 'package:frontend/features/auth/data/signup_repository.dart';
 import 'package:frontend/features/home/application/home_providers.dart';
 import 'package:frontend/features/auth/data/start_route_resolver.dart';
 import 'package:frontend/features/home/application/planned_expense_providers.dart';
+import 'package:frontend/features/plan/data/card_settings_repository.dart';
 import 'package:frontend/features/home/data/planned_expense_repository.dart';
 import 'package:frontend/features/home/data/spending_repository.dart';
 import 'package:frontend/features/onboarding/application/budget_plan_providers.dart';
@@ -56,6 +57,7 @@ Future<void> pumpAppAt(
   MonthlyPlanRepository? monthlyPlan,
   RecommendationRepository? recommendation,
   StartRouteResolver startRoute = const FakeStartRouteResolver(),
+  CardSettingsRepository? cardSettings,
 }) async {
   tester.view.physicalSize = const Size(414, 896);
   tester.view.devicePixelRatio = 1;
@@ -67,6 +69,9 @@ Future<void> pumpAppAt(
       overrides: [
         authRepositoryProvider.overrideWithValue(auth),
         startRouteResolverProvider.overrideWithValue(startRoute),
+        cardSettingsRepositoryProvider.overrideWithValue(
+          cardSettings ?? FakeCardSettingsRepository(delay: Duration.zero),
+        ),
         signupRepositoryProvider.overrideWithValue(
           const FakeSignupRepository(delay: Duration.zero),
         ),

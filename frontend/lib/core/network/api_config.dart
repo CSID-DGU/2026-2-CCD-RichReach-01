@@ -72,6 +72,11 @@ abstract final class ApiPaths {
       '/api/plans/$planId/card-targets';
   static String cardBenefits(int productId) => '/api/cards/$productId/benefits';
 
+  static String connection(String connectionId) =>
+      '/api/connections/$connectionId';
+  static String connectionAutoSync(String connectionId) =>
+      '/api/connections/$connectionId/auto-sync';
+  static String cardSettings(String cardId) => '/api/cards/$cardId/settings';
   static String connectionSyncJob(String jobId) =>
       '/api/connections/sync/${Uri.encodeComponent(jobId)}';
 }
