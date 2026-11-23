@@ -4,7 +4,10 @@ import com.richreach.global.response.ApiResponse;
 import com.richreach.global.security.AuthenticatedUser;
 import com.richreach.recommendation.dto.ManualRecommendationRequest;
 import com.richreach.recommendation.dto.ManualRecommendationResponse;
+import com.richreach.recommendation.dto.RecommendationChatRequest;
+import com.richreach.recommendation.dto.RecommendationChatResponse;
 import com.richreach.recommendation.service.ManualRecommendationService;
+import com.richreach.recommendation.service.RecommendationChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class RecommendationController {
 
     private final ManualRecommendationService manualService;
+    private final RecommendationChatService chatService;
 
     /**
      * 금액과 업종을 직접 골라 "이번 결제를 어느 카드로 하면 유리한가"를 묻는다. 분석 대상으로 고른 보유카드끼리 이번 결제 1건으로
@@ -36,6 +40,13 @@ public class RecommendationController {
     public ApiResponse<ManualRecommendationResponse> manual(@AuthenticationPrincipal AuthenticatedUser user,
                                                             @RequestBody ManualRecommendationRequest request) {
         return ApiResponse.ok(manualService.recommend(user.userId(), request));
+    }
+
+    /** 자연어 질문을 해석한 뒤 검증된 금액·업종으로 기존 수동 추천을 실행한다. 저장은 하지 않는다. */
+    @PostMapping("/chat")
+    public ApiResponse<RecommendationChatResponse> chat(@AuthenticationPrincipal AuthenticatedUser user,
+                                                         @RequestBody RecommendationChatRequest request) {
+        return ApiResponse.ok(chatService.recommend(user.userId(), request));
     }
 
 }
