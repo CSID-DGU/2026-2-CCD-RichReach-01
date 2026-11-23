@@ -70,6 +70,19 @@ const _productImages = [
     AppAssets.cardBcEasyCashback,
     AppAssets.cardBcEasyCashbackLarge,
   ),
+  (
+    CardCompany.woori,
+    'K-패스쿠키',
+    AppAssets.cardWooriKpassCookie,
+    AppAssets.cardWooriKpassCookieLarge,
+  ),
+  // IBK기업은행이 발급하는 BC카드 ("IBK포인트(3.8)|IBK기업은행")
+  (
+    CardCompany.bc,
+    'IBK포인트',
+    AppAssets.cardBcIbkPoint38,
+    AppAssets.cardBcIbkPoint38Large,
+  ),
 ];
 
 /// 흰 바탕 로고에 두르는 브랜드 색 테두리. 바탕이 진한 로고는 null.
@@ -113,6 +126,64 @@ class CardCompanyLogo extends StatelessWidget {
 }
 
 /// 카드 이미지. 그림이 없는 카드는 회색 자리에 "CARD"를 보여준다.
+/// 카드 앞면 그림. 앱에 들어 있는 디자인 그림을 먼저 쓰고, 없으면 서버가 준 이미지 주소([OwnedCard.imageUrl]),
+/// 둘 다 없거나 이미지를 불러오지 못하면 [fallback]을 보여준다.
+///
+/// [large]면 큰 그림(PLAN-02·HOME-04 등)을 쓴다. [quarterTurns]는 그림만 돌린다(세로 카드).
+class CardFaceImage extends StatelessWidget {
+  const CardFaceImage({
+    super.key,
+    required this.card,
+    required this.fallback,
+    this.large = false,
+    this.fit = BoxFit.cover,
+    this.width,
+    this.height,
+    this.quarterTurns = 0,
+  });
+
+  final OwnedCard card;
+  final Widget fallback;
+  final bool large;
+  final BoxFit fit;
+  final double? width;
+  final double? height;
+  final int quarterTurns;
+
+  Widget _turned(Widget image) => quarterTurns == 0
+      ? image
+      : RotatedBox(quarterTurns: quarterTurns, child: image);
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = large ? largeCardImageAsset(card) : cardImageAsset(card);
+    if (asset != null) {
+      return _turned(
+        Image.asset(
+          asset,
+          width: width,
+          height: height,
+          fit: fit,
+          semanticLabel: card.name,
+        ),
+      );
+    }
+    final url = card.imageUrl;
+    if (url == null) return fallback;
+    // 카드사 서버의 주소라 바뀌거나 막힐 수 있다. 불러오는 동안과 실패하면 기본 그림.
+    return Image.network(
+      url,
+      width: width,
+      height: height,
+      fit: fit,
+      semanticLabel: card.name,
+      frameBuilder: (context, child, frame, loadedSync) =>
+          frame == null && !loadedSync ? fallback : _turned(child),
+      errorBuilder: (context, error, stackTrace) => fallback,
+    );
+  }
+}
+
 class CardImage extends StatelessWidget {
   const CardImage({
     super.key,
@@ -127,19 +198,19 @@ class CardImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = cardImageAsset(card);
-    if (asset != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: Image.asset(
-          asset,
-          width: width,
-          height: height,
-          fit: BoxFit.cover,
-          semanticLabel: card.name,
-        ),
-      );
-    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: CardFaceImage(
+        card: card,
+        width: width,
+        height: height,
+        fallback: _placeholder(),
+      ),
+    );
+  }
+
+  /// 그림이 없는 카드: 회색 바탕에 "CARD"
+  Widget _placeholder() {
     return Container(
       width: width,
       height: height,

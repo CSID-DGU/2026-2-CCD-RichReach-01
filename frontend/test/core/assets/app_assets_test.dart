@@ -74,8 +74,59 @@ void main() {
       cardImageAsset(card(CardCompany.bc, 'BC 이지캐시백 체크')),
       AppAssets.cardBcEasyCashback,
     );
+    expect(
+      largeCardImageAsset(card(CardCompany.woori, '우리 K-패스 쿠키 체크')),
+      AppAssets.cardWooriKpassCookieLarge,
+    );
+    expect(
+      cardImageAsset(
+        card(CardCompany.bc, cardDisplayName('IBK포인트(3.8)|IBK기업은행')),
+      ),
+      AppAssets.cardBcIbkPoint38,
+    );
     // 카드사가 다르면 이름이 같아도 쓰지 않는다.
     expect(cardImageAsset(card(CardCompany.kb, 'Hey Young')), isNull);
+  });
+
+  testWidgets('디자인 그림이 없는 카드는 서버 이미지 주소를 쓰고, 불러오지 못하면 기본 그림을 보여준다', (
+    tester,
+  ) async {
+    const withUrl = OwnedCard(
+      id: '9',
+      name: '이미지 주소만 있는 카드',
+      company: CardCompany.hyundai,
+      maskedNumber: '0009',
+      type: CardType.check,
+      analysisStatus: AnalysisStatus.available,
+      imageUrl: 'https://img.example.com/card.png',
+    );
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(child: CardImage(card: withUrl)),
+      ),
+    );
+    expect(find.byType(Image), findsOneWidget);
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.image, isA<NetworkImage>());
+    // 테스트 환경에서는 주소를 불러오지 못해 기본 그림("CARD")을 보여준다.
+    await tester.pumpAndSettle();
+    expect(find.text('CARD'), findsOneWidget);
+
+    const noImage = OwnedCard(
+      id: '10',
+      name: '그림 없는 카드',
+      company: CardCompany.hyundai,
+      maskedNumber: '0010',
+      type: CardType.check,
+      analysisStatus: AnalysisStatus.available,
+    );
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(child: CardImage(card: noImage)),
+      ),
+    );
+    expect(find.byType(Image), findsNothing);
+    expect(find.text('CARD'), findsOneWidget);
   });
 
   testWidgets('브랜드 SVG를 오류 없이 그린다', (tester) async {

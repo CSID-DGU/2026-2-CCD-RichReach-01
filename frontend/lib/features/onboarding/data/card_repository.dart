@@ -50,6 +50,10 @@ class ApiCardRepository implements CardRepository {
                 statuses[item['analysisStatus']] ?? AnalysisStatus.unavailable,
             productId: item['cardProductId'] as int?,
             selected: item['selected'] as bool,
+            imageUrl: switch (item['imageUrl']) {
+              final String url when url.startsWith('https://') => url,
+              _ => null,
+            },
           ),
     ];
   }

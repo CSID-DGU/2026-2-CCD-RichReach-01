@@ -48,11 +48,11 @@ const _cards = [
     'cardProductId': 101,
     'cardCompany': 'KB',
     'cardName': 'KB My WE:SH',
+    'imageUrl': 'https://img.example.com/kb-mywesh.png',
     'maskedNumber': '0912',
     'cardType': 'CREDIT',
     'analysisStatus': 'AVAILABLE',
     'selected': true,
-    'imageUrl': null,
   },
   {
     'cardId': 13,
@@ -105,6 +105,9 @@ void main() {
     expect(cards[0].analyzable, isTrue);
     // 카드사가 붙인 발급사(`|우리은행`)는 떼고 보여준다.
     expect(cards[1].name, '우리 새 카드');
+    // 서버가 준 카드 앞면 이미지 주소 (https만 쓴다)
+    expect(cards[0].imageUrl, 'https://img.example.com/kb-mywesh.png');
+    expect(cards[1].imageUrl, isNull);
     expect(cards[1].type, CardType.unknown);
     expect(cards[1].analyzable, isFalse);
     expect(cards[1].productId, isNull);
