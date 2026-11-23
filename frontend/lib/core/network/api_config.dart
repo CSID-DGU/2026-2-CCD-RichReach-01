@@ -58,6 +58,8 @@ abstract final class ApiPaths {
   static const planAnalysis = '/api/plans/analysis';
   // 플랜 생성 (#204)
   static const plans = '/api/plans';
+  // 새 달 예산 초안 (#312)
+  static const planMonthDraft = '/api/plans/month-draft';
   static const plannedExpenses = '/api/planned-expenses';
   static String plannedExpense(String id) => '/api/planned-expenses/$id';
   static String planJob(String jobId) => '/api/plans/jobs/$jobId';

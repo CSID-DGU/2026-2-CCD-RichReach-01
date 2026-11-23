@@ -15,12 +15,16 @@ import '../../../core/widgets/progress_track.dart';
 import '../../../core/widgets/step_header.dart';
 import '../../../core/widgets/summary_card.dart';
 import '../application/budget_plan_providers.dart';
+import '../data/month_draft_repository.dart';
 import '../domain/budget.dart';
 import '../domain/transaction.dart';
 import 'budget_dialogs.dart';
 import 'failure_notice.dart';
 
 /// ONB-06 소비패턴·월간 예산 화면.
+///
+/// 새 달이라 이번 달 플랜이 없으면 시작 화면 규칙(Q8)이 바로 이 화면을 연다. 그때 예산은 지난달 확정
+/// 예산 초안(`GET /api/plans/month-draft`)으로 채워져 있다.
 class BudgetScreen extends ConsumerStatefulWidget {
   const BudgetScreen({super.key});
 
@@ -60,13 +64,19 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   Widget build(BuildContext context) {
     final analysisAsync = ref.watch(spendingAnalysisProvider);
     final budget = ref.watch(monthlyBudgetProvider).value;
+    final draft = ref.watch(monthDraftProvider).value;
+    final newMonthDraft = draft != null && draft.continuesPreviousBudget
+        ? draft
+        : null;
 
     return OnboardingScaffold(
-      header: const StepHeader(step: 5),
+      // 시작 화면으로 바로 열렸으면(새 달) 돌아갈 화면이 없어 뒤로가기를 숨긴다.
+      header: StepHeader(step: 5, showBack: Navigator.of(context).canPop()),
       body: switch (analysisAsync) {
         AsyncData(value: final analysis) when budget != null => _BudgetContent(
           analysis: analysis,
           budget: budget,
+          newMonthDraft: newMonthDraft,
           onEditTotal: () => _editTotal(budget),
           onEditCategories: () => _editCategories(budget),
         ),
@@ -101,10 +111,14 @@ class _BudgetContent extends StatelessWidget {
     required this.budget,
     required this.onEditTotal,
     required this.onEditCategories,
+    this.newMonthDraft,
   });
 
   final SpendingAnalysis analysis;
   final MonthlyBudget budget;
+
+  /// 지난달 예산을 이어 쓴 새 달 초안. 처음 온보딩이면 null.
+  final MonthDraft? newMonthDraft;
   final VoidCallback onEditTotal;
   final VoidCallback onEditCategories;
 
@@ -123,10 +137,18 @@ class _BudgetContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PageTitle(
-          title: '이번 달 소비계획을 확인해 주세요',
-          description: analysis.hasData
-              ? '최근 ${analysis.analyzedMonths}개월의 소비내역을 분석했어요.'
-              : '업종별 예산을 직접 입력해 플랜을 만들 수 있어요.',
+          title: switch (newMonthDraft) {
+            final draft? => '${draft.targetMonth.month}월 소비계획을 확인해 주세요',
+            null => '이번 달 소비계획을 확인해 주세요',
+          },
+          description: switch (newMonthDraft) {
+            final draft? =>
+              '지난달 예산을 이어서 채웠어요. '
+                  '지난달에는 ${formatWon(draft.previousMonthSpent)}을 썼어요.',
+            null when analysis.hasData =>
+              '최근 ${analysis.analyzedMonths}개월의 소비내역을 분석했어요.',
+            null => '업종별 예산을 직접 입력해 플랜을 만들 수 있어요.',
+          },
           descriptionGap: 8,
         ),
         const SizedBox(height: 25),

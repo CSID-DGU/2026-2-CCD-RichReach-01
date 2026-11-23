@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_config.dart';
 import '../../../core/network/api_providers.dart';
 import '../data/budget_repository.dart';
+import '../data/month_draft_repository.dart';
 import '../data/plan_repository.dart';
 import '../domain/budget.dart';
 import '../domain/owned_card.dart';
@@ -23,6 +24,22 @@ final planRepositoryProvider = Provider<PlanRepository>(
       ? const FakePlanRepository()
       : ApiPlanRepository(ref.watch(apiClientProvider)),
 );
+
+/// 새 달 예산 초안 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
+final monthDraftRepositoryProvider = Provider<MonthDraftRepository>(
+  (ref) => ApiConfig.useFakeApi
+      ? const FakeMonthDraftRepository()
+      : ApiMonthDraftRepository(ref.watch(apiClientProvider)),
+);
+
+/// 이번 달 예산 초안. 조회에 실패하면 null이고, 그때는 분석 추천 예산을 쓴다.
+final monthDraftProvider = FutureProvider<MonthDraft?>((ref) async {
+  try {
+    return await ref.watch(monthDraftRepositoryProvider).fetchDraft();
+  } catch (_) {
+    return null;
+  }
+});
 
 /// 분석에 쓸 카드. ONB-04에서 고른 카드가 없으면(화면을 바로 연 경우) 보유카드 전체를 쓴다.
 final planCardsProvider = FutureProvider<List<OwnedCard>>((ref) async {
@@ -49,7 +66,8 @@ final spendingAnalysisProvider = FutureProvider<SpendingAnalysis>((ref) {
       .fetchAnalysis(ref.watch(analysisPeriodProvider));
 });
 
-/// 사용자가 확정해 가는 이번 달 예산. 분석 결과의 추천 예산으로 시작한다.
+/// 사용자가 확정해 가는 이번 달 예산.
+/// 새 달이라 지난달 확정 예산 초안이 있으면 그것으로, 아니면 분석 결과의 추천 예산으로 시작한다.
 final monthlyBudgetProvider =
     AsyncNotifierProvider<MonthlyBudgetNotifier, MonthlyBudget>(
       MonthlyBudgetNotifier.new,
@@ -57,8 +75,11 @@ final monthlyBudgetProvider =
 
 class MonthlyBudgetNotifier extends AsyncNotifier<MonthlyBudget> {
   @override
-  Future<MonthlyBudget> build() async =>
-      (await ref.watch(spendingAnalysisProvider.future)).suggestedBudget;
+  Future<MonthlyBudget> build() async {
+    final draft = await ref.watch(monthDraftProvider.future);
+    if (draft != null && draft.continuesPreviousBudget) return draft.budget!;
+    return (await ref.watch(spendingAnalysisProvider.future)).suggestedBudget;
+  }
 
   void _update(MonthlyBudget Function(MonthlyBudget budget) change) {
     final budget = state.value;
