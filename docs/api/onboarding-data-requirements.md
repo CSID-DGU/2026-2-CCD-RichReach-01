@@ -31,7 +31,7 @@
 | 홈 | **HOME-01 홈** | PLAN-01과 같은 플랜·월 요약 + `GET /api/transactions` (최근 사용 내역) | ✅ (#270) | ✅ 예상 혜택까지 연동 (#252, #289), 빠른 실행 "예정지출 관리" → HOME-07 (#258) | - |
 | 홈 | **HOME-03~05 거래내역** (전체·카드별·카테고리) | `GET /api/transactions/summary?month=`, `GET /api/transactions?month=` | ✅ (#269, #270) | ✅ 월 조회·예상 혜택 연동 (#252, #289) | - |
 | 홈 | **HOME-06~10 예정지출** (추가·관리·수정·삭제) | `GET·POST /api/planned-expenses`, `PUT·DELETE /api/planned-expenses/{expenseId}` (Q21) | ✅ (#274) | ✅ 서버 API 연동 (#258·#262·#291) | - |
-| 설정 | **SETTINGS-03 카드 정보** (PLAN-02의 카드 설정 버튼) | `GET /api/cards/{cardId}/settings`, `PUT /api/connections/{connectionId}/auto-sync`, `DELETE /api/connections/{connectionId}`, `PUT /api/cards/selection` (Q22) | ✅ (#275) | 🟡 화면 완료, 선택 저장 외에는 아직 API 연동 전 | - |
+| 설정 | **SETTINGS-03 카드 정보** (PLAN-02의 카드 설정 버튼) | `GET /api/cards/{cardId}/settings`, `PUT /api/connections/{connectionId}/auto-sync`, `DELETE /api/connections/{connectionId}`, `PUT /api/cards/selection` (Q22) | ✅ (#275) | ✅ 연동 (#318, 결제일은 서버가 주지 않아 "-") | - |
 
 - ✅ 완료, 🟡 일부 가능, ⬜ 할 일, ⚠️ 확인 필요
 - "실제 서버 확인"은 로컬 백엔드와 에뮬레이터로 화면 흐름을 직접 확인했다는 뜻입니다. `-`는 아직 따로 확인하지 않은 것입니다.
@@ -793,10 +793,10 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 |---|---|---|---|
 | 카드 이미지, 혜택 요약 보기 | PLAN-02와 같음 | PLAN-02와 같음 | 🟡 PLAN-02와 같음 |
 | 카드 정보: 실적 기준, 이번 달 인정금액 | 카드 전월 실적 기준, 이번 달 실적 인정 금액 | `GET /api/plans/{planId}/card-targets`의 `performance` (#273, 인정 금액은 정확하지 않음) | ✅ 연동 (#293, 모르면 "-") |
-| 카드 정보: 결제일, 이용기간, 연결 계정 | 결제일(예: 매월 14일), 실적 이용기간(전월 1일~말일), 가린 카드사 아이디 | `GET /api/cards/{cardId}/settings` → `paymentDay`(항상 null, "-"), `performancePeriod`, `account.maskedLoginId` | 🟡 API 있음 (#275), 연동 전 |
-| 거래내역 자동 동기화 (토글) | 카드사별 자동 동기화 설정 | `PUT /api/connections/{connectionId}/auto-sync` (아래 참고), 현재 값은 `account.autoSyncEnabled` 또는 `GET /api/connections` | 🟡 API 있음 (#275), 연동 전 |
+| 카드 정보: 결제일, 이용기간, 연결 계정 | 결제일(예: 매월 14일), 실적 이용기간(전월 1일~말일), 가린 카드사 아이디 | `GET /api/cards/{cardId}/settings` → `paymentDay`(항상 null, "-"), `performancePeriod`, `account.maskedLoginId` | ✅ 연동 (#318). 이용기간은 "10월 1일–말일"처럼, 값이 없거나 불러오지 못하면 "-" |
+| 거래내역 자동 동기화 (토글) | 카드사별 자동 동기화 설정 | `PUT /api/connections/{connectionId}/auto-sync` (아래 참고), 현재 값은 `account.autoSyncEnabled` 또는 `GET /api/connections` | ✅ 연동 (#318, 저장 실패 시 되돌리고 안내) |
 | 플랜 분석에 포함 (토글) | 분석 대상 카드 여부 | `GET /api/cards` → `selected`, `PUT /api/cards/selection` | ✅ 연동됨 (실패하면 되돌리고 안내) |
-| 카드 연결 해제 | 카드사 연결 끊기 | `DELETE /api/connections/{connectionId}` (아래 참고) | 🟡 API 있음 (#275), 연동 전 |
+| 카드 연결 해제 | 카드사 연결 끊기 | `DELETE /api/connections/{connectionId}` (아래 참고) | ✅ 연동 (#318). "○○ 연결을 해제할까요?" 확인창 → 해제 → 플랜 다시 불러오기 → 시작 화면 규칙(Q8)으로 이동(연결이 남아 있으면 월간 플랜, 없으면 ONB-01). 실패하면 서버 안내 문구를 보여주고 화면에 남음 |
 
 #### 카드 정보·연결 관리 API (#275)
 
