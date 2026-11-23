@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -22,6 +23,16 @@ public interface CodefSyncJobRepository extends JpaRepository<CodefSyncJob, Long
         order by j.id
         """)
     List<CodefSyncJob> findByBatchIdAndUserId(@Param("batchId") String batchId, @Param("userId") Long userId);
+
+    /** 회원 탈퇴 때 사용자의 카드사 계정에 딸린 작업 기록을 모두 지운다. 지운 행 수를 돌려준다. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+        delete from CodefSyncJob j
+        where j.orgAccount.id in (
+            select a.id from CodefOrgAccount a
+            where a.connection.id in (select c.id from CodefConnection c where c.user.id = :userId))
+        """)
+    int deleteAllByUserId(@Param("userId") Long userId);
 
     /** 작업을 실행할 때 필요한 카드사 계정, 연동(connectedId), 사용자를 한 번에 읽는다. */
     @Query("""
