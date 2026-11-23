@@ -19,6 +19,7 @@ import 'package:frontend/features/onboarding/application/card_connection_provide
 import 'package:frontend/features/onboarding/application/onboarding_data_providers.dart';
 import 'package:frontend/features/onboarding/data/card_repository.dart';
 import 'package:frontend/features/onboarding/data/budget_repository.dart';
+import 'package:frontend/features/onboarding/data/month_draft_repository.dart';
 import 'package:frontend/features/onboarding/data/card_connection_repository.dart';
 import 'package:frontend/features/onboarding/data/connection_setup_repository.dart';
 import 'package:frontend/features/onboarding/data/plan_repository.dart';
@@ -53,6 +54,7 @@ Future<void> pumpAppAt(
   CardRepository cards = const FakeCardRepository(delay: Duration.zero),
   TransactionRepository? transactions,
   BudgetRepository? budget,
+  MonthDraftRepository monthDraft = const FakeMonthDraftRepository(),
   PlanRepository plan = const FakePlanRepository(stepDelay: Duration.zero),
   MonthlyPlanRepository? monthlyPlan,
   RecommendationRepository? recommendation,
@@ -84,6 +86,7 @@ Future<void> pumpAppAt(
         budgetRepositoryProvider.overrideWithValue(
           budget ?? FakeBudgetRepository(delay: Duration.zero),
         ),
+        monthDraftRepositoryProvider.overrideWithValue(monthDraft),
         planRepositoryProvider.overrideWithValue(plan),
         currentMonthProvider.overrideWithValue(testCurrentMonth),
         spendingRepositoryProvider.overrideWithValue(spending),

@@ -3,6 +3,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_config.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/token_storage.dart';
+import '../../onboarding/data/month_draft_repository.dart';
 
 /// 로그인한 사용자가 처음 볼 화면을 정한다 (연동 문서 Q8).
 abstract interface class StartRouteResolver {
@@ -11,6 +12,7 @@ abstract interface class StartRouteResolver {
 
   /// 로그인한 사용자의 시작 화면.
   /// - 연결한 카드사가 없으면 ONB-01 서비스 안내
+  /// - 이번 달 플랜이 없고 지난달 예산을 이어 쓸 수 있으면 ONB-06 예산 (새 달 초안)
   /// - 이번 달 플랜이 없으면 ONB-04 분석할 카드 확인
   /// - 이번 달 플랜이 있으면 HOME-01 홈
   Future<AppRoute> resolve();
@@ -19,11 +21,20 @@ abstract interface class StartRouteResolver {
 /// 백엔드 API로 시작 화면을 정한다.
 /// - 연결한 카드사: `GET /api/connections` (빈 목록이면 아직 연결 전)
 /// - 이번 달 플랜: `GET /api/plans?month=` (없으면 404 `PLAN-001`)
+/// - 새 달 초안: `GET /api/plans/month-draft` (지난달 확정 예산이면 ONB-06, 조회 실패면 ONB-04)
 class ApiStartRouteResolver implements StartRouteResolver {
-  const ApiStartRouteResolver(this._api, this._tokens, {required this.month});
+  const ApiStartRouteResolver(
+    this._api,
+    this._tokens, {
+    required this.month,
+    required this.drafts,
+  });
 
   final ApiClient _api;
   final TokenStorage _tokens;
+
+  /// 이번 달 플랜이 없을 때 새 달 초안을 확인한다.
+  final MonthDraftRepository drafts;
 
   /// 이번 달 (일은 1일)
   final DateTime month;
@@ -52,8 +63,20 @@ class ApiStartRouteResolver implements StartRouteResolver {
       );
       return AppRoute.home;
     } on ApiException catch (error) {
-      if (error.code == planNotFoundCode) return AppRoute.cardSelect;
-      rethrow;
+      if (error.code != planNotFoundCode) rethrow;
+      return await _newMonthRoute();
+    }
+  }
+
+  /// 이번 달 플랜이 없을 때: 지난달 예산을 이어 쓸 수 있으면 ONB-06, 아니면 처음처럼 ONB-04.
+  Future<AppRoute> _newMonthRoute() async {
+    try {
+      final draft = await drafts.fetchDraft();
+      return draft.continuesPreviousBudget
+          ? AppRoute.budget
+          : AppRoute.cardSelect;
+    } catch (_) {
+      return AppRoute.cardSelect;
     }
   }
 }

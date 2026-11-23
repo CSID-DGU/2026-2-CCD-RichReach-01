@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_config.dart';
 import '../../../core/network/api_providers.dart';
+import '../../onboarding/application/budget_plan_providers.dart';
 import '../../plan/application/monthly_plan_providers.dart';
 import '../data/auth_repository.dart';
 import '../data/signup_repository.dart';
@@ -35,6 +36,7 @@ final startRouteResolverProvider = Provider<StartRouteResolver>(
           ref.watch(apiClientProvider),
           ref.watch(tokenStorageProvider),
           month: ref.watch(currentMonthProvider),
+          drafts: ref.watch(monthDraftRepositoryProvider),
         ),
 );
 
