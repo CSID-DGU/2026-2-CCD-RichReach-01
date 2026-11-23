@@ -31,6 +31,7 @@ abstract final class AppAssets {
   static const cardNhAllbareunNewHave = '$_cards/nh_allbareun_new_have.png';
   static const cardShinhanHeyYoung = '$_cards/shinhan_hey_young.png';
   static const cardBcEasyCashback = '$_cards/bc_easy_cashback.png';
+  static const cardWooriKpassCookie = '$_cards/woori_kpass_cookie.png';
 
   // Card images, large (그림자·여백 없이 카드만 꽉 찬 큰 이미지. 카드별 플랜 상세 맨 위)
   static const cardShinhanDeepDreamLarge =
@@ -42,6 +43,8 @@ abstract final class AppAssets {
       '$_cards/nh_allbareun_new_have_large.png';
   static const cardShinhanHeyYoungLarge = '$_cards/shinhan_hey_young_large.png';
   static const cardBcEasyCashbackLarge = '$_cards/bc_easy_cashback_large.png';
+  static const cardWooriKpassCookieLarge =
+      '$_cards/woori_kpass_cookie_large.png';
 
   // Onboarding illustrations
   static const onboardingCardStack = '$_onboarding/card_stack_3d.png';
@@ -114,12 +117,14 @@ abstract final class AppAssets {
     cardNhAllbareunNewHave,
     cardShinhanHeyYoung,
     cardBcEasyCashback,
+    cardWooriKpassCookie,
     cardShinhanDeepDreamLarge,
     cardKbMyWeshLarge,
     cardWooriCardUiJeongseokLarge,
     cardNhAllbareunNewHaveLarge,
     cardShinhanHeyYoungLarge,
     cardBcEasyCashbackLarge,
+    cardWooriKpassCookieLarge,
     onboardingCardStack,
     cardConnectionProgress,
     connectionCompleteCheck,

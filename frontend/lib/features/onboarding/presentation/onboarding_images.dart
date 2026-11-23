@@ -70,6 +70,12 @@ const _productImages = [
     AppAssets.cardBcEasyCashback,
     AppAssets.cardBcEasyCashbackLarge,
   ),
+  (
+    CardCompany.woori,
+    'K-패스쿠키',
+    AppAssets.cardWooriKpassCookie,
+    AppAssets.cardWooriKpassCookieLarge,
+  ),
 ];
 
 /// 흰 바탕 로고에 두르는 브랜드 색 테두리. 바탕이 진한 로고는 null.

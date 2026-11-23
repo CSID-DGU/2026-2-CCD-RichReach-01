@@ -74,6 +74,10 @@ void main() {
       cardImageAsset(card(CardCompany.bc, 'BC 이지캐시백 체크')),
       AppAssets.cardBcEasyCashback,
     );
+    expect(
+      largeCardImageAsset(card(CardCompany.woori, '우리 K-패스 쿠키 체크')),
+      AppAssets.cardWooriKpassCookieLarge,
+    );
     // 카드사가 다르면 이름이 같아도 쓰지 않는다.
     expect(cardImageAsset(card(CardCompany.kb, 'Hey Young')), isNull);
   });
