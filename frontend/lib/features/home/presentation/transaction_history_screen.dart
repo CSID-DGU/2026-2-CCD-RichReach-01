@@ -61,10 +61,11 @@ class _TransactionHistoryScreenState
 
   Widget _content(SpendingHistory history) {
     final transactions = history.transactions;
-    final cards = cardsOf(transactions);
+    final cards = cardsOf(history);
     final selectedCard =
         cards.where((c) => c.id == _cardId).firstOrNull ??
-        transactions.firstOrNull?.card;
+        transactions.firstOrNull?.card ??
+        cards.firstOrNull;
 
     final shown = switch (_view) {
       TransactionView.all => transactions,
@@ -113,13 +114,19 @@ class _TransactionHistoryScreenState
     );
   }
 
-  /// 카드별 보기의 카드 순서: 카드사 목록 순서 (예: KB → 우리 → 신한).
-  static List<OwnedCard> cardsOf(List<SpendingTransaction> transactions) {
-    final byId = <String, OwnedCard>{
-      for (final t in transactions) t.card.id: t.card,
-    };
-    return byId.values.toList()
-      ..sort((a, b) => a.company.index.compareTo(b.company.index));
+  /// 카드별 보기의 카드: 분석 대상 보유카드(거래가 없는 카드 포함)와 거래한 카드.
+  /// 순서는 카드사 목록 순서 (예: KB → 우리 → 신한)이고, 같은 카드사 안에서는 받은 순서를 지킨다.
+  static List<OwnedCard> cardsOf(SpendingHistory history) {
+    final cards = <String, OwnedCard>{
+      for (final card in history.cards) card.id: card,
+      for (final t in history.transactions) t.card.id: t.card,
+    }.values.toList();
+    final order = {for (final (i, card) in cards.indexed) card.id: i};
+    return cards..sort(
+      (a, b) => a.company.index != b.company.index
+          ? a.company.index.compareTo(b.company.index)
+          : order[a.id]!.compareTo(order[b.id]!),
+    );
   }
 }
 
