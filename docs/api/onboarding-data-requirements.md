@@ -580,7 +580,7 @@ ONB-04에서 고른 **분석 대상 카드**의 거래를 보여줍니다. 요�
   - 카드 이미지·종류·번호는 `GET /api/cards`에서 `cardId`로 찾습니다.
   - 카드가 삭제되어 `cardName`이 `null`이면 보유카드 이름, 그것도 없으면 "카드 정보 없음"을 씁니다.
 - **`confirmedBudget`**: 사용자가 확정한 업종별 예산입니다. 실제 응답의 `byCategory`에는 11개 업종이 모두 들어가며, 예산이 없는 업종은 0원입니다. 이 값에는 예정지출(#274)을 아직 얹지 않았습니다. 챗봇 수정안을 만들 때는 이 값을 출발점으로 사용합니다. `cardTargets`나 업종별 목표액은 예정지출을 반영한 결과일 수 있어 역산해 사용하면 중복 반영됩니다.
-- **`recommendationPreference`**: 확정된 추천 방향(`MONTHLY_PLAN` 또는 `IMMEDIATE_DISCOUNT`)입니다. 플랜 재계산 자체는 CP-SAT이고, 결제 전 카드 추천에 이 방향을 적용하는 기능은 아직 연결되지 않았습니다.
+- **`recommendationPreference`**: 확정된 추천 방향(`MONTHLY_PLAN` 또는 `IMMEDIATE_DISCOUNT`)입니다. 플랜 재계산 자체는 CP-SAT이고, 결제 전 카드 추천(`POST /api/recommendations/manual`)에 이 방향을 적용하는 기능은 아직 연결되지 않았습니다.
 - 오류: 그 달의 플랜이 없거나 다른 사용자의 플랜이면 404 `PLAN-001`, `month` 형식이 틀리면 400 `COMMON-400`입니다.
 - 마일리지처럼 금액으로 바꾸기 어려운 혜택을 따로 알려줄 필드는 혜택 규칙 확정 후 다룹니다.
 
@@ -848,7 +848,7 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 |---|---|---|---|
 | 이번 달 계획 (예산·현재 사용·도넛·예상 혜택) | PLAN-01과 같음 | `GET /api/plans?month=`, `GET /api/transactions/summary?month=` | ✅ 연동됨 (PLAN-01과 같은 데이터) |
 | 플랜이 없을 때 안내 | 이번 달 플랜 유무 | `GET /api/plans?month=` → 404 `PLAN-001` | ✅ 연동됨 |
-| 빠른 실행: 결제 전 카드 추천 | - | 카드 추천 화면으로 이동 ([recommendation-api.md](recommendation-api.md)) | - |
+| 빠른 실행: 결제 전 카드 추천 | - | 카드 추천 화면으로 이동. 금액·업종을 직접 고르는 추천은 `POST /api/recommendations/manual` ([recommendation-api.md](recommendation-api.md#구현됨-수동-입력-추천-278-1단계)), 자연어 질문은 후속 | 🟡 수동 입력 API 있음 (#278), 연동 전 |
 | 빠른 실행: 예정지출 관리 | - | 예정지출 관리(HOME-07)로 이동 | ✅ 화면 연결 (#258) |
 | 카드별 목표 사용금액 | PLAN-01과 같음 | `cardTargets` + 월 요약 `cards[].amount` | ✅ 연동됨 |
 | 최근 사용 내역 (2건) | 가맹점, 업종, 카드, 금액, **그 거래의 예상 혜택** | 거래내역과 같은 이번 달 거래 목록의 앞 2건, `benefitAmount` | ✅ 연동됨 |

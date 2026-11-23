@@ -1254,6 +1254,36 @@
         }
       }
     },
+    "/api/recommendations/manual": {
+      "post": {
+        "tags": [
+          "recommendation-controller"
+        ],
+        "operationId": "manual",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualRecommendationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseManualRecommendationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/plans/month-draft": {
       "get": {
         "tags": [
@@ -3193,6 +3223,148 @@
           },
           "data": {
             "$ref": "#/components/schemas/PlanMonthDraftResponse"
+          }
+        }
+      },
+      "ManualRecommendationRequest": {
+        "type": "object",
+        "description": "결제 전 수동 입력 추천 요청. 금액과 업종을 직접 골라 보낸다.",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "업종 코드(대소문자 무시)",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "결제 금액(원). 1~100,000,000"
+          }
+        }
+      },
+      "ApiResponseManualRecommendationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ManualRecommendationResponse"
+          }
+        }
+      },
+      "ManualRecommendationResponse": {
+        "type": "object",
+        "description": "결제 전 수동 입력 추천 결과. 카드·금액·순위·문구를 모두 서버가 정한다.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "CARD: 추가 혜택이 있는 카드가 있음. TEXT: 현재 확인된 규칙으로는 추가 혜택을 확인하지 못함(혜택이 없다는 뜻이 아님)",
+            "enum": [
+              "CARD",
+              "TEXT"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "parsed": {
+            "$ref": "#/components/schemas/ManualRecommendationParsed"
+          },
+          "card": {
+            "$ref": "#/components/schemas/ManualRecommendationCard"
+          },
+          "alternatives": {
+            "type": "array",
+            "description": "다음으로 유리한 카드(혜택이 양수인 카드만 최대 3장)",
+            "items": {
+              "$ref": "#/components/schemas/ManualRecommendationCard"
+            }
+          },
+          "calculationScope": {
+            "type": "string"
+          }
+        }
+      },
+      "ManualRecommendationParsed": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "DINING",
+              "CAFE",
+              "CONVENIENCE_STORE",
+              "SHOPPING",
+              "TRANSPORT",
+              "FUEL_VEHICLE",
+              "LIFE_HEALTH",
+              "TELECOM_SUBSCRIPTION",
+              "CULTURE_TRAVEL",
+              "EDUCATION",
+              "ETC"
+            ]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ManualRecommendationCard": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "보유카드 ID"
+          },
+          "cardProductId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "카드 상품 ID"
+          },
+          "cardCompany": {
+            "type": "string"
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "expectedBenefit": {
+            "type": "integer",
+            "format": "int64",
+            "description": "이번 결제 1건으로 늘어나는 예상 혜택(원)"
+          },
+          "confirmedOnly": {
+            "type": "boolean",
+            "description": "사람이 원문과 대조해 확인한 규칙만 썼는지. false이면 참고용"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

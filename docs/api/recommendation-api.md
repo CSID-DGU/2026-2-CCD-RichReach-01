@@ -1,14 +1,67 @@
 # 카드 추천 API 형식 (초안)
 
-> 상태: **초안 (프론트 제안, 백엔드 리뷰 전)**
+> 상태: **1단계(수동 입력 추천 `POST /api/recommendations/manual`)만 구현됨 (#278). 나머지(자연어 질문, 문구 설명, 플랜 연동)는 초안 (프론트 제안, 백엔드 리뷰 전)**
 > 기준 디자인: Figma "3. Monthly Plan & Card Recommendation" RECOMMEND-00 ~ 03
 > 관련 이슈: #82(화면), #84(이 문서)
 
-결제 전 카드 추천 대화 화면에 필요한 API 형식을 정리한 제안 문서입니다. 여기의 카드 추천 API는 아직 구현되지 않았습니다. 현재 구현된 예산 조정 대화는 [월 예산 챗봇 API](plan-chat-openai.md)를 참고하세요.
+결제 전 카드 추천 대화 화면에 필요한 API 형식을 정리한 제안 문서입니다. 여기의 카드 추천 API 중 **금액과 업종을 직접 고르는 수동 입력 추천만 구현**했고([아래 "구현됨"](#구현됨-수동-입력-추천-278-1단계)), 자연어 질문과 문구 설명은 아직 구현되지 않았습니다. 현재 구현된 예산 조정 대화는 [월 예산 챗봇 API](plan-chat-openai.md)를 참고하세요.
 **경로는 API 명세서 초안의 `POST /api/recommendations`를 기준으로 했고, 필드 이름과 JSON은 프론트 제안**이니 편하게 바꿔 주세요.
 프론트는 이 형식과 같은 모양의 가짜 데이터로 화면을 먼저 만들어 두었습니다 (`FakeRecommendationRepository`).
 
 공통 형식(응답 감싸기, 금액·날짜·enum 표기, 인증)은 [온보딩 문서의 1. 공통 형식](onboarding-data-requirements.md#1-공통-형식)과 같습니다. 아래 예시는 `ApiResponse`의 `data` 부분만 적었습니다.
+
+## 구현됨: 수동 입력 추천 (#278 1단계)
+
+`POST /api/recommendations/manual` — 로그인 필요. 사용자가 **결제 금액과 업종을 직접 골라** 보내면, 서버가 분석 대상으로 고른 보유카드끼리 **이번 결제 1건으로 늘어나는 혜택**을 비교해 가장 유리한 카드를 알려줍니다. LLM은 쓰지 않고 카드·금액·순위·문구를 모두 서버가 정합니다. 읽기 전용이라 거래나 월간 플랜을 바꾸지 않습니다. (아래 2번 이후의 `POST /api/recommendations`는 이 API가 아니라 자연어 질문용 초안입니다.)
+
+**요청**
+```json
+{ "category": "CAFE", "amount": 10000 }
+```
+
+| 필드 | 형식 | 조건 |
+|---|---|---|
+| `category` | 문자열 | `DINING`, `CAFE`, `CONVENIENCE_STORE`, `SHOPPING`, `TRANSPORT`, `FUEL_VEHICLE`, `LIFE_HEALTH`, `TELECOM_SUBSCRIPTION`, `CULTURE_TRAVEL`, `EDUCATION`, `ETC` 중 하나 (대소문자 무시) |
+| `amount` | 정수 | 1 ~ 100,000,000 (원) |
+
+**응답 `data`** (`type=CARD`)
+```json
+{
+  "type": "CARD",
+  "message": "추천 카드는 'KB국민카드 노리 체크카드'이고, 이번 결제의 예상 혜택은 1,000원이에요.",
+  "parsed": { "category": "CAFE", "amount": 10000 },
+  "card": {
+    "cardId": 2,
+    "cardProductId": 200,
+    "cardCompany": "KB",
+    "cardName": "KB국민카드 노리 체크카드",
+    "imageUrl": null,
+    "expectedBenefit": 1000,
+    "confirmedOnly": true,
+    "notes": []
+  },
+  "alternatives": [
+    { "cardId": 5, "cardProductId": 500, "cardCompany": "SHINHAN", "cardName": "신한카드 Deep Dream",
+      "imageUrl": null, "expectedBenefit": 500, "confirmedOnly": true, "notes": [] }
+  ],
+  "calculationScope": "카드 혜택 규칙 중 업종과 월간 사용액으로 계산할 수 있는 비율 혜택만 비교했어요. 전월 실적은 수집한 거래로 계산한 추정값이에요."
+}
+```
+
+- `type`: `CARD`(늘어나는 혜택이 양수인 카드가 있음) 또는 `TEXT`. `TEXT`이면 `card`는 `null`이고 `alternatives`는 빈 목록이며 `message`는 "현재 확인된 혜택 규칙으로는 이번 결제의 추가 혜택을 확인하지 못했어요."입니다. **`TEXT`는 카드에 혜택이 없다는 뜻이 아니라 현재 확인된 규칙으로 계산할 수 있는 혜택이 없다는 뜻**입니다.
+- `card`: 가장 유리한 카드. `alternatives`: 그다음으로 유리한 카드이고 혜택이 양수인 카드만 **최대 3장**이며 큰 순서입니다.
+- `cardId`는 보유카드 ID(`GET /api/cards`의 `cardId`)이고 `cardProductId`는 카드 상품 ID입니다. 혜택 상세(`GET /api/cards/{cardId}/benefits`)에는 상품 ID를 씁니다. `imageUrl`은 모르면 `null`입니다.
+- `expectedBenefit`: **이번 결제 1건으로 늘어나는 예상 혜택**(원)입니다. `계산(이번 달 지금까지 쓴 금액 + 이번 결제) - 계산(지금까지 쓴 금액)`이라서 월 한도와 전월 실적 조건이 반영됩니다. 한도가 이미 찬 카드는 0이라 후보에서 빠집니다. 혜택이 같으면 보유카드 ID가 작은 카드가 먼저입니다.
+- `confirmedOnly`: 사람이 원문과 대조해 확인한 규칙만 썼는지. `false`이면 확인 전 규칙이 섞여 있어 **참고용**이고 `calculationScope`에 그 안내가 붙습니다. `notes`는 계산에서 빼거나 단순화한 내용입니다.
+- 이번 달 사용액은 승인일 기준으로 취소·환불을 뺀 값이고, 전월 실적은 수집한 지난달 거래로 계산한 **추정값**입니다. 일별·횟수·할인대상금액 한도, 가맹점 지정 혜택 등 업종과 월간 사용액만으로 계산할 수 없는 규칙은 제외합니다.
+
+**후보 카드**: 로그인 사용자의 보유카드 중 **분석 대상으로 고르고(`selected=true`) 카드 상품에 매칭된** 카드만입니다. 수집한 331종 카드 상품 전체와 비교하지 않습니다.
+
+**오류**: 400 `RECOMMEND-001` — 업종이 없거나 지원하지 않는 값, 금액이 범위 밖이거나 없음, 또는 분석 대상으로 고른 카드가 없음. 로그인이 없으면 401입니다.
+
+**⚠️ 승인된 규칙이 없으면 항상 `TEXT`입니다.** 서버는 기본 설정에서 사람이 원문과 대조해 승인한 혜택 규칙(`rule_engine_ready`)만 계산합니다. 시연 전에 시연 보유카드의 규칙을 원문과 대조해 승인해야 합니다. `BENEFIT_RULE_SELECTION=ALL`은 개발·시연용 임시 설정이고 결과가 참고용(`confirmedOnly=false`)이며 **운영에서는 쓰면 안 됩니다.**
+
+**프론트 연결**: 추천 화면의 `FakeRecommendationRepository`를 이 API로 바꿔야 화면이 바뀝니다. 금액과 업종을 고르는 UI에서 두 값을 받아 호출하고, `CARD`와 `TEXT`, 400, 로딩 상태를 처리합니다. 자연어 질문 입력은 후속(3단계)입니다.
 
 ## 1. 전체 구조
 
