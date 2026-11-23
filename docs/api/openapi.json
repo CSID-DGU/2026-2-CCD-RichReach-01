@@ -3228,7 +3228,7 @@
       },
       "ManualRecommendationRequest": {
         "type": "object",
-        "description": "결제 전 수동 입력 추천 요청. 금액과 업종을 직접 골라 보낸다.",
+        "description": "결제 전 수동 입력 추천 요청. 질문 글자에서 업종과 금액을 읽는 일은 앱이 한다.",
         "properties": {
           "category": {
             "type": "string",
@@ -3250,7 +3250,7 @@
           "amount": {
             "type": "integer",
             "format": "int64",
-            "description": "결제 금액(원). 1~100,000,000"
+            "description": "결제 금액(원). 1~100,000,000. 모르면 보내지 않으며 그러면 금액 구간별 추천(RANGE)을 준다."
           }
         }
       },
@@ -3277,9 +3277,10 @@
         "properties": {
           "type": {
             "type": "string",
-            "description": "CARD: 추가 혜택이 있는 카드가 있음. TEXT: 현재 확인된 규칙으로는 추가 혜택을 확인하지 못함(혜택이 없다는 뜻이 아님)",
+            "description": "CARD: 추가 혜택이 있는 카드가 있음. RANGE: 금액을 보내지 않아 금액 구간별 추천. TEXT: 현재 확인된 규칙으로는 추가 혜택을 확인하지 못함(혜택이 없다는 뜻이 아님)",
             "enum": [
               "CARD",
+              "RANGE",
               "TEXT"
             ]
           },
@@ -3294,10 +3295,21 @@
           },
           "alternatives": {
             "type": "array",
-            "description": "다음으로 유리한 카드(혜택이 양수인 카드만 최대 3장)",
+            "description": "CARD일 때 나머지 후보 카드(최대 10장)의 예상 혜택. 혜택이 큰 순서",
             "items": {
-              "$ref": "#/components/schemas/ManualRecommendationCard"
+              "$ref": "#/components/schemas/ManualRecommendationComparison"
             }
+          },
+          "ranges": {
+            "type": "array",
+            "description": "RANGE일 때 금액 구간별로 가장 유리한 카드",
+            "items": {
+              "$ref": "#/components/schemas/ManualRecommendationRangeOption"
+            }
+          },
+          "followUp": {
+            "type": "string",
+            "description": "RANGE일 때 구간 아래에 이어서 보여줄 안내"
           },
           "calculationScope": {
             "type": "string"
@@ -3325,12 +3337,14 @@
           },
           "amount": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "RANGE이면 null"
           }
         }
       },
       "ManualRecommendationCard": {
         "type": "object",
+        "description": "가장 유리한 카드와 그 이유",
         "properties": {
           "cardId": {
             "type": "integer",
@@ -3356,6 +3370,21 @@
             "format": "int64",
             "description": "이번 결제 1건으로 늘어나는 예상 혜택(원)"
           },
+          "benefitRatePercent": {
+            "type": "number",
+            "format": "double",
+            "description": "이번 결제 금액 대비 예상 혜택의 비율(%, 소수 둘째 자리까지)"
+          },
+          "performance": {
+            "$ref": "#/components/schemas/ManualRecommendationPerformance"
+          },
+          "reasons": {
+            "type": "array",
+            "description": "추천 이유(서버 고정 문구)",
+            "items": {
+              "type": "string"
+            }
+          },
           "confirmedOnly": {
             "type": "boolean",
             "description": "사람이 원문과 대조해 확인한 규칙만 썼는지. false이면 참고용"
@@ -3365,6 +3394,77 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "ManualRecommendationPerformance": {
+        "type": "object",
+        "description": "이번 결제를 반영한 이번 달 실적. 카드의 실적 구간을 모르면 상위 performance가 null",
+        "properties": {
+          "monthSpendKrw": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nextTierKrw": {
+            "type": "integer",
+            "format": "int64",
+            "description": "아직 채우지 못한 가장 낮은 구간. 모두 채웠으면 null"
+          },
+          "remainingKrw": {
+            "type": "integer",
+            "format": "int64",
+            "description": "다음 구간까지 남은 금액. 모두 채웠으면 null"
+          }
+        }
+      },
+      "ManualRecommendationComparison": {
+        "type": "object",
+        "description": "카드 한 장과 이번 결제의 예상 혜택(원). 혜택이 없으면 0",
+        "properties": {
+          "cardId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "보유카드 ID"
+          },
+          "cardProductId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "카드 상품 ID"
+          },
+          "cardCompany": {
+            "type": "string"
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "expectedBenefit": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ManualRecommendationRangeOption": {
+        "type": "object",
+        "description": "금액 구간 하나와 그 구간에서 가장 유리한 카드",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "구간 이름(예: 10,000원 미만)"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "구간을 대표하는 금액(원)"
+          },
+          "best": {
+            "type": "boolean",
+            "description": "평소 결제 금액이 든 구간인지"
+          },
+          "card": {
+            "$ref": "#/components/schemas/ManualRecommendationComparison"
           }
         }
       },
