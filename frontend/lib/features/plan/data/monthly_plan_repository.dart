@@ -78,6 +78,10 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
   /// 달별로 안내 중인(확인하지 않은) 플랜 변경 ID
   final _changeIds = <DateTime, int>{};
 
+  /// 달별 확정 예산의 업종별 금액 (`confirmedBudget`, 예정지출 반영 전).
+  /// 소비예산을 고칠 때 이 비율로 나눈다.
+  final _confirmedBudgets = <DateTime, Map<SpendingCategory, int>>{};
+
   static DateTime _key(DateTime month) => DateTime(month.year, month.month);
 
   static String _monthCode(DateTime month) =>
@@ -97,6 +101,11 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
       rethrow;
     }
     _planIds[_key(month)] = plan.planId;
+    if (plan.confirmedByCategory case final byCategory?) {
+      _confirmedBudgets[_key(month)] = byCategory;
+    } else {
+      _confirmedBudgets.remove(_key(month));
+    }
     final (categories, cards, spent, changes) = await (
       _api.get(
         ApiPaths.planCategories(plan.planId),
@@ -122,7 +131,10 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
     final cardsById = {for (final card in cards) card.id: card};
     return MonthlyPlan(
       month: _key(month),
-      budget: plan.targets.fold(0, (sum, t) => sum + t.amount),
+      // 소비예산은 사용자가 확정한 예산이다. 카드 목표 금액에는 예정지출이 더해져 있을 수 있다 (#302).
+      budget:
+          plan.confirmedTotal ??
+          plan.targets.fold(0, (sum, t) => sum + t.amount),
       spentAmount: spent.total,
       expectedBenefit: plan.expectedBenefit,
       cardPlans: [
@@ -155,14 +167,19 @@ class ApiMonthlyPlanRepository implements MonthlyPlanRepository {
     final current = await fetchPlan(month);
     if (current == null) throw StateError('플랜이 없는 달은 다시 계산할 수 없어요.');
 
+    // 확정 예산(예정지출 반영 전)의 업종별 비율로 나눈다. 목표 금액으로 나누면 서버가
+    // 예정지출을 한 번 더 얹는다 (#302). 확정 예산이 없는 서버면 목표 금액을 쓴다.
+    final base =
+        _confirmedBudgets[_key(month)] ??
+        {
+          for (final MapEntry(key: category, value: items)
+              in current.categoryPlans.entries)
+            category: items.fold(0, (sum, item) => sum + item.amount),
+        };
     final next = MonthlyBudget(
       month: _key(month),
       total: current.budget,
-      byCategory: {
-        for (final MapEntry(key: category, value: items)
-            in current.categoryPlans.entries)
-          category: items.fold(0, (sum, item) => sum + item.amount),
-      },
+      byCategory: base,
     ).withTotal(budget);
     final jobId = await _api.put(
       ApiPaths.planBudget,
@@ -545,6 +562,8 @@ class _PlanJson {
     required this.expectedBenefit,
     required this.targets,
     this.recalculationJobId,
+    this.confirmedTotal,
+    this.confirmedByCategory,
   });
 
   final int planId;
@@ -552,6 +571,14 @@ class _PlanJson {
 
   /// 서버가 다시 계산하는 중이면 작업 ID
   final String? recalculationJobId;
+
+  /// 사용자가 확정한 예산 (`confirmedBudget`, 예정지출 반영 전). 없는 서버면 null.
+  final int? confirmedTotal;
+  final Map<SpendingCategory, int>? confirmedByCategory;
+
+  static final _categories = {
+    for (final c in SpendingCategory.values) c.code: c,
+  };
 
   /// 목표 금액이 큰 카드부터
   final List<_CardAmountJson> targets;
@@ -564,6 +591,15 @@ class _PlanJson {
       recalculationJobId: switch (json['recalculationJobId']) {
         null => null,
         final id => '$id',
+      },
+      confirmedTotal: (json['confirmedBudget'] as Map?)?['total'] as int?,
+      confirmedByCategory: switch (json['confirmedBudget']) {
+        {'byCategory': final List items} => {
+          // 앱이 모르는 업종은 건너뛴다.
+          for (final item in items.cast<Map>())
+            ?_categories[item['category']]: item['amount'] as int? ?? 0,
+        },
+        _ => null,
       },
       targets: [
         for (final item in json['cardTargets'] as List) _cardAmount(item),
