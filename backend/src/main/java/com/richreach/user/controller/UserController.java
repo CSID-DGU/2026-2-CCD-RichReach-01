@@ -1,11 +1,10 @@
 package com.richreach.user.controller;
 
-import com.richreach.global.exception.BusinessException;
-import com.richreach.global.exception.ErrorCode;
 import com.richreach.global.response.ApiResponse;
 import com.richreach.global.security.AuthenticatedUser;
 import com.richreach.user.dto.WithdrawalRequest;
 import com.richreach.user.service.UserWithdrawalService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -33,10 +32,7 @@ public class UserController {
      */
     @DeleteMapping("/me")
     public ApiResponse<Void> withdraw(@AuthenticationPrincipal AuthenticatedUser user,
-                                      @RequestBody WithdrawalRequest request) {
-        if (request == null || !Boolean.TRUE.equals(request.agreed())) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "탈퇴 내용에 동의해야 합니다.");
-        }
+                                      @Valid @RequestBody WithdrawalRequest request) {
         withdrawalService.withdraw(user.userId());
         return ApiResponse.ok();
     }
