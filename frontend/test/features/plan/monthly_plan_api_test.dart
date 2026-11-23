@@ -489,6 +489,49 @@ void main() {
     },
   );
 
+  test('소비예산은 확정 예산(예정지출 반영 전)이고, 수정할 때도 그 비율로 나눈다', () async {
+    // 카드 목표 합은 820,000원이지만 그중 120,000원은 예정지출이 더해진 금액이다.
+    final planWithConfirmed = _ok({
+      ...(_plan.$2['data'] as Map),
+      'confirmedBudget': {
+        'total': 700000,
+        'byCategory': [
+          {'category': 'DINING', 'amount': 500000},
+          {'category': 'CAFE', 'amount': 200000},
+          {'category': 'SHOPPING', 'amount': 0},
+        ],
+      },
+    });
+    final (repo, server) = repository(
+      (options) => switch ((options.method, options.path)) {
+        (_, ApiPaths.plans) => planWithConfirmed,
+        ('PUT', ApiPaths.planBudget) => _ok({'jobId': 'job-3'}),
+        ('GET', '/api/plans/jobs/job-3') => _ok({
+          'jobId': 'job-3',
+          'status': 'COMPLETED',
+        }),
+        _ => planServer(options),
+      },
+    );
+
+    final plan = await repo.fetchPlan(DateTime(2026, 11));
+    expect(plan!.budget, 700000);
+
+    await repo.recalculate(DateTime(2026, 11), budget: 1400000);
+
+    final budget =
+        (server.requests.firstWhere((r) => r.method == 'PUT').data
+                as Map)['budget']
+            as Map;
+    final byCategory = {
+      for (final item in budget['byCategory'] as List)
+        (item as Map)['category']: item['amount'],
+    };
+    // 목표 금액(예정지출 포함) 비율이 아니라 확정 예산 비율(5:2)로 두 배가 된다.
+    expect(budget['total'], 1400000);
+    expect((byCategory['DINING'], byCategory['CAFE']), (1000000, 400000));
+  });
+
   test('재계산 작업이 실패하면 서버 이유로 실패를 알린다', () async {
     final (repo, _) = repository(
       (options) => switch ((options.method, options.path)) {
