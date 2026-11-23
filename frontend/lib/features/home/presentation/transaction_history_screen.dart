@@ -361,7 +361,6 @@ class _VerticalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = largeCardImageAsset(card);
     final radius = BorderRadius.circular(6);
     return Semantics(
       button: onTap != null,
@@ -385,23 +384,24 @@ class _VerticalCard extends StatelessWidget {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: asset == null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Text(
-                      card.name,
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.caption.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+          // 가로 카드 그림을 세로로 돌려 보여준다. 그림이 없으면 이름만 쓴 회색 카드.
+          child: CardFaceImage(
+            card: card,
+            large: true,
+            quarterTurns: 1,
+            fallback: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  card.name,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.caption.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                )
-              : RotatedBox(
-                  quarterTurns: 1,
-                  child: Image.asset(asset, fit: BoxFit.cover),
                 ),
+              ),
+            ),
+          ),
         ),
       ),
     );

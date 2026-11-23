@@ -43,6 +43,7 @@ class OwnedCard {
     required this.analysisStatus,
     this.productId,
     this.selected = true,
+    this.imageUrl,
   });
 
   final String id;
@@ -60,6 +61,9 @@ class OwnedCard {
   /// 분석 대상으로 골라 둔 카드인지 (처음 동기화한 카드는 서버가 정한다)
   final bool selected;
 
+  /// 카드 앞면 이미지 주소 (카드사 서버). 모르면 null.
+  final String? imageUrl;
+
   /// 혜택으로 분석할 수 있는 카드인지. 분석할 수 없는 카드는 고를 수 없다.
   bool get analyzable => analysisStatus != AnalysisStatus.unavailable;
 
@@ -72,5 +76,6 @@ class OwnedCard {
     analysisStatus: analysisStatus,
     productId: productId,
     selected: selected ?? this.selected,
+    imageUrl: imageUrl,
   );
 }

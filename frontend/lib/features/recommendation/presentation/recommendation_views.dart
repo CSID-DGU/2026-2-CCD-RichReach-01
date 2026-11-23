@@ -63,18 +63,14 @@ class _CardPicture extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final height = width * 61 / 96;
-    final asset = largeCardImageAsset(card);
-    if (asset == null) {
-      return CardImage(card: card, width: width, height: height);
-    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
-      child: Image.asset(
-        asset,
+      child: CardFaceImage(
+        card: card,
+        large: true,
         width: width,
         height: height,
-        fit: BoxFit.cover,
-        semanticLabel: card.name,
+        fallback: CardImage(card: card, width: width, height: height),
       ),
     );
   }

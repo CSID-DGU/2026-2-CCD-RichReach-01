@@ -78,6 +78,47 @@ void main() {
     expect(cardImageAsset(card(CardCompany.kb, 'Hey Young')), isNull);
   });
 
+  testWidgets('디자인 그림이 없는 카드는 서버 이미지 주소를 쓰고, 불러오지 못하면 기본 그림을 보여준다', (
+    tester,
+  ) async {
+    const withUrl = OwnedCard(
+      id: '9',
+      name: '이미지 주소만 있는 카드',
+      company: CardCompany.hyundai,
+      maskedNumber: '0009',
+      type: CardType.check,
+      analysisStatus: AnalysisStatus.available,
+      imageUrl: 'https://img.example.com/card.png',
+    );
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(child: CardImage(card: withUrl)),
+      ),
+    );
+    expect(find.byType(Image), findsOneWidget);
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.image, isA<NetworkImage>());
+    // 테스트 환경에서는 주소를 불러오지 못해 기본 그림("CARD")을 보여준다.
+    await tester.pumpAndSettle();
+    expect(find.text('CARD'), findsOneWidget);
+
+    const noImage = OwnedCard(
+      id: '10',
+      name: '그림 없는 카드',
+      company: CardCompany.hyundai,
+      maskedNumber: '0010',
+      type: CardType.check,
+      analysisStatus: AnalysisStatus.available,
+    );
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(child: CardImage(card: noImage)),
+      ),
+    );
+    expect(find.byType(Image), findsNothing);
+    expect(find.text('CARD'), findsOneWidget);
+  });
+
   testWidgets('브랜드 SVG를 오류 없이 그린다', (tester) async {
     for (final path in [
       AppAssets.brandHeaderSymbol,

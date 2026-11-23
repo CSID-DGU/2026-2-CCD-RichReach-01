@@ -173,16 +173,16 @@ class _CardFront extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final card = detail.card;
-    final asset = largeCardImageAsset(card);
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (asset != null)
-            Image.asset(asset, fit: BoxFit.cover, semanticLabel: card.name)
-          else
-            const ColoredBox(color: AppColors.textSecondary),
+          CardFaceImage(
+            card: card,
+            large: true,
+            fallback: const ColoredBox(color: AppColors.textSecondary),
+          ),
           // 아래쪽 글자가 잘 보이도록 위에서 아래로 어두워지는 막
           const DecoratedBox(
             decoration: BoxDecoration(
