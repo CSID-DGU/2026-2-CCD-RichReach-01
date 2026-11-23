@@ -732,7 +732,7 @@ API가 있는 부분은 연동했고(#223, #237), 없는 부분은 화면을 그
 - 카드의 전월 실적 기준, 혜택 한도·남은 한도, 예상 혜택, 업종별 사용 금액은 `GET /api/plans/{planId}/card-targets`(#273)로 채웁니다. 혜택 요약(카드 뒷면)은 이미 있는 `GET /api/cards/{카드상품ID}/benefits`를 씁니다. (프론트 #293)
 - **앱의 표시 방법** (프론트 #293)
   - 목표 사용금액 게이지: `targetAmount`, `spentAmount`
-  - "전월 실적 인정액 `currentMonthAmount` / 실적 기준": 실적 기준은 `performance.tiers`의 가장 낮은 구간입니다. 카드 뒷면 "전월 실적 기준"과 SETTINGS-03 "실적 기준"도 같은 값입니다.
+  - "전월 실적 인정액 `previousMonthSpend` / 실적 기준": 전월 실적 인정액은 이번 달 혜택 구간을 정하는 전월 사용 금액이고, 없으면 "-"입니다(프론트 #326). SETTINGS-03 "이번 달 인정금액"은 `currentMonthAmount`입니다. 실적 기준은 `performance.tiers`의 가장 낮은 구간입니다. 카드 뒷면 "전월 실적 기준"과 SETTINGS-03 "실적 기준"도 같은 값입니다.
   - "남은 혜택 한도" = `benefitLimit.remainingAmount`, 카드 뒷면 "월 혜택 한도" = `benefitLimit.monthlyLimit`, "현재 예상 혜택" = `currentBenefit`
   - **`null`(알 수 없음)은 "-"로 보여줍니다.** 0원이나 "한도 없음"으로 바꾸지 않습니다.
   - `currentMonthAmountExact=false`이면 "총 사용 중 실적 제외" 대신 "* 실적에서 제외되는 결제가 있을 수 있어요 (`exclusionNotes`의 첫 문장)"을 보여주고, 제외 조건이 없으면 안내를 뺍니다.

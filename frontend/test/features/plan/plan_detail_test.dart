@@ -30,6 +30,8 @@ class _UnknownTermsPlans extends FakeMonthlyPlanRepository {
       targetAmount: detail.targetAmount,
       usedAmount: detail.usedAmount,
       performanceAmount: detail.usedAmount,
+      // 전월 사용 금액은 이번 달 사용(238,000원)과 다르다.
+      previousPerformanceAmount: 310000,
       performanceRequirement: null,
       benefitLimit: null,
       remainingBenefitLimit: null,
@@ -111,7 +113,8 @@ void main() {
       await tester.tap(findText('112,000원 남음'));
       await tester.pumpAndSettle();
 
-      expect(findText('238,000 / -'), findsOneWidget);
+      // 전월 실적 인정액은 이번 달 사용이 아니라 전월 사용 금액
+      expect(findText('310,000 / -'), findsOneWidget);
       // 남은 혜택 한도, 현재 예상 혜택
       expect(findText('-'), findsNWidgets(2));
       expect(
