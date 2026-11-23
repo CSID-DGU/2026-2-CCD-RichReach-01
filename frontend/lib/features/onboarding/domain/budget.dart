@@ -102,21 +102,42 @@ class MonthlyBudget {
 
   /// 총액을 [newTotal]로 바꾸고, 업종별 예산을 지금 비율대로 다시 나눈다.
   ///
-  /// 업종별 금액은 만 원 단위로 내리고, 남는 금액은 "기타"에 더해 합계를 맞춘다.
-  /// 서버가 나눌지 프론트가 나눌지는 데이터 규약 문서 Q6 답변 전까지 임시로 프론트가 나눈다.
+  /// 업종별 금액은 비율대로 나눈 값을 천 원 단위로 내린 뒤, 모자란 천 원은 내림으로 버린 몫이
+  /// 큰 업종부터 하나씩 더해 합계를 맞춘다 (최대 나머지 방식). 그래서 예산이 작은 업종도 비율대로
+  /// 남는다. 천 원 아래 끝자리는 가장 큰 업종에 더한다. 지금 예산이 모두 0원이면 "기타"에 둔다.
   MonthlyBudget withTotal(int newTotal) {
-    const unit = 10000;
+    const unit = 1000;
     final currentTotal = byCategory.values.fold<int>(0, (sum, a) => sum + a);
-
-    final next = <SpendingCategory, int>{};
-    for (final category in SpendingCategory.values) {
-      final current = byCategory[category] ?? 0;
-      next[category] = currentTotal == 0
-          ? 0
-          : (newTotal * current / currentTotal / unit).floor() * unit;
+    final next = {for (final c in SpendingCategory.values) c: 0};
+    if (currentTotal == 0) {
+      next[SpendingCategory.etc] = newTotal;
+      return copyWith(total: newTotal, byCategory: next);
     }
-    final remainder = newTotal - next.values.fold<int>(0, (sum, a) => sum + a);
-    next[SpendingCategory.etc] = next[SpendingCategory.etc]! + remainder;
+
+    // 업종별로 천 원 단위 몫과, 내림으로 버린 나머지(정수 비교용)를 구한다.
+    final remainders = <SpendingCategory, int>{};
+    for (final category in SpendingCategory.values) {
+      final share = newTotal * (byCategory[category] ?? 0);
+      final units = share ~/ (currentTotal * unit);
+      next[category] = units * unit;
+      remainders[category] = share - units * unit * currentTotal;
+    }
+
+    var leftover = newTotal - next.values.fold<int>(0, (sum, a) => sum + a);
+    final byRemainder =
+        SpendingCategory.values.where((c) => (byCategory[c] ?? 0) > 0).toList()
+          ..sort((a, b) => remainders[b]!.compareTo(remainders[a]!));
+    for (final category in byRemainder) {
+      if (leftover < unit) break;
+      next[category] = next[category]! + unit;
+      leftover -= unit;
+    }
+    if (leftover != 0) {
+      final largest = SpendingCategory.values.reduce(
+        (a, b) => next[b]! > next[a]! ? b : a,
+      );
+      next[largest] = next[largest]! + leftover;
+    }
 
     return copyWith(total: newTotal, byCategory: next);
   }
