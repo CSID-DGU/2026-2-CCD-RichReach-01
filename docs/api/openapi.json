@@ -3492,7 +3492,7 @@
         "properties": {
           "label": {
             "type": "string",
-            "description": "구간 이름(예: 10,000원 미만)"
+            "description": "구간 이름(예: 10,000원 이하)"
           },
           "amount": {
             "type": "integer",

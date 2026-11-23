@@ -73,7 +73,7 @@ public class ManualRecommendationService {
 
     /** 금액 구간별 추천의 대표 금액, 구간 이름, 구간 끝(이 금액 이하). 마지막 구간은 끝이 없다. */
     static final long[] RANGE_AMOUNTS = {5_000, 20_000, 50_000};
-    static final String[] RANGE_LABELS = {"10,000원 미만", "10,000원 초과 ~ 30,000원", "30,000원 초과"};
+    static final String[] RANGE_LABELS = {"10,000원 이하", "10,000원 초과 ~ 30,000원", "30,000원 초과"};
     private static final long[] RANGE_ENDS = {10_000, 30_000, Long.MAX_VALUE};
 
     static final String TEXT_MESSAGE = "현재 확인된 혜택 규칙으로는 이번 결제의 추가 혜택을 확인하지 못했어요.";
@@ -95,11 +95,22 @@ public class ManualRecommendationService {
     private final BenefitRuleQueryService rules;
     private final Clock clock;
 
-    /** 한 번의 요청에서 모든 카드가 같이 쓰는 이번 달 사용액과 전월 실적. */
-    private record Spending(Map<Long, Map<SpendingCategory, Long>> thisMonth, Map<Long, Long> previousMonth) {
+    /**
+     * 한 번의 요청에서 모든 카드가 같이 쓰는 이번 달 사용액과 전월 실적.
+     *
+     * @param thisMonth      이번 달 카드·업종별 사용액. 혜택 계산에 쓴다. 순사용액이 0 이하인 업종은 빠져 있다.
+     * @param thisMonthTotal 이번 달 카드별 순사용액. 실적 구간 계산에 쓴다. 환불로 음수가 된 업종도 합계에 반영돼 있다.
+     * @param previousMonth  지난달 카드별 순사용액(전월 실적)
+     */
+    private record Spending(Map<Long, Map<SpendingCategory, Long>> thisMonth, Map<Long, Long> thisMonthTotal,
+                            Map<Long, Long> previousMonth) {
 
         Map<SpendingCategory, Long> of(long cardId) {
             return thisMonth.getOrDefault(cardId, Map.of());
+        }
+
+        long totalOf(long cardId) {
+            return thisMonthTotal.getOrDefault(cardId, 0L);
         }
 
         long previousOf(long cardId) {
@@ -127,7 +138,7 @@ public class ManualRecommendationService {
 
         YearMonth month = YearMonth.now(clock);
         Spending spending = new Spending(transactions.cardCategorySpend(userId, month),
-            transactions.cardSpend(userId, month.minusMonths(1)));
+            transactions.cardSpend(userId, month), transactions.cardSpend(userId, month.minusMonths(1)));
 
         return amount == null
             ? ranges(userId, candidates, category, spending)
@@ -202,8 +213,8 @@ public class ManualRecommendationService {
     private Card detail(Scored best, long amount, Spending spending) {
         OwnedCardResponse card = best.card();
         List<CalculationRule> cardRules = rules.findForCalculation(card.cardProductId());
-        long monthSpendAfter = Math.addExact(spending.of(card.cardId()).values().stream()
-            .mapToLong(Long::longValue).sum(), amount);
+        // 실적은 카드별 순사용액으로 센다. 업종별 합계는 순사용액이 0 이하인 업종을 버려서, 환불이 있으면 실제보다 커진다.
+        long monthSpendAfter = Math.addExact(spending.totalOf(card.cardId()), amount);
 
         List<String> reasons = new ArrayList<>();
         reasons.add(REASON_BEST);
@@ -231,14 +242,18 @@ public class ManualRecommendationService {
             best.result().notes());
     }
 
-    /** 평소 결제 금액이 든 구간의 번호. 최근 3개월 그 업종의 결제 한 건 평균이고, 거래가 없으면 -1이다. */
+    /**
+     * 평소 결제 금액이 든 구간의 번호. 최근 3개월 그 업종의 결제 한 건 평균이고, 거래가 없으면 -1이다. 평균의 소수 부분이 구간
+     * 경계를 넘는지가 결과를 바꾸므로(30,000.5원은 30,000원 초과), 나눗셈을 하지 않고 {@code 합계 <= 구간 끝 x 거래 수}로
+     * 비교한다.
+     */
     private int typicalRangeIndex(long userId, SpendingCategory category) {
         for (CategorySummary summary : transactions.summarize(userId, SummaryPeriod.THREE_MONTHS, CardScope.SELECTED)
             .categories()) {
             if (summary.category() == category && summary.transactionCount() > 0) {
-                long typical = summary.amount() / summary.transactionCount();
                 for (int i = 0; i < RANGE_ENDS.length; i++) {
-                    if (typical <= RANGE_ENDS[i]) {
+                    if (RANGE_ENDS[i] == Long.MAX_VALUE
+                        || summary.amount() <= Math.multiplyExact(RANGE_ENDS[i], summary.transactionCount())) {
                         return i;
                     }
                 }

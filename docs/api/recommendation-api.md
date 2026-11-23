@@ -76,7 +76,7 @@
   "card": null,
   "alternatives": [],
   "ranges": [
-    { "label": "10,000원 미만", "amount": 5000, "best": true,
+    { "label": "10,000원 이하", "amount": 5000, "best": true,
       "card": { "cardId": 2, "cardProductId": 200, "cardCompany": "KB", "cardName": "KB국민카드 노리 체크카드",
                 "imageUrl": null, "expectedBenefit": 500 } },
     { "label": "10,000원 초과 ~ 30,000원", "amount": 20000, "best": false, "card": { "...": "..." } },
@@ -224,7 +224,7 @@
 }
 ```
 
-- 구간 이름("10,000원 미만", "10,000원 초과 ~ 30,000원", "30,000원 초과")은 `minAmount`·`maxAmount`로 프론트가 만듭니다.
+- 구간 이름("10,000원 이하", "10,000원 초과 ~ 30,000원", "30,000원 초과")은 `minAmount`·`maxAmount`로 프론트가 만듭니다.
 - `isBest`: "현재 최적" 표시. 기준(예: 그 업종의 평소 결제 금액이 들어가는 구간)을 정해야 합니다. (→ R6)
 
 ### 3-3. `FOLLOW_UP`: 브랜드를 되물을 때

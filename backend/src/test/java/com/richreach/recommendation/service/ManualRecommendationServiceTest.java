@@ -297,6 +297,7 @@ class ManualRecommendationServiceTest {
             rule(2, 300_000L, null)));
         when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(
             Map.of(1L, Map.of(SpendingCategory.DINING, 250_000L)));
+        when(transactions.cardSpend(USER, MONTH)).thenReturn(Map.of(1L, 250_000L));
 
         ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 10_000L));
 
@@ -308,6 +309,25 @@ class ManualRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("환불로 순사용액이 음수가 된 업종이 있어도 실적은 카드별 순사용액으로 센다")
+    void countsPerformanceFromTheCardsNetSpend() {
+        cards(card(1, 100L, "카드", true));
+        calculator.rule(100L, 5, 100_000, 0);
+        when(ruleQuery.findForCalculation(100L)).thenReturn(List.of(rule(1, 100_000L, null), rule(2, 200_000L, null)));
+        // 외식 100,000원을 썼고 카페는 환불로 -20,000원이라 업종별 합계에서는 카페가 빠진다. 카드의 순사용액은 80,000원이다.
+        when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(
+            Map.of(1L, Map.of(SpendingCategory.DINING, 100_000L)));
+        when(transactions.cardSpend(USER, MONTH)).thenReturn(Map.of(1L, 80_000L));
+
+        ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 10_000L));
+
+        // 업종별 합계(100,000원)를 쓰면 110,000원이 되어 다음 구간이 200,000원이고 90,000원 남지만, 순사용액으로는 90,000원이다.
+        assertThat(response.card().performance().monthSpendKrw()).isEqualTo(90_000);
+        assertThat(response.card().performance().nextTierKrw()).isEqualTo(100_000);
+        assertThat(response.card().performance().remainingKrw()).isEqualTo(10_000);
+    }
+
+    @Test
     @DisplayName("실적 구간을 모두 채웠으면 남은 금액이 없고, 월 한도에 도달하면 그 이유를 준다")
     void explainsAReachedTierAndALimit() {
         cards(card(1, 100L, "카드", true));
@@ -315,6 +335,7 @@ class ManualRecommendationServiceTest {
         when(ruleQuery.findForCalculation(100L)).thenReturn(List.of(rule(1, 5_000L, 400L)));
         when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(
             Map.of(1L, Map.of(SpendingCategory.DINING, 700L)));
+        when(transactions.cardSpend(USER, MONTH)).thenReturn(Map.of(1L, 700L));
         when(transactions.cardSpend(USER, MONTH.minusMonths(1))).thenReturn(Map.of(1L, 100_000L));
 
         ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 10_000L));
@@ -371,7 +392,7 @@ class ManualRecommendationServiceTest {
         assertThat(response.followUp()).isEqualTo(ManualRecommendationService.RANGE_FOLLOW_UP);
         assertThat(response.message()).isEqualTo(ManualRecommendationService.RANGE_MESSAGE);
         assertThat(response.ranges()).extracting(RangeOption::label)
-            .containsExactly("10,000원 미만", "10,000원 초과 ~ 30,000원", "30,000원 초과");
+            .containsExactly("10,000원 이하", "10,000원 초과 ~ 30,000원", "30,000원 초과");
         assertThat(response.ranges()).extracting(RangeOption::amount).containsExactly(5_000L, 20_000L, 50_000L);
         // 5,000원: 10% = 500원 vs 3% = 150원 → 1번. 20,000원: 10% = 2,000원인데 한도 1,000원 vs 3% = 600원 → 1번.
         // 50,000원: 한도 1,000원 vs 3% = 1,500원 → 2번.
@@ -392,6 +413,33 @@ class ManualRecommendationServiceTest {
         typicalSpend(List.of());
         assertThat(service().recommend(USER, request("CAFE", null)).ranges())
             .extracting(RangeOption::best).containsExactly(false, false, false);
+    }
+
+    @Test
+    @DisplayName("평균이 구간 경계와 정확히 같으면 그 구간이고, 소수 부분이 경계를 넘으면 다음 구간이다")
+    void keepsTheFractionOfTheAverageAtTheBoundary() {
+        cards(card(1, 100L, "카드", true));
+        calculator.rule(100L, 5, 100_000, 0);
+
+        // 평균 10,000원: 첫 구간("10,000원 이하")
+        typicalSpend(List.of(new CategorySummary(SpendingCategory.CAFE, 10_000, 1.0, 1)));
+        assertThat(service().recommend(USER, request("CAFE", null)).ranges())
+            .extracting(RangeOption::best).containsExactly(true, false, false);
+
+        // 평균 10,000.5원(20,001 / 2): 둘째 구간
+        typicalSpend(List.of(new CategorySummary(SpendingCategory.CAFE, 20_001, 1.0, 2)));
+        assertThat(service().recommend(USER, request("CAFE", null)).ranges())
+            .extracting(RangeOption::best).containsExactly(false, true, false);
+
+        // 평균 30,000원(30,000과 30,000): 둘째 구간
+        typicalSpend(List.of(new CategorySummary(SpendingCategory.CAFE, 60_000, 1.0, 2)));
+        assertThat(service().recommend(USER, request("CAFE", null)).ranges())
+            .extracting(RangeOption::best).containsExactly(false, true, false);
+
+        // 평균 30,000.5원(30,000과 30,001): 정수 나눗셈이면 30,000으로 버려지지만 실제로는 "30,000원 초과"다.
+        typicalSpend(List.of(new CategorySummary(SpendingCategory.CAFE, 60_001, 1.0, 2)));
+        assertThat(service().recommend(USER, request("CAFE", null)).ranges())
+            .extracting(RangeOption::best).containsExactly(false, false, true);
     }
 
     @Test

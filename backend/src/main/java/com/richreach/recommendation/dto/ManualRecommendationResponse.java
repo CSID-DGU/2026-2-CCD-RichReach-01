@@ -95,7 +95,7 @@ public record ManualRecommendationResponse(
     /**
      * 금액 구간 하나와 그 구간에서 가장 유리한 카드.
      *
-     * @param label  구간 이름 (예: "10,000원 미만")
+     * @param label  구간 이름 (예: "10,000원 이하")
      * @param amount 구간을 대표하는 금액(원). 이 금액으로 계산했다.
      * @param best   평소 결제 금액이 든 구간인지. 최근 3개월 그 업종의 결제 한 건 평균으로 정하고, 거래가 없으면 모두 false다.
      * @param card   그 구간에서 가장 유리한 카드

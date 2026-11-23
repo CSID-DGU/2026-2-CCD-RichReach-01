@@ -251,7 +251,7 @@ class ManualRecommendationApiTest {
             .andExpect(jsonPath("$.data.card").doesNotExist())
             .andExpect(jsonPath("$.data.parsed.amount").doesNotExist())
             .andExpect(jsonPath("$.data.ranges.length()").value(3))
-            .andExpect(jsonPath("$.data.ranges[0].label").value("10,000원 미만"))
+            .andExpect(jsonPath("$.data.ranges[0].label").value("10,000원 이하"))
             .andExpect(jsonPath("$.data.ranges[0].amount").value(5000))
             .andExpect(jsonPath("$.data.ranges[0].card.cardId").value(strongCard))
             .andExpect(jsonPath("$.data.ranges[0].card.expectedBenefit").value(500))
