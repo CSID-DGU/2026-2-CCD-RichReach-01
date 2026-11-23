@@ -668,6 +668,36 @@
         "security": []
       }
     },
+    "/api/users/me": {
+      "delete": {
+        "tags": [
+          "user-controller"
+        ],
+        "operationId": "withdraw",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "tags": [
@@ -2171,6 +2201,16 @@
           },
           "devCode": {
             "type": "string"
+          }
+        }
+      },
+      "WithdrawalRequest": {
+        "type": "object",
+        "description": "회원 탈퇴 요청. 삭제 내용을 안내받고 동의했는지만 받는다. 비밀번호는 받지 않는다.",
+        "properties": {
+          "agreed": {
+            "type": "boolean",
+            "description": "true여야 한다."
           }
         }
       },
