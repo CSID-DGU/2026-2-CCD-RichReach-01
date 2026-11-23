@@ -1,10 +1,10 @@
 # 카드 추천 API 형식 (초안)
 
-> 상태: **1단계(수동 입력 추천 `POST /api/recommendations/manual`)만 구현됨 (#278). 나머지(자연어 질문, 문구 설명, 플랜 연동)는 초안 (프론트 제안, 백엔드 리뷰 전)**
+> 상태: 수동 입력 추천 `POST /api/recommendations/manual`과 자연어 해석·결과 설명 `POST /api/recommendations/chat` 구현. 챗봇의 실제 계약은 [추천 AI 연결 문서](recommendation-chat-ai.md)를 따른다. 아래 `POST /api/recommendations` 및 `AMOUNT_RANGE` 등은 프론트 제안 초안이며 구현된 API가 아니다.
 > 기준 디자인: Figma "3. Monthly Plan & Card Recommendation" RECOMMEND-00 ~ 03
 > 관련 이슈: #82(화면), #84(이 문서)
 
-결제 전 카드 추천 대화 화면에 필요한 API 형식을 정리한 제안 문서입니다. 여기의 카드 추천 API 중 **금액과 업종을 직접 고르는 수동 입력 추천만 구현**했고([아래 "구현됨"](#구현됨-수동-입력-추천-278-1단계)), 자연어 질문과 문구 설명은 아직 구현되지 않았습니다. 현재 구현된 예산 조정 대화는 [월 예산 챗봇 API](plan-chat-openai.md)를 참고하세요.
+결제 전 카드 추천 대화 화면에 필요한 API 형식을 정리한 제안 문서입니다. 수동 입력 추천은 아래 설명대로 구현됐고, 자연어 질문은 별도 [`/chat` API](recommendation-chat-ai.md)로 구현됐습니다. 현재 구현된 예산 조정 대화는 [월 예산 챗봇 API](plan-chat-openai.md)를 참고하세요.
 **경로는 API 명세서 초안의 `POST /api/recommendations`를 기준으로 했고, 필드 이름과 JSON은 프론트 제안**이니 편하게 바꿔 주세요.
 프론트는 이 형식과 같은 모양의 가짜 데이터로 화면을 먼저 만들어 두었습니다 (`FakeRecommendationRepository`).
 
@@ -61,7 +61,7 @@
 
 **⚠️ 승인된 규칙이 없으면 항상 `TEXT`입니다.** 서버는 기본 설정에서 사람이 원문과 대조해 승인한 혜택 규칙(`rule_engine_ready`)만 계산합니다. 시연 전에 시연 보유카드의 규칙을 원문과 대조해 승인해야 합니다. `BENEFIT_RULE_SELECTION=ALL`은 개발·시연용 임시 설정이고 결과가 참고용(`confirmedOnly=false`)이며 **운영에서는 쓰면 안 됩니다.**
 
-**프론트 연결**: 추천 화면의 `FakeRecommendationRepository`를 이 API로 바꿔야 화면이 바뀝니다. 금액과 업종을 고르는 UI에서 두 값을 받아 호출하고, `CARD`와 `TEXT`, 400, 로딩 상태를 처리합니다. 자연어 질문 입력은 후속(3단계)입니다.
+**프론트 연결**: 추천 화면의 `FakeRecommendationRepository`를 실제 API로 바꿔야 화면이 바뀝니다. 금액과 업종을 직접 고르면 이 `/manual` API를, 자연어 질문이면 [별도의 `/chat` API](recommendation-chat-ai.md)를 호출합니다. 화면은 `CARD`와 `TEXT`, 되묻기, 400, 로딩 상태를 처리해야 합니다.
 
 ## 1. 전체 구조
 

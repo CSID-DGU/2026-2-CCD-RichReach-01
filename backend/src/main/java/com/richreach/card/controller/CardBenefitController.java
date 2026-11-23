@@ -1,10 +1,15 @@
 package com.richreach.card.controller;
 
 import com.richreach.card.dto.CardBenefitsResponse;
+import com.richreach.card.dto.CardEvidenceRequest;
+import com.richreach.card.dto.CardEvidenceResponse;
 import com.richreach.card.service.CardBenefitService;
+import com.richreach.card.service.CardEvidenceService;
 import com.richreach.global.response.ApiResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -14,9 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class CardBenefitController {
 
     private final CardBenefitService cardBenefitService;
+    private final CardEvidenceService cardEvidenceService;
 
-    public CardBenefitController(CardBenefitService cardBenefitService) {
+    public CardBenefitController(CardBenefitService cardBenefitService, CardEvidenceService cardEvidenceService) {
         this.cardBenefitService = cardBenefitService;
+        this.cardEvidenceService = cardEvidenceService;
     }
 
     /**
@@ -26,6 +33,20 @@ public class CardBenefitController {
     @GetMapping("/{cardId}/benefits")
     public ApiResponse<CardBenefitsResponse> benefits(@PathVariable Long cardId) {
         return ApiResponse.ok(cardBenefitService.getBenefits(cardId));
+    }
+
+    /** 해당 카드 상품의 수집된 원문만 검색한다. 추천 금액에 적용된 규칙의 증명은 아니다. */
+    @PostMapping("/{cardId}/evidence")
+    public ApiResponse<CardEvidenceResponse> evidence(@PathVariable Long cardId,
+                                                       @RequestBody CardEvidenceRequest request) {
+        return ApiResponse.ok(cardEvidenceService.explain(cardId, request.question()));
+    }
+
+    /** 카드 상품으로 승격되지 않은 원문도 포함해 331종 스테이징 카탈로그에서 검색한다. */
+    @PostMapping("/catalog/evidence")
+    public ApiResponse<CardEvidenceResponse> catalogEvidence(@RequestBody CardEvidenceRequest request) {
+        return ApiResponse.ok(cardEvidenceService.explainCatalog(request.issuerCode(), request.sourceCardId(),
+            request.question()));
     }
 
 }
