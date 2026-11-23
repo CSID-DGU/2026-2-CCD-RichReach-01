@@ -78,6 +78,12 @@ void main() {
       largeCardImageAsset(card(CardCompany.woori, '우리 K-패스 쿠키 체크')),
       AppAssets.cardWooriKpassCookieLarge,
     );
+    expect(
+      cardImageAsset(
+        card(CardCompany.bc, cardDisplayName('IBK포인트(3.8)|IBK기업은행')),
+      ),
+      AppAssets.cardBcIbkPoint38,
+    );
     // 카드사가 다르면 이름이 같아도 쓰지 않는다.
     expect(cardImageAsset(card(CardCompany.kb, 'Hey Young')), isNull);
   });

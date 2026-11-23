@@ -76,6 +76,13 @@ const _productImages = [
     AppAssets.cardWooriKpassCookie,
     AppAssets.cardWooriKpassCookieLarge,
   ),
+  // IBK기업은행이 발급하는 BC카드 ("IBK포인트(3.8)|IBK기업은행")
+  (
+    CardCompany.bc,
+    'IBK포인트',
+    AppAssets.cardBcIbkPoint38,
+    AppAssets.cardBcIbkPoint38Large,
+  ),
 ];
 
 /// 흰 바탕 로고에 두르는 브랜드 색 테두리. 바탕이 진한 로고는 null.
