@@ -38,6 +38,11 @@ public class MerchantCategoryClassifier {
         return matcher().match(merchantName).orElse(SpendingCategory.ETC);
     }
 
+    /** 추천 질문에서는 규칙이 없는 가맹점을 ETC로 단정하지 않고 사용자 확인을 받는다. */
+    public Optional<SpendingCategory> classifyIfKnown(String merchantName) {
+        return matcher().match(merchantName);
+    }
+
     /**
      * 규칙을 다시 읽는다. 마이그레이션으로 규칙을 바꾼 뒤나 테스트에서 쓴다. 읽는 중이면 끝날 때까지 기다린 뒤 비우므로,
      * 이전 규칙을 읽던 작업이 늦게 끝나 낡은 규칙을 다시 저장하는 일이 없다.
