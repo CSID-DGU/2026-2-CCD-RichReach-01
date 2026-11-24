@@ -3405,7 +3405,28 @@
             "items": {
               "type": "string"
             }
+          },
+          "ruleEvidence": {
+            "type": "array",
+            "description": "이번 결제 전후의 원 단위 계산값이 달라진 규칙과 같은 카드의 수집 원문. 현재 약관 효력 검증은 아님",
+            "items": {
+              "$ref": "#/components/schemas/AppliedRuleEvidence"
+            }
           }
+        }
+      },
+      "AppliedRuleEvidence": {
+        "type": "object",
+        "properties": {
+          "ruleId": { "type": "integer", "format": "int64" },
+          "impact": { "type": "string", "enum": ["INCREASED", "DECREASED"] },
+          "status": { "type": "string", "enum": ["SOURCE_FOUND", "SOURCE_NOT_FOUND"] },
+          "sourceScopeId": { "type": "string" },
+          "sourceUrl": { "type": "string" },
+          "excerpt": { "type": "string" },
+          "sourceType": { "type": "string", "enum": ["PRODUCT_PAGE_EXCERPT"] },
+          "sourceSnapshotDate": { "type": "string", "format": "date" },
+          "documentVersion": { "type": "string", "nullable": true }
         }
       },
       "PlanMonthDraftResponse": {

@@ -4,6 +4,7 @@ import com.richreach.benefit.dto.BenefitQuery;
 import com.richreach.benefit.dto.BenefitResult;
 import com.richreach.benefit.service.BenefitCalculator;
 import com.richreach.card.dto.OwnedCardResponse;
+import com.richreach.card.service.AppliedRuleEvidenceService;
 import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.global.category.SpendingCategory;
 import com.richreach.global.exception.BusinessException;
@@ -62,10 +63,11 @@ public class ManualRecommendationService {
     private final OwnedCardQueryService ownedCards;
     private final TransactionSummaryService transactions;
     private final BenefitCalculator calculator;
+    private final AppliedRuleEvidenceService evidence;
     private final Clock clock;
 
     /** 카드 한 장과 이번 결제로 늘어나는 혜택. */
-    private record Scored(OwnedCardResponse card, long gain, BenefitResult result) {
+    private record Scored(OwnedCardResponse card, long gain, BenefitResult before, BenefitResult result) {
 
     }
 
@@ -101,7 +103,7 @@ public class ManualRecommendationService {
             return new ManualRecommendationResponse(Type.TEXT, TEXT_MESSAGE, parsed, null, List.of(), SCOPE);
         }
         Scored best = scored.get(0);
-        List<Card> alternatives = scored.stream().skip(1).limit(MAX_ALTERNATIVES).map(ManualRecommendationService::toCard)
+        List<Card> alternatives = scored.stream().skip(1).limit(MAX_ALTERNATIVES).map(this::toCard)
             .toList();
         String scope = best.result().confirmedOnly() ? SCOPE : SCOPE + UNCONFIRMED_SCOPE_SUFFIX;
         return new ManualRecommendationResponse(Type.CARD, message(best), parsed, toCard(best), alternatives, scope);
@@ -111,19 +113,21 @@ public class ManualRecommendationService {
     private Scored score(OwnedCardResponse card, SpendingCategory category, long amount,
                          Map<SpendingCategory, Long> spentByCategory, long previousMonthSpend) {
         long productId = card.cardProductId();
-        long before = calculator.calculate(new BenefitQuery(productId, spentByCategory, previousMonthSpend))
-            .totalBenefit();
+        BenefitResult before = calculator.calculate(new BenefitQuery(productId, spentByCategory, previousMonthSpend));
         Map<SpendingCategory, Long> afterSpend = new EnumMap<>(SpendingCategory.class);
         afterSpend.putAll(spentByCategory);
         afterSpend.merge(category, amount, Math::addExact);
         BenefitResult after = calculator.calculate(new BenefitQuery(productId, afterSpend, previousMonthSpend));
-        return new Scored(card, after.totalBenefit() - before, after);
+        return new Scored(card, after.totalBenefit() - before.totalBenefit(), before, after);
     }
 
-    private static Card toCard(Scored scored) {
+    private Card toCard(Scored scored) {
         OwnedCardResponse card = scored.card();
+        Map<String, Long> before = scored.before().benefitByRule();
+        Map<String, Long> after = scored.result().benefitByRule();
         return new Card(card.cardId(), card.cardProductId(), card.cardCompany(), card.cardName(), card.imageUrl(),
-            scored.gain(), scored.result().confirmedOnly(), scored.result().notes());
+            scored.gain(), scored.result().confirmedOnly(), scored.result().notes(),
+            evidence.find(card.cardProductId(), before, after));
     }
 
     private static String message(Scored best) {

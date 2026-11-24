@@ -44,13 +44,16 @@ public class BenefitRuleQueryService {
 
     private CalculationRule toCalculationRule(BenefitRule rule, PerformanceTier tier) {
         MappedCategories mapped = categoryMapper.map(rule.getCategory());
-        boolean merchantSpecific = notBlank(rule.getMerchants()) || notBlank(rule.getTargetsNormalized());
+        // 월간 업종 합계에는 결제 수단 정보도 없다. 지정 결제 수단을 모든 결제에 적용하지 않는다.
+        boolean merchantSpecific = notBlank(rule.getMerchants()) || notBlank(rule.getTargetsNormalized())
+            || notBlank(rule.getPaymentMethods());
         return new CalculationRule(rule.getId(), mapped.categories(), mapped.allMerchants(), merchantSpecific,
             rule.getRatePercent(), rule.getRewardUnit(), rule.getMonthlyLimit(), rule.getCapGroupId(),
             rule.getSharedMonthlyLimit(), rule.getDailyLimit(), rule.getDailyCountLimit(),
             rule.getMonthlyCountLimit(), rule.getAnnualCountLimit(), rule.getEligibleSpendMonthlyLimitKrw(),
             rule.getRuleMode(), tier == null ? null : tier.getPreviousMonthMinKrw(),
-            tier == null ? null : tier.getPreviousMonthMaxExclusiveKrw(), rule.isRuleEngineReady());
+            tier == null ? null : tier.getPreviousMonthMaxExclusiveKrw(), rule.isRuleEngineReady(),
+            rule.getPerTransactionMinKrw());
     }
 
     private static boolean notBlank(String value) {

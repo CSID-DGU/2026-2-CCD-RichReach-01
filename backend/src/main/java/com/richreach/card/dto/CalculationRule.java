@@ -10,7 +10,7 @@ import java.util.Set;
  *
  * @param categories                 혜택이 적용되는 화면용 업종
  * @param allMerchants               업종과 상관없이 모든 소비에 적용되는지
- * @param merchantSpecific           가맹점이 지정된 혜택인지
+ * @param merchantSpecific           가맹점 또는 결제수단이 지정돼 월간 업종 합계로 판정할 수 없는지
  * @param ratePercent                혜택 비율(%). 비율 혜택이 아니면 null
  * @param rewardUnit                 KRW, POINT, MILE
  * @param monthlyLimit               월 혜택 한도
@@ -25,6 +25,7 @@ import java.util.Set;
  * @param previousMonthMinKrw        전월실적 하한(이상)
  * @param previousMonthMaxExclusiveKrw 전월실적 상한(미만)
  * @param ruleEngineReady            사람이 원문과 대조해 확인한 규칙인지
+ * @param perTransactionMinKrw       건별 최소 결제금액. 월간 업종 합계 계산에서는 이 규칙을 제외한다.
  */
 public record CalculationRule(
     Long id,
@@ -44,6 +45,20 @@ public record CalculationRule(
     String ruleMode,
     Long previousMonthMinKrw,
     Long previousMonthMaxExclusiveKrw,
-    boolean ruleEngineReady) {
+    boolean ruleEngineReady,
+    Long perTransactionMinKrw) {
+
+    /** 기존 계산기 테스트와 미리보기 코드가 쓰는 생성자. */
+    public CalculationRule(Long id, Set<SpendingCategory> categories, boolean allMerchants,
+                           boolean merchantSpecific, BigDecimal ratePercent, String rewardUnit,
+                           Long monthlyLimit, String capGroupId, Long sharedMonthlyLimit, Long dailyLimit,
+                           Integer dailyCountLimit, Integer monthlyCountLimit, Integer annualCountLimit,
+                           Long eligibleSpendMonthlyLimit, String ruleMode, Long previousMonthMinKrw,
+                           Long previousMonthMaxExclusiveKrw, boolean ruleEngineReady) {
+        this(id, categories, allMerchants, merchantSpecific, ratePercent, rewardUnit, monthlyLimit,
+            capGroupId, sharedMonthlyLimit, dailyLimit, dailyCountLimit, monthlyCountLimit,
+            annualCountLimit, eligibleSpendMonthlyLimit, ruleMode, previousMonthMinKrw,
+            previousMonthMaxExclusiveKrw, ruleEngineReady, null);
+    }
 
 }

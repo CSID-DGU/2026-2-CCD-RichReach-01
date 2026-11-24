@@ -175,10 +175,10 @@ class BenefitCategoryMapperTest {
     }
 
     @Test
-    @DisplayName("대응표에 없는 코드는 ETC로 보되 다른 코드는 그대로 바꾼다")
-    void unknownCodeBecomesEtc() {
-        assertThat(mapper.map("TEST_NEW_CODE")).isEqualTo(only(SpendingCategory.ETC));
-        assertThat(mapper.map("CAFE|TEST_NEW_CODE")).isEqualTo(only(SpendingCategory.CAFE, SpendingCategory.ETC));
+    @DisplayName("대응표에 없는 코드가 섞인 규칙은 전체를 계산에서 제외한다")
+    void unknownCodeIsNotGuessed() {
+        assertThat(mapper.map("TEST_NEW_CODE")).isEqualTo(MappedCategories.NONE);
+        assertThat(mapper.map("CAFE|TEST_NEW_CODE")).isEqualTo(MappedCategories.NONE);
     }
 
     @Test
@@ -204,7 +204,7 @@ class BenefitCategoryMapperTest {
     }
 
     @Test
-    @DisplayName("대응표에 새 코드를 추가하면 그 코드가 ETC가 아닌 지정한 업종으로 바뀐다")
+    @DisplayName("대응표에 새 코드를 추가하면 그 코드가 지정한 업종으로 바뀐다")
     void newCodeCanBeAddedAsData() {
         jdbc.update("insert into benefit_category_mappings (category_code, ui_category) values ('TEST_NEW_CODE', 'CAFE')");
         mapper.refresh();

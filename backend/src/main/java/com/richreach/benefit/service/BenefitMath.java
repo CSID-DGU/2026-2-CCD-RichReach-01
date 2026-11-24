@@ -18,7 +18,7 @@ import java.util.Set;
  * <p>단순화한 부분 (결과의 {@code notes}에 남긴다)
  * <ul>
  *   <li>비율(rate) 혜택만 계산한다. 정액·횟수·주유 리터당 같은 혜택은 계산하지 않는다.</li>
- *   <li>가맹점이 지정된 혜택은 업종만으로 거래와 이을 수 없어서 뺀다.</li>
+ *   <li>가맹점·결제수단이 지정된 혜택은 업종만으로 거래와 이을 수 없어서 뺀다.</li>
  *   <li>{@code rule_mode}가 REPLACES_BASE, PREFER_HIGHER, ANNUAL_BONUS인 규칙은 다른 규칙과의 관계를 따져야 해서 뺀다.
  *       (BASE, ADDITIONAL, 값 없음은 서로 더한다.)</li>
  *   <li>마일리지(MILE) 혜택은 원화 가치를 알 수 없어서 뺀다. 포인트(POINT)는 1점을 1원으로 본다.</li>
@@ -41,7 +41,7 @@ final class BenefitMath {
      *
      * @param categories        혜택이 적용되는 업종
      * @param allMerchants      업종과 상관없이 모든 소비에 적용되는지
-     * @param merchantSpecific  가맹점이 지정된 혜택인지
+     * @param merchantSpecific  가맹점 또는 결제수단 지정으로 월간 업종 합계로 판정할 수 없는지
      * @param ratePercent       혜택 비율(%). 비율 혜택이 아니면 null
      * @param rewardUnit        KRW, POINT, MILE. 없으면 null
      * @param monthlyLimit      월 혜택 한도. 없으면 null
@@ -136,7 +136,50 @@ final class BenefitMath {
                 total += won;
             }
         }
-        return new BenefitResult(total, benefitByCategory, confirmedOnly, new ArrayList<>(notes));
+        Map<String, Long> benefitByRule = allocateRoundedWon(contributions, benefitByCategory);
+        return new BenefitResult(total, benefitByCategory, confirmedOnly, new ArrayList<>(notes), benefitByRule);
+    }
+
+    /** 업종별 내림으로 확정된 원을 규칙들의 소수 부분 순서로 나눠 정확히 같은 합계를 만든다. */
+    private static Map<String, Long> allocateRoundedWon(List<Contribution> contributions,
+                                                          Map<SpendingCategory, Long> benefitByCategory) {
+        Map<String, Long> byRule = new LinkedHashMap<>();
+        for (SpendingCategory category : SpendingCategory.values()) {
+            List<RoundedPart> parts = new ArrayList<>();
+            long baseSum = 0;
+            for (Contribution contribution : contributions) {
+                BigDecimal raw = contribution.byCategory.get(category);
+                if (raw == null || raw.signum() <= 0) continue;
+                long base = raw.setScale(0, RoundingMode.FLOOR).longValueExact();
+                parts.add(new RoundedPart(contribution.rule.id(), base, raw.subtract(BigDecimal.valueOf(base))));
+                baseSum = Math.addExact(baseSum, base);
+            }
+            long leftover = benefitByCategory.getOrDefault(category, 0L) - baseSum;
+            if (leftover < 0 || leftover > parts.size()) {
+                throw new IllegalStateException("규칙별 혜택과 업종별 합계가 일치하지 않습니다.");
+            }
+            parts.sort((left, right) -> {
+                int fraction = right.fraction.compareTo(left.fraction);
+                return fraction != 0 ? fraction : left.ruleId.compareTo(right.ruleId);
+            });
+            for (int i = 0; i < leftover; i++) parts.get(i).won++;
+            for (RoundedPart part : parts) {
+                if (part.won > 0) byRule.merge(part.ruleId, part.won, Math::addExact);
+            }
+        }
+        return byRule;
+    }
+
+    private static final class RoundedPart {
+        private final String ruleId;
+        private long won;
+        private final BigDecimal fraction;
+
+        private RoundedPart(String ruleId, long won, BigDecimal fraction) {
+            this.ruleId = ruleId;
+            this.won = won;
+            this.fraction = fraction;
+        }
     }
 
     /** 같은 한도 묶음의 규칙들이 낸 혜택 합이 공유 한도를 넘으면 묶음 전체를 같은 비율로 줄인다. */
@@ -165,7 +208,7 @@ final class BenefitMath {
     /** 이 규칙을 계산에서 빼는 이유. 계산해도 되면 null이다. */
     private static String skipReason(RuleInput rule, long previousMonthSpend) {
         if (rule.merchantSpecific()) {
-            return "가맹점이 지정된 혜택은 업종으로 매칭할 수 없어 제외했습니다.";
+            return "가맹점 또는 결제수단이 지정된 혜택은 월간 업종 합계만으로 매칭할 수 없어 제외했습니다.";
         }
         if (rule.ratePercent() == null) {
             return "비율이 아닌 혜택(정액, 횟수, 면제 등)은 계산하지 않았습니다.";

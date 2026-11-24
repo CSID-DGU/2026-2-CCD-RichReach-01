@@ -11,6 +11,6 @@ public final class BenefitRuleSupport {
     public static boolean hasUnmodelledLimits(CalculationRule rule) {
         return rule.dailyLimit() != null || rule.dailyCountLimit() != null
             || rule.monthlyCountLimit() != null || rule.annualCountLimit() != null
-            || rule.eligibleSpendMonthlyLimit() != null;
+            || rule.eligibleSpendMonthlyLimit() != null || rule.perTransactionMinKrw() != null;
     }
 }

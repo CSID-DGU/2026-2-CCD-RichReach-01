@@ -3,6 +3,8 @@ package com.richreach.recommendation.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.richreach.benefit.dto.BenefitQuery;
 import com.richreach.benefit.dto.BenefitResult;
 import com.richreach.benefit.service.BenefitCalculator;
+import com.richreach.card.service.AppliedRuleEvidenceService;
 import com.richreach.card.dto.OwnedCardResponse;
 import com.richreach.card.dto.OwnedCardResponse.AnalysisStatus;
 import com.richreach.card.dto.OwnedCardResponse.CardKind;
@@ -61,7 +64,7 @@ class ManualRecommendationServiceTest {
             long total = query.monthlySpend().values().stream().mapToLong(Long::longValue).sum();
             long benefit = Math.min((long) rule[1], (long) (total * rule[0] / 100));
             return new BenefitResult(benefit, Map.of(SpendingCategory.CAFE, benefit), confirmedOnly,
-                List.of("테스트 메모"));
+                List.of("테스트 메모"), benefit == 0 ? Map.of() : Map.of(String.valueOf(query.cardProductId()), benefit));
         }
 
     }
@@ -69,18 +72,21 @@ class ManualRecommendationServiceTest {
     private OwnedCardQueryService ownedCards;
     private TransactionSummaryService transactions;
     private FakeCalculator calculator;
+    private AppliedRuleEvidenceService evidence;
 
     @BeforeEach
     void setUp() {
         ownedCards = mock(OwnedCardQueryService.class);
         transactions = mock(TransactionSummaryService.class);
         calculator = new FakeCalculator();
+        evidence = mock(AppliedRuleEvidenceService.class);
+        when(evidence.find(anyLong(), any(), any())).thenReturn(List.of());
         when(transactions.cardCategorySpend(anyLong(), org.mockito.ArgumentMatchers.any())).thenReturn(Map.of());
         when(transactions.cardSpend(anyLong(), org.mockito.ArgumentMatchers.any())).thenReturn(Map.of());
     }
 
     private ManualRecommendationService service() {
-        return new ManualRecommendationService(ownedCards, transactions, calculator, CLOCK);
+        return new ManualRecommendationService(ownedCards, transactions, calculator, evidence, CLOCK);
     }
 
     private static OwnedCardResponse card(long cardId, Long productId, String name, boolean selected) {
@@ -121,6 +127,7 @@ class ManualRecommendationServiceTest {
         assertThat(response.parsed().amount()).isEqualTo(10_000);
         assertThat(response.message()).contains("B 카드").contains("500원");
         assertThat(response.calculationScope()).isEqualTo(ManualRecommendationService.SCOPE);
+        verify(evidence).find(eq(200L), eq(Map.of()), eq(Map.of("200", 500L)));
     }
 
     @Test
@@ -282,7 +289,7 @@ class ManualRecommendationServiceTest {
         cards(card(1, 100L, "카드", true));
         calculator.rule(100L, 5, 100_000, 0);
         // 2027-01-01 00:10 KST
-        ManualRecommendationService january = new ManualRecommendationService(ownedCards, transactions, calculator,
+        ManualRecommendationService january = new ManualRecommendationService(ownedCards, transactions, calculator, evidence,
             Clock.fixed(Instant.parse("2026-12-31T15:10:00Z"), ZoneId.of("Asia/Seoul")));
 
         january.recommend(USER, request("CAFE", 10_000L));
