@@ -6,28 +6,39 @@ import '../domain/recommendation.dart';
 /// 실제 API 구현은 여기서 업종을 읽으면 `POST /api/recommendations/manual`로, 못 읽으면
 /// `POST /api/recommendations/chat`(서버가 자연어를 해석)으로 보낸다.
 abstract final class RecommendationQuestion {
-  /// 업종을 알아볼 단어 (가맹점 이름 포함). 브랜드를 되묻는 업종의 브랜드는 [_brands]에 있다.
+  /// 업종을 알아볼 단어 (가맹점 이름 포함). 되묻기 버튼으로 보여주는 브랜드는 [_groups]에 있다.
+  ///
+  /// 업종은 백엔드 가맹점 업종 규칙과 같다: 제과점(베이커리)은 카페, 영화관은 문화·여행.
   static const _keywords = {
-    SpendingCategory.cafe: ['카페', '커피'],
+    SpendingCategory.cafe: [
+      '카페', '커피', '빵집', '베이커리', '제과점', '제과', //
+      // 버튼에는 없지만 알아보는 카페 브랜드
+      '이디야', '빽다방', '할리스', '폴바셋', '커피빈', '파스쿠찌',
+    ],
     SpendingCategory.convenienceStore: ['편의점', '마트'],
     SpendingCategory.dining: ['외식', '식당', '아웃백', '맛집', '레스토랑', '배달', '치킨'],
     SpendingCategory.shopping: ['쇼핑', '쿠팡', '무신사', '온라인', '백화점', '옷'],
     SpendingCategory.transport: ['교통', '택시', '버스', '지하철', 'KTX'],
     SpendingCategory.fuelVehicle: ['주유', '충전소', '세차'],
+    SpendingCategory.cultureTravel: ['영화', '극장'],
   };
 
   /// 업종 이름이라 가맹점으로 보지 않는 단어
   static const _generic = {
-    '카페', '커피', '편의점', '마트', '외식', '식당', '맛집', '레스토랑', '배달', //
-    '치킨', '쇼핑', '온라인', '백화점', '옷', '교통', '택시', '버스', '지하철', //
-    '주유', '충전소', '세차',
+    '카페', '커피', '빵집', '베이커리', '제과점', '제과', '편의점', '마트', //
+    '외식', '식당', '맛집', '레스토랑', '배달', '치킨', '쇼핑', '온라인', '백화점', //
+    '옷', '교통', '택시', '버스', '지하철', '주유', '충전소', '세차', '영화', '극장',
   };
 
-  /// 브랜드마다 혜택이 다른 업종: 되묻는 대상과 브랜드(버튼 이름, 알아볼 단어. 줄임말 포함).
-  /// 되물을 때는 이 순서대로 버튼을 보여준다.
-  static const _brands = {
-    SpendingCategory.convenienceStore: (
+  /// 브랜드마다 혜택이 달라 브랜드를 되묻는 묶음. 버튼은 묶음마다 최대 4개이고 이 순서대로 보여준다.
+  /// - [words]: 이 묶음을 가리키는 말(예: "빵집"). 질문에 있으면 이 묶음으로 되묻는다.
+  /// - [fallback]: 그 업종인데 어느 묶음의 말도 없으면 이 묶음으로 되묻는다 (예: "카페 업종").
+  static const _groups = [
+    (
+      category: SpendingCategory.convenienceStore,
       subject: '편의점',
+      words: ['편의점'],
+      fallback: true,
       brands: [
         (name: 'GS25', words: ['GS25', 'GS 25', '지에스25']),
         (name: 'CU', words: ['CU', '씨유']),
@@ -35,32 +46,50 @@ abstract final class RecommendationQuestion {
         (name: '이마트24', words: ['이마트24', 'EMART24']),
       ],
     ),
-    SpendingCategory.cafe: (
+    (
+      category: SpendingCategory.cafe,
+      subject: '제과점',
+      words: ['빵집', '베이커리', '제과점', '제과'],
+      fallback: false,
+      brands: [
+        (name: '파리바게뜨', words: ['파리바게뜨', '파리바게트', '파바']),
+        (name: '뚜레쥬르', words: ['뚜레쥬르', '뚜쥬']),
+      ],
+    ),
+    (
+      category: SpendingCategory.cafe,
       subject: '카페',
+      words: ['카페', '커피'],
+      fallback: true,
       brands: [
         (name: '스타벅스', words: ['스타벅스', '스벅']),
         (name: '투썸플레이스', words: ['투썸']),
         (name: '메가커피', words: ['메가커피', '메가 커피', '메가MGC']),
         (name: '컴포즈커피', words: ['컴포즈']),
-        (name: '이디야', words: ['이디야']),
-        (name: '빽다방', words: ['빽다방']),
-        (name: '할리스', words: ['할리스']),
-        (name: '폴바셋', words: ['폴바셋']),
-        (name: '커피빈', words: ['커피빈']),
-        (name: '파스쿠찌', words: ['파스쿠찌']),
       ],
     ),
-  };
+    (
+      category: SpendingCategory.cultureTravel,
+      subject: '영화관',
+      words: ['영화', '극장'],
+      fallback: false,
+      brands: [
+        (name: 'CGV', words: ['CGV']),
+        (name: '롯데시네마', words: ['롯데시네마', '롯시']),
+        (name: '메가박스', words: ['메가박스']),
+      ],
+    ),
+  ];
+
+  static bool _mentions(String text, List<String> words) =>
+      words.any((word) => text.contains(word.toUpperCase()));
 
   /// 질문에 든 브랜드 (업종, 버튼 이름). 없으면 null.
   static (SpendingCategory, String)? _brandOf(String question) {
     final text = question.toUpperCase();
-    for (final MapEntry(key: category, value: (:brands, subject: _))
-        in _brands.entries) {
-      for (final (:name, :words) in brands) {
-        if (words.any((word) => text.contains(word.toUpperCase()))) {
-          return (category, name);
-        }
+    for (final group in _groups) {
+      for (final (:name, :words) in group.brands) {
+        if (_mentions(text, words)) return (group.category, name);
       }
     }
     return null;
@@ -120,19 +149,25 @@ abstract final class RecommendationQuestion {
     return null;
   }
 
-  /// 브랜드마다 혜택이 다른 업종인데 브랜드를 말하지 않았으면 되묻는 답변. 되물을 필요가 없으면 null.
+  /// 브랜드마다 혜택이 다른 업종인데 가맹점을 말하지 않았으면 되묻는 답변. 되물을 필요가 없으면 null.
   /// 브랜드를 고르면 질문의 업종 이름을 브랜드로 바꿔 다시 묻는다.
   static FollowUpQuestion? brandFollowUp(
     String question,
     SpendingCategory category,
   ) {
-    final brand = _brands[category];
-    if (brand == null) return null;
-    final (:subject, :brands) = brand;
-    if (_brandOf(question) != null) return null;
+    // 브랜드나 가맹점(버튼에 없는 브랜드 포함)을 이미 말했으면 묻지 않는다.
+    if (merchantOf(question) != null) return null;
+    final text = question.toUpperCase();
+    final candidates = _groups.where((g) => g.category == category);
+    final group =
+        candidates.where((g) => _mentions(text, g.words)).firstOrNull ??
+        candidates.where((g) => g.fallback).firstOrNull;
+    if (group == null) return null;
+    final subject = group.subject;
 
-    // 질문에 들어 있는 대상 이름(예: "편의점", "편의·마트")을 브랜드로 바꾼다.
+    // 질문에 들어 있는 대상 이름(예: "편의점", "빵집", "편의·마트")을 브랜드로 바꾼다.
     final named = [
+      ...group.words,
       subject,
       category.label,
     ].where(question.contains).firstOrNull;
@@ -144,7 +179,7 @@ abstract final class RecommendationQuestion {
       category: category,
       subject: subject,
       options: [
-        for (final (:name, words: _) in brands)
+        for (final (:name, words: _) in group.brands)
           FollowUpOption(label: name, question: withBrand(name)),
       ],
     );

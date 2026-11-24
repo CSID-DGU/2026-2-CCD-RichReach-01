@@ -55,38 +55,71 @@ void main() {
       expect(RecommendationQuestion.merchantOf('카페 갈래'), isNull);
     });
 
-    test('브랜드를 말하면 되묻지 않고, 업종만 말하면 브랜드 버튼을 보여준다', () {
-      expect(
-        RecommendationQuestion.brandFollowUp('빽다방 갈래', SpendingCategory.cafe),
-        isNull,
-      );
-      final cafe = RecommendationQuestion.brandFollowUp(
-        '카페 갈 건데',
-        SpendingCategory.cafe,
-      )!;
-      expect(cafe.options.map((o) => o.label), [
+    test('브랜드를 말하면 되묻지 않고, 업종만 말하면 브랜드 버튼(최대 4개)을 보여준다', () {
+      List<String>? labels(String question, SpendingCategory category) =>
+          RecommendationQuestion.brandFollowUp(
+            question,
+            category,
+          )?.options.map((o) => o.label).toList();
+
+      // 버튼에 없는 브랜드도 가맹점이라 되묻지 않는다.
+      expect(labels('빽다방 갈래', SpendingCategory.cafe), isNull);
+      expect(labels('스벅 갈래', SpendingCategory.cafe), isNull);
+      expect(labels('카페 갈 건데', SpendingCategory.cafe), [
         '스타벅스',
         '투썸플레이스',
         '메가커피',
         '컴포즈커피',
-        '이디야',
-        '빽다방',
-        '할리스',
-        '폴바셋',
-        '커피빈',
-        '파스쿠찌',
       ]);
-      expect(cafe.options[3].question, '컴포즈커피 갈 건데');
-      final store = RecommendationQuestion.brandFollowUp(
-        '편의점 갈 건데',
-        SpendingCategory.convenienceStore,
-      )!;
-      expect(store.options.map((o) => o.label), [
+      expect(labels('편의점 갈 건데', SpendingCategory.convenienceStore), [
         'GS25',
         'CU',
         '세븐일레븐',
         '이마트24',
       ]);
+      // 제과점은 카페 업종이지만 제과점 브랜드를 묻는다.
+      expect(labels('빵집 가는데 카드 뭐 써?', SpendingCategory.cafe), [
+        '파리바게뜨',
+        '뚜레쥬르',
+      ]);
+      // 영화관은 문화·여행 업종. 여행처럼 영화가 아니면 묻지 않는다.
+      expect(labels('영화 보러 갈 건데', SpendingCategory.cultureTravel), [
+        'CGV',
+        '롯데시네마',
+        '메가박스',
+      ]);
+      expect(labels('여행 가는데', SpendingCategory.cultureTravel), isNull);
+    });
+
+    test('제과점·영화관 업종과 브랜드를 알아보고, 고른 브랜드로 다시 묻는다', () {
+      expect(
+        RecommendationQuestion.categoryOf('베이커리 갈래'),
+        SpendingCategory.cafe,
+      );
+      expect(
+        RecommendationQuestion.categoryOf('파바에서 1만 원'),
+        SpendingCategory.cafe,
+      );
+      expect(RecommendationQuestion.merchantOf('파바에서 1만 원'), '파리바게뜨');
+      expect(
+        RecommendationQuestion.categoryOf('롯시 갈 건데'),
+        SpendingCategory.cultureTravel,
+      );
+      expect(
+        RecommendationQuestion.categoryOf('메가박스 2만 원'),
+        SpendingCategory.cultureTravel,
+      );
+      final bakery = RecommendationQuestion.brandFollowUp(
+        '제과점 갈 건데',
+        SpendingCategory.cafe,
+      )!;
+      expect(bakery.message, '어느 제과점에 가시나요? 제과점 브랜드마다 카드 혜택이 달라요.');
+      expect(bakery.options.last.question, '뚜레쥬르 갈 건데');
+      final movie = RecommendationQuestion.brandFollowUp(
+        '영화 보러 갈 건데',
+        SpendingCategory.cultureTravel,
+      )!;
+      expect(movie.options.first.question, 'CGV 보러 갈 건데');
     });
 
     test('만·천·쉼표 금액을 원으로 바꾼다', () {
