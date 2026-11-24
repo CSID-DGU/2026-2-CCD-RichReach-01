@@ -34,6 +34,8 @@ public class CardEvidenceService {
     private static final int CHUNK = 1_000;
     private static final int OVERLAP = 100;
     private static final Pattern NUMBER = Pattern.compile("\\d[\\d,.]*%?");
+    private static final Set<String> SEARCH_STOP_WORDS = Set.of(
+        "카드", "혜택", "알려줘", "뭐야", "어떤", "얼마", "있어", "있나요", "할인", "설명", "추천");
     private static final String INSTRUCTIONS = """
         카드사 상품 페이지 수집본의 질문에 답하세요. 제공된 원문 조각만 사용하고 카드 혜택을 계산하거나
         추천 금액의 근거라고 주장하지 마세요. 답변 첫머리에 [수집일]을 넣으세요.
@@ -138,7 +140,7 @@ public class CardEvidenceService {
 
     static List<Ranked> rank(List<Source> sources, String question) {
         List<String> terms = List.of(question.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+"))
-            .stream().filter(t -> t.length() >= 2).distinct().toList();
+            .stream().filter(t -> t.length() >= 2 && !SEARCH_STOP_WORDS.contains(t)).distinct().toList();
         if (terms.isEmpty()) return List.of();
         List<Ranked> ranked = new ArrayList<>();
         for (Source source : sources) {
@@ -147,9 +149,26 @@ public class CardEvidenceService {
             int part = 0;
             for (int start = 0; start < text.length(); start += CHUNK - OVERLAP) {
                 String excerpt = text.substring(start, Math.min(text.length(), start + CHUNK));
-                String lower = excerpt.toLowerCase(Locale.ROOT);
+                String lower = excerpt.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]", "");
                 int score = 0;
-                for (String term : terms) if (lower.contains(term)) score++;
+                List<Integer> positions = new ArrayList<>();
+                for (String term : terms) {
+                    int first = lower.indexOf(term);
+                    if (first < 0) continue;
+                    positions.add(first);
+                    int occurrences = 0;
+                    for (int at = first; at >= 0 && occurrences < 3; at = lower.indexOf(term, at + term.length())) {
+                        occurrences++;
+                    }
+                    score += occurrences;
+                }
+                if (positions.size() > 1) {
+                    int distance = positions.stream().mapToInt(Integer::intValue).max().orElse(0)
+                        - positions.stream().mapToInt(Integer::intValue).min().orElse(0);
+                    if (distance <= 50) score += 4;
+                    else if (distance <= 150) score += 2;
+                    else if (distance <= 300) score++;
+                }
                 if (score > 0) ranked.add(new Ranked(score, new Citation(
                     source.scopeId() + "#%04d".formatted(++part), source.sourceUrl(), excerpt,
                     "PRODUCT_PAGE_EXCERPT")));

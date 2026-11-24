@@ -58,6 +58,8 @@
 
 이미 승격된 상품 ID가 있으면 `POST /api/cards/{cardProductId}/evidence`에 `{"question":"..."}`를 보낼 수 있다. 두 경로 모두 `stg_source_scope`에서 **해당 카드의 원문만** 찾아 최대 3개 조각을 모델에 제공한다. 응답은 `status`(`ANSWERED`, `SOURCE_FOUND`, `INSUFFICIENT_EVIDENCE`), `answer`, `sourceSnapshotDate`, `documentVersion`, `citations[]`다. 각 citation에는 `citationId`, `sourceUrl`, `excerpt`, `sourceType=PRODUCT_PAGE_EXCERPT`가 있다. 모델 응답의 출처 ID가 검색 결과에 없으면 생성 답변은 버리고 원문 조각만 반환한다.
 
+검색은 카드 이름을 먼저 고정하고 질문의 구체적인 단어가 원문 조각에 나타나는 횟수와 가까운 정도를 사용한다. `이 카드 혜택 알려줘`처럼 구체적인 검색어가 없는 질문에는 임의의 안내 문단을 근거로 고르지 않고 `INSUFFICIENT_EVIDENCE`를 반환한다. 프론트에서는 업종·가맹점·혜택명을 더 구체적으로 물어보도록 안내할 수 있다.
+
 현재 자료는 **카드사 상품 페이지 수집본**이다. `sourceSnapshotDate`는 수집일이지 약관 시행일이 아니다. 331종의 상품설명서·약관 PDF 및 문서 버전은 모두 확보되지 않았으므로 `documentVersion=null`이다. `/evidence`는 질문에 맞는 상품 원문 설명용이며 추천 계산과는 독립적이다. 추천 응답의 `ruleEvidence`는 계산값이 달라진 규칙 ID와 원문 블록을 연결하지만, PDF 조항·시행일의 검증이 끝났다는 의미는 아니다.
 
 ## 프론트·백엔드 연결 시 확인할 점

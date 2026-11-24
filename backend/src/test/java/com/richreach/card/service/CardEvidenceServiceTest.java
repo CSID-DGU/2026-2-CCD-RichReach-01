@@ -55,6 +55,28 @@ class CardEvidenceServiceTest {
     }
 
     @Test
+    void ranksDetailedMovieTermsBeforeNavigationSummary() {
+        var ranked = CardEvidenceService.rank(List.of(
+            new CardEvidenceService.Source("navigation", "https://issuer.example/card",
+                "주요 혜택: 대중교통, 이동통신, 영화, 편의점"),
+            new CardEvidenceService.Source("terms", "https://issuer.example/card",
+                "CGV 영화 예매 5천원 캐시백. 영화 예매는 건당 2만원 이상 결제 시 제공. "
+                    + "영화관 매점 결제는 제외됩니다.")), "영화 할인");
+
+        assertThat(ranked).hasSize(2);
+        assertThat(ranked.get(0).citation().citationId()).isEqualTo("terms#0001");
+    }
+
+    @Test
+    void genericQuestionDoesNotSelectArbitraryNavigationText() {
+        var ranked = CardEvidenceService.rank(List.of(
+            new CardEvidenceService.Source("navigation", "https://issuer.example/card",
+                "카드 혜택 추천 할인 안내")), "이 카드 혜택 알려줘");
+
+        assertThat(ranked).isEmpty();
+    }
+
+    @Test
     void rejectsModelCitationNotPresentInRetrievedSources() {
         var cards = mock(CardProductRepository.class);
         var jdbc = mock(JdbcTemplate.class);
