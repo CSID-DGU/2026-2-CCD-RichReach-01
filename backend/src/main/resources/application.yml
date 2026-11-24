@@ -49,6 +49,9 @@ richreach:
   staging:
     load-on-startup: ${STAGING_LOAD_ON_STARTUP:false}
     csv-dir: ${STAGING_CSV_DIR:}
+    promote-existing-on-startup: ${STAGING_PROMOTE_EXISTING_ON_STARTUP:false}
+    promotion-manifest: ${STAGING_PROMOTION_MANIFEST:}
+    promotion-expected-cards: ${STAGING_PROMOTION_EXPECTED_CARDS:0}
   # 혜택 계산기. engine은 쓸 계산기 이름, rule-selection은 READY_ONLY(확인된 규칙만) 또는 ALL(확인 전 규칙 포함, 개발·시연용)
   benefit:
     engine: ${BENEFIT_ENGINE:simple}

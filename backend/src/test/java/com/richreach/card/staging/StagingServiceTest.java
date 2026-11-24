@@ -190,6 +190,39 @@ class StagingServiceTest {
     }
 
     @Test
+    void promotesExistingStagingWithoutReloadingOrChangingApproval(@TempDir Path dir) throws IOException {
+        service.loadAll(fixtures);
+        jdbc.update("UPDATE stg_card_catalog SET card_name = 'DB에서 갱신한 이름' WHERE issuer_code = 'v1'");
+        int selected = service.selectExistingCardsForPromotion(writeMvp(dir, "v1,00001\nv2,00002"), 2);
+
+        CardPromotionService.Result result = promotion.promote();
+
+        assertThat(selected).isEqualTo(2);
+        assertThat(result.cardProducts()).isEqualTo(2);
+        assertThat(result.benefitRules()).isEqualTo(2);
+        assertThat(count("SELECT COUNT(*) FROM stg_card_catalog WHERE card_name = 'DB에서 갱신한 이름'"))
+            .isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM benefit_rules WHERE rule_engine_ready = 1")).isZero();
+    }
+
+    @Test
+    void rejectsIncompletePromotionManifestBeforeChangingSelection(@TempDir Path dir) throws IOException {
+        service.loadAll(fixtures);
+        jdbc.update("UPDATE stg_card_catalog SET mvp_selected = 'SELECTED' WHERE issuer_code = 'v1'");
+        Path missing = writeMvp(dir, "v1,00001\nshinhan,NOT_CRAWLED");
+
+        assertThatThrownBy(() -> service.selectExistingCardsForPromotion(missing, 2))
+            .isInstanceOf(IllegalStateException.class).hasMessageContaining("NOT_CRAWLED");
+        assertThat(count("SELECT COUNT(*) FROM stg_card_catalog WHERE mvp_selected = 'SELECTED'"))
+            .isEqualTo(1);
+        assertThatThrownBy(() -> service.selectExistingCardsForPromotion(missing, 3))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("예상과 다릅니다");
+        assertThatThrownBy(() -> service.selectExistingCardsForPromotion(
+            writeMvp(dir, "v1,00001\nv1,00001"), 2))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("중복 키");
+    }
+
+    @Test
     void validatorCountsRowsWhoseCardIsNotInCatalog() {
         StagingTable reviewQueue = StagingTables.ALL.stream()
             .filter(t -> t.table().equals("stg_review_queue")).findFirst().orElseThrow();

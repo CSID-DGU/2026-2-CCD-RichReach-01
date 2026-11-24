@@ -272,8 +272,42 @@ select issuer_code, card_id, recommendable from card_products order by 1, 2;
 **알아둘 점**
 - 승격된 12장 중 **혜택 규칙이 있는 카드는 6장**(BC 2, 카카오뱅크 1, KB 노리 체크 1, 우리 K-패스 1)입니다. 신한 6장과 하나 1장은 규칙이 0개입니다.
 - `recommendable`이 모두 0인 것은 `card_status`가 미확정(비어 있음)이거나 발급 중단·선불카드여서 신규 추천 후보에서 빠지는 것이고, 보유카드 분석에는 영향이 없습니다.
-- 사람이 원문과 대조해 확인한 혜택 규칙(`rule_engine_ready`)이 아직 0개라서, 서버를 기본값(`BENEFIT_RULE_SELECTION=READY_ONLY`)으로 두면 **혜택이 0원**으로 나옵니다. 시연이면 `.env.dev`에 `BENEFIT_RULE_SELECTION=ALL`을 넣습니다. (확인되지 않은 규칙을 포함한 참고용 값입니다)
+- 사람이 원문과 대조해 확인한 혜택 규칙(`rule_engine_ready`)이 0개면, 서버 기본값(`BENEFIT_RULE_SELECTION=READY_ONLY`)에서는 금전 혜택을 계산하지 못합니다. `ALL`은 검증 전 규칙의 참고용 실험에만 사용하며 실제 추천 화면에는 연결하지 않습니다.
 - 이 12장이 아닌 카드(예: IBK 발급 BC카드)는 카드 상품에 매칭되지 않아 분석과 재계산에서 빠집니다.
+
+### 이미 적재된 스테이징 카드 승격 (CSV 8종 재적재 없음)
+
+공용 DB에 `stg_card_catalog`는 있지만 `card_products`가 0건일 때 사용합니다. 기존 스테이징 혜택을 다시 적재하지 않으므로 DB에만 추가된 행을 오래된 CSV로 덮어쓰지 않습니다. 카드 331종을 모두 승격하려면 **현재 DB의 카드 키와 대조한** `issuer_code,card_id` 형식의 `mvp_cards.csv`를 준비합니다. 331종보다 적게 승격할 때는 해당 카드만 적고 예상 카드 수도 동일하게 지정합니다. 이 작업은 카드 상품과 보류 중 혜택 행을 운영 테이블로 복사하지만, `rule_engine_ready`를 승인하지는 않습니다.
+
+```sql
+-- 실행 전, 공용 DB에서 읽기 전용으로 확인
+select count(*) from stg_card_catalog;
+select count(*) from stg_card_benefit;
+select count(*) from stg_card_catalog where mvp_selected = 'SELECTED';
+select count(*) from card_products;
+select count(*) from benefit_rules where rule_engine_ready = 1;
+```
+
+서버의 `/opt/richreach-data/staging/mvp_cards.csv`에 목록을 놓고 `.env.dev`에 다음 값을 **한 번만** 설정합니다. 기존 `STAGING_LOAD_ON_STARTUP`은 `false`여야 합니다. `card_images.csv`가 같은 폴더에 있으면 공식 이미지 주소도 함께 반영합니다.
+
+```dotenv
+STAGING_LOAD_ON_STARTUP=false
+STAGING_PROMOTE_EXISTING_ON_STARTUP=true
+STAGING_PROMOTION_MANIFEST=/data/staging/mvp_cards.csv
+STAGING_PROMOTION_EXPECTED_CARDS=331
+BENEFIT_RULE_SELECTION=READY_ONLY
+```
+
+`docker compose --env-file .env.dev -f docker-compose.dev.yml up -d --build`로 새 이미지를 배포하고 `docker logs richreach-backend`에서 `[promotion-existing]` 건수를 확인합니다. 목록의 카드 수가 다르거나 DB에 없는 카드가 하나라도 있으면 **선택과 승격을 모두 취소**합니다. 성공하면 `STAGING_PROMOTE_EXISTING_ON_STARTUP=false`로 되돌리고 `docker compose --env-file .env.dev -f docker-compose.dev.yml up -d`로 컨테이너를 다시 만듭니다. `.env.dev` 변경 후 단순 `restart`는 새 값을 적용하지 않습니다.
+
+```sql
+-- 실행 후: 카드·혜택의 복사와 계산 승인 상태를 각각 확인
+select count(*) from card_products;
+select count(*) from benefit_rules;
+select count(*) from benefit_rules where rule_engine_ready = 1;
+```
+
+마지막 수가 0이면 DB의 0건 승격 문제는 풀렸어도 금전 추천은 아직 준비되지 않은 상태입니다. 카드사 공식 원문과 계산 조건을 대조해 승인 가능한 혜택만 별도 처리해야 합니다.
 
 ### 보안 설정 체크리스트
 
