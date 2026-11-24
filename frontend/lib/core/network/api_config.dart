@@ -60,6 +60,9 @@ abstract final class ApiPaths {
   static const plans = '/api/plans';
   // 새 달 예산 초안 (#312)
   static const planMonthDraft = '/api/plans/month-draft';
+  // 결제 전 카드 추천 (#278)
+  static const recommendationManual = '/api/recommendations/manual';
+  static const recommendationChat = '/api/recommendations/chat';
   static const plannedExpenses = '/api/planned-expenses';
   static String plannedExpense(String id) => '/api/planned-expenses/$id';
   static String planJob(String jobId) => '/api/plans/jobs/$jobId';

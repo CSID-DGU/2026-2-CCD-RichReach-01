@@ -1,11 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_config.dart';
+import '../../../core/network/api_providers.dart';
+import '../../onboarding/application/onboarding_data_providers.dart';
+import '../data/api_recommendation_repository.dart';
 import '../data/recommendation_repository.dart';
 import '../domain/recommendation.dart';
 
-/// 카드 추천 저장소. API 연동 전까지는 가짜 구현을 쓴다.
+/// 카드 추천 저장소. `USE_FAKE_API=false`면 백엔드 API를 쓴다.
 final recommendationRepositoryProvider = Provider<RecommendationRepository>(
-  (ref) => FakeRecommendationRepository(),
+  (ref) => ApiConfig.useFakeApi
+      ? FakeRecommendationRepository()
+      : ApiRecommendationRepository(
+          ref.watch(apiClientProvider),
+          ref.watch(cardRepositoryProvider),
+        ),
 );
 
 /// 지금 시각. 테스트에서 날짜를 고정할 때 바꿔 끼운다.
@@ -31,10 +40,16 @@ class RecommendationChat extends Notifier<List<ChatMessage>> {
     final text = question.trim();
     if (text.isEmpty || isWaiting) return;
 
+    final previous = [
+      for (final message in state)
+        if (message is! PendingMessage) message,
+    ];
     state = [...state, UserMessage(text), const PendingMessage()];
     Recommendation answer;
     try {
-      answer = await ref.read(recommendationRepositoryProvider).recommend(text);
+      answer = await ref
+          .read(recommendationRepositoryProvider)
+          .recommend(text, previous: previous);
     } catch (_) {
       answer = const TextReply(message: '추천을 불러오지 못했어요. 잠시 후 다시 물어봐 주세요.');
     }

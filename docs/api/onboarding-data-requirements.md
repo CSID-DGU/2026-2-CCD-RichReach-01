@@ -856,7 +856,7 @@ PLAN-02 카드 이미지의 톱니 버튼으로 엽니다 (`/plan/cards/:cardId/
 |---|---|---|---|
 | 이번 달 계획 (예산·현재 사용·도넛·예상 혜택) | PLAN-01과 같음 | `GET /api/plans?month=`, `GET /api/transactions/summary?month=` | ✅ 연동됨 (PLAN-01과 같은 데이터) |
 | 플랜이 없을 때 안내 | 이번 달 플랜 유무 | `GET /api/plans?month=` → 404 `PLAN-001` | ✅ 연동됨 |
-| 빠른 실행: 결제 전 카드 추천 | - | 카드 추천 화면으로 이동. 금액·업종을 직접 고르는 추천은 `POST /api/recommendations/manual` ([recommendation-api.md](recommendation-api.md#구현됨-수동-입력-추천-278-1단계)), 자연어 질문은 후속 | 🟡 수동 입력 API 있음 (#278), 연동 전 |
+| 빠른 실행: 결제 전 카드 추천 | - | 카드 추천 화면으로 이동. 앱이 질문에서 업종을 읽으면 `POST /api/recommendations/manual`, 못 읽으면 `POST /api/recommendations/chat` ([recommendation-api.md](recommendation-api.md#구현됨-수동-입력-추천-278-1단계)) | ✅ 연동 (프론트 #338) |
 | 빠른 실행: 예정지출 관리 | - | 예정지출 관리(HOME-07)로 이동 | ✅ 화면 연결 (#258) |
 | 카드별 목표 사용금액 | PLAN-01과 같음 | `cardTargets` + 월 요약 `cards[].amount` | ✅ 연동됨 |
 | 최근 사용 내역 (2건) | 가맹점, 업종, 카드, 금액, **그 거래의 예상 혜택** | 거래내역과 같은 이번 달 거래 목록의 앞 2건, `benefitAmount` | ✅ 연동됨 |

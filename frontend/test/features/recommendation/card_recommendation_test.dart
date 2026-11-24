@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/app_route.dart';
 import 'package:frontend/features/onboarding/domain/transaction.dart';
 import 'package:frontend/features/plan/presentation/card_plan_detail_screen.dart';
+import 'package:frontend/features/recommendation/data/recommendation_question.dart';
 import 'package:frontend/features/recommendation/data/recommendation_repository.dart';
 import 'package:frontend/features/recommendation/domain/recommendation.dart';
 import 'package:frontend/features/recommendation/presentation/card_recommendation_screen.dart';
@@ -24,26 +25,26 @@ void main() {
   group('질문 읽기', () {
     test('업종과 가맹점 이름으로 업종을 찾는다', () {
       expect(
-        FakeRecommendationRepository.categoryOf('아웃백에서 10만 원'),
+        RecommendationQuestion.categoryOf('아웃백에서 10만 원'),
         SpendingCategory.dining,
       );
       expect(
-        FakeRecommendationRepository.categoryOf('GS25 갈 건데'),
+        RecommendationQuestion.categoryOf('GS25 갈 건데'),
         SpendingCategory.convenienceStore,
       );
       expect(
-        FakeRecommendationRepository.categoryOf('스타벅스 갈래'),
+        RecommendationQuestion.categoryOf('스타벅스 갈래'),
         SpendingCategory.cafe,
       );
-      expect(FakeRecommendationRepository.categoryOf('뭐 쓰지?'), isNull);
+      expect(RecommendationQuestion.categoryOf('뭐 쓰지?'), isNull);
     });
 
     test('만·천·쉼표 금액을 원으로 바꾼다', () {
-      expect(FakeRecommendationRepository.amountOf('10만 원 결제'), 100000);
-      expect(FakeRecommendationRepository.amountOf('5만원이면?'), 50000);
-      expect(FakeRecommendationRepository.amountOf('3천원'), 3000);
-      expect(FakeRecommendationRepository.amountOf('25,000원 결제'), 25000);
-      expect(FakeRecommendationRepository.amountOf('GS25 갈 건데'), isNull);
+      expect(RecommendationQuestion.amountOf('10만 원 결제'), 100000);
+      expect(RecommendationQuestion.amountOf('5만원이면?'), 50000);
+      expect(RecommendationQuestion.amountOf('3천원'), 3000);
+      expect(RecommendationQuestion.amountOf('25,000원 결제'), 25000);
+      expect(RecommendationQuestion.amountOf('GS25 갈 건데'), isNull);
     });
   });
 
