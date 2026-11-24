@@ -110,6 +110,7 @@ class RecommendationChatServiceTest {
 
     private static ManualRecommendationResponse textResult() {
         return new ManualRecommendationResponse(ManualRecommendationResponse.Type.TEXT, "계산 근거 없음",
-            new ManualRecommendationResponse.Parsed(SpendingCategory.SHOPPING, 10_000L), null, List.of(), "범위");
+            new ManualRecommendationResponse.Parsed(SpendingCategory.SHOPPING, 10_000L), null, List.of(), List.of(),
+            null, "범위");
     }
 }

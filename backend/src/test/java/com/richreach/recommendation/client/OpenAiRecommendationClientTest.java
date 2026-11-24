@@ -55,10 +55,10 @@ class OpenAiRecommendationClientTest {
 
     private static ManualRecommendationResponse recommendation() {
         var card = new ManualRecommendationResponse.Card(1, 2, CardCompany.KB, "추천카드", null,
-            1200, true, List.of());
-        var other = new ManualRecommendationResponse.Card(3, 4, CardCompany.KB, "대안카드", null,
-            500, true, List.of());
+            1200, 4.0, null, List.of(), true, List.of());
+        var other = new ManualRecommendationResponse.Comparison(3, 4, CardCompany.KB, "대안카드", null, 500);
         return new ManualRecommendationResponse(ManualRecommendationResponse.Type.CARD, "서버 고정 설명",
-            new ManualRecommendationResponse.Parsed(SpendingCategory.SHOPPING, 30000), card, List.of(other), "범위");
+            new ManualRecommendationResponse.Parsed(SpendingCategory.SHOPPING, 30000L), card, List.of(other),
+            List.of(), null, "범위");
     }
 }

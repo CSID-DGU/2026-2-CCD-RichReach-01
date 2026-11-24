@@ -207,6 +207,8 @@ class ManualRecommendationApiTest {
             .andExpect(jsonPath("$.data.card.cardProductId").value(strong))
             .andExpect(jsonPath("$.data.card.cardCompany").value("KB"))
             .andExpect(jsonPath("$.data.card.expectedBenefit").value(1000))
+            .andExpect(jsonPath("$.data.card.benefitRatePercent").value(10.0))
+            .andExpect(jsonPath("$.data.card.reasons[0]").isNotEmpty())
             .andExpect(jsonPath("$.data.card.confirmedOnly").value(true))
             .andExpect(jsonPath("$.data.alternatives[0].cardId").value(weakCard))
             .andExpect(jsonPath("$.data.alternatives[0].expectedBenefit").value(500))
@@ -231,6 +233,28 @@ class ManualRecommendationApiTest {
             .andExpect(jsonPath("$.data.card.cardId").value(weakCard))
             .andExpect(jsonPath("$.data.card.expectedBenefit").value(500))
             .andExpect(jsonPath("$.data.alternatives").isEmpty());
+    }
+
+    @Test
+    @DisplayName("금액을 보내지 않으면 금액 구간별로 가장 유리한 카드를 준다")
+    void recommendsPerAmountRange() throws Exception {
+        long strong = insertProduct("추천에이카드");
+        long weak = insertProduct("추천비카드");
+        insertRule(strong, 10, 5_000, true);
+        insertRule(weak, 5, 5_000, true);
+        syncCards("추천에이카드", "추천비카드");
+        long strongCard = ownedCardId("추천에이카드");
+
+        recommend(token, "{\"category\":\"CAFE\"}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.type").value("RANGE"))
+            .andExpect(jsonPath("$.data.card").doesNotExist())
+            .andExpect(jsonPath("$.data.parsed.amount").doesNotExist())
+            .andExpect(jsonPath("$.data.ranges.length()").value(3))
+            .andExpect(jsonPath("$.data.ranges[0].label").value("10,000원 이하"))
+            .andExpect(jsonPath("$.data.ranges[0].amount").value(5000))
+            .andExpect(jsonPath("$.data.ranges[0].card.cardId").value(strongCard))
+            .andExpect(jsonPath("$.data.ranges[0].card.expectedBenefit").value(500))
+            .andExpect(jsonPath("$.data.followUp").isNotEmpty());
     }
 
     @Test
@@ -272,7 +296,7 @@ class ManualRecommendationApiTest {
             .andExpect(jsonPath("$.code").value("RECOMMEND-001"));
         recommend(token, "{\"category\":\"CAFE\",\"amount\":100000001}").andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("RECOMMEND-001"));
-        recommend(token, "{\"category\":\"CAFE\"}").andExpect(status().isBadRequest())
+        recommend(token, "{\"category\":\"CAFE\",\"amount\":-1}").andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("RECOMMEND-001"));
     }
 
