@@ -48,7 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>카드별 추가 혜택은 {@code 계산(이번 달 지금까지 쓴 금액 + 이번 결제) - 계산(지금까지 쓴 금액)}이다. 혜택 계산기가 월 한도와
  *       전월 실적 조건을 이미 반영하므로, 한도가 거의 찬 카드는 늘어나는 혜택이 작거나 0이 된다. 이번 달 사용액은 승인일 기준으로
  *       취소·환불을 뺀 값이고, 전월 실적은 수집한 지난달 거래로 계산한 추정값이다.</li>
- *   <li><b>금액을 보내면</b> 가장 유리한 카드({@code CARD})와 나머지 후보의 예상 혜택(혜택이 없으면 0원)을 준다. 혜택이 큰 순서이고,
+ *   <li><b>금액을 보내면</b> 가장 유리한 카드({@code CARD})와 나머지 후보 중 혜택이 양수인 카드(대안)를 준다. 혜택이 큰 순서이고,
  *       같으면 보유카드 ID가 작은 쪽이 먼저다. 늘어나는 혜택이 양수인 카드가 하나도 없으면 {@code TEXT}다. 이것은 "카드에 혜택이
  *       없다"가 아니라 "현재 확인된 규칙으로 계산할 수 있는 혜택이 없다"는 뜻이다.</li>
  *   <li><b>금액을 보내지 않으면</b> 대표 금액 세 개(5천, 2만, 5만 원)로 각각 계산해 금액 구간별로 가장 유리한 카드({@code RANGE})를
@@ -155,7 +155,8 @@ public class ManualRecommendationService {
             return new ManualRecommendationResponse(Type.TEXT, TEXT_MESSAGE, parsed, null, List.of(), List.of(), null,
                 SCOPE);
         }
-        List<Comparison> alternatives = ranked.stream().skip(1).limit(MAX_ALTERNATIVES)
+        // 대안은 늘어나는 혜택이 양수인 카드만이다. 추천 채팅이 "계산 가능한 다른 카드가 있는지"를 이 목록으로 판단한다.
+        List<Comparison> alternatives = ranked.stream().skip(1).filter(entry -> entry.gain() > 0).limit(MAX_ALTERNATIVES)
             .map(ManualRecommendationService::comparison).toList();
         String scope = best.result().confirmedOnly() ? SCOPE : SCOPE + UNCONFIRMED_SCOPE_SUFFIX;
         return new ManualRecommendationResponse(Type.CARD, message(best), parsed, detail(best, amount, spending),

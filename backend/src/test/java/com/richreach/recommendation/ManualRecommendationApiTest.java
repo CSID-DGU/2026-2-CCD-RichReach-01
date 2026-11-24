@@ -232,8 +232,7 @@ class ManualRecommendationApiTest {
             .andExpect(jsonPath("$.data.type").value("CARD"))
             .andExpect(jsonPath("$.data.card.cardId").value(weakCard))
             .andExpect(jsonPath("$.data.card.expectedBenefit").value(500))
-            .andExpect(jsonPath("$.data.alternatives[0].cardId").value(strongCard))
-            .andExpect(jsonPath("$.data.alternatives[0].expectedBenefit").value(0));
+            .andExpect(jsonPath("$.data.alternatives").isEmpty());
     }
 
     @Test

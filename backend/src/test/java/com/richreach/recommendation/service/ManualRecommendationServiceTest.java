@@ -167,7 +167,7 @@ class ManualRecommendationServiceTest {
     }
 
     @Test
-    @DisplayName("월 한도가 이미 찬 카드는 늘어나는 혜택이 0이라 추천에서 빠지고 대안에 0원으로 나온다")
+    @DisplayName("월 한도가 이미 찬 카드는 늘어나는 혜택이 0이라 추천에서도 대안에서도 빠진다")
     void aCardWhoseLimitIsAlreadyReachedHasNoGain() {
         cards(card(1, 100L, "한도 찬 카드", true), card(2, 200L, "여유 카드", true));
         calculator.rule(100L, 10, 1_000, 0); // 월 한도 1,000원
@@ -180,8 +180,7 @@ class ManualRecommendationServiceTest {
 
         assertThat(response.card().cardId()).isEqualTo(2);
         assertThat(response.card().expectedBenefit()).isEqualTo(100);
-        assertThat(response.alternatives()).extracting(Comparison::cardId).containsExactly(1L);
-        assertThat(response.alternatives().get(0).expectedBenefit()).isZero();
+        assertThat(response.alternatives()).isEmpty();
     }
 
     @Test
@@ -238,8 +237,7 @@ class ManualRecommendationServiceTest {
         ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 10_000L));
 
         assertThat(response.card().cardId()).isEqualTo(1);
-        assertThat(response.alternatives()).extracting(Comparison::cardId).containsExactly(2L);
-        assertThat(response.alternatives().get(0).expectedBenefit()).isZero();
+        assertThat(response.alternatives()).isEmpty();
         assertThat(calculator.lastPreviousSpend.get(100L)).isEqualTo(400_000);
         assertThat(calculator.lastPreviousSpend.get(200L)).isEqualTo(100_000);
     }
@@ -268,22 +266,25 @@ class ManualRecommendationServiceTest {
     }
 
     @Test
-    @DisplayName("대안 카드는 최대 10장이고 혜택이 없는 카드도 0원으로 나온다")
-    void listsAllOtherCardsUpToTheLimit() {
-        OwnedCardResponse[] many = new OwnedCardResponse[13];
+    @DisplayName("대안은 혜택이 양수인 카드만 최대 10장이다")
+    void alternativesAreOnlyPositiveAndLimited() {
+        OwnedCardResponse[] many = new OwnedCardResponse[14];
         for (int i = 0; i < many.length; i++) {
             many[i] = card(i + 1, 100L + i, "카드" + i, true);
         }
         cards(many);
-        calculator.rule(100L, 5, 100_000, 0);
-        calculator.rule(101L, 3, 100_000, 0);
+        // 13장은 혜택이 양수이고(율이 높은 쪽이 앞), 마지막 1장은 규칙이 없어 혜택이 0이다.
+        for (int i = 0; i < 13; i++) {
+            calculator.rule(100L + i, 13 - i, 100_000, 0);
+        }
 
         ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 10_000L));
 
         assertThat(response.card().cardId()).isEqualTo(1);
         assertThat(response.alternatives()).hasSize(ManualRecommendationService.MAX_ALTERNATIVES);
+        assertThat(response.alternatives()).allSatisfy(alternative -> assertThat(alternative.expectedBenefit())
+            .isPositive());
         assertThat(response.alternatives().get(0).cardId()).isEqualTo(2);
-        assertThat(response.alternatives().get(1).expectedBenefit()).isZero();
     }
 
     // ---- 추천 이유와 실적 ----

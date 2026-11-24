@@ -14,7 +14,7 @@ import java.util.List;
  * @param message          사용자에게 보여줄 문구
  * @param parsed           서버가 받아들인 입력. {@code RANGE}이면 {@code amount}가 {@code null}이다.
  * @param card             가장 유리한 카드. {@code CARD}일 때만 있다.
- * @param alternatives     {@code CARD}일 때 나머지 후보 카드의 예상 혜택. 혜택이 큰 순서이고 혜택이 없는 카드는 0원이다.
+ * @param alternatives     {@code CARD}일 때 나머지 후보 중 늘어나는 혜택이 양수인 카드(최대 10장). 혜택이 큰 순서이고, 없으면 빈 목록이다.
  * @param ranges           {@code RANGE}일 때 금액 구간별로 가장 유리한 카드. 유리한 카드가 없는 구간은 빠진다.
  * @param followUp         {@code RANGE}일 때 구간 아래에 이어서 보여줄 안내
  * @param calculationScope 계산에 포함한 혜택의 범위 안내. 화면의 안내 문구로 쓴다.
