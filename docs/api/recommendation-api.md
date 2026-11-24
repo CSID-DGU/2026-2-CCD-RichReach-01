@@ -51,9 +51,7 @@
   },
   "alternatives": [
     { "cardId": 5, "cardProductId": 500, "cardCompany": "SHINHAN", "cardName": "신한카드 Deep Dream",
-      "imageUrl": null, "expectedBenefit": 500 },
-    { "cardId": 6, "cardProductId": 600, "cardCompany": "WOORI", "cardName": "우리카드",
-      "imageUrl": null, "expectedBenefit": 0 }
+      "imageUrl": null, "expectedBenefit": 500 }
   ],
   "ranges": [],
   "followUp": null,
@@ -64,7 +62,7 @@
 - `card`: 가장 유리한 카드. `benefitRatePercent`는 이번 결제 금액 대비 예상 혜택의 비율(%)이라 한도 때문에 줄어든 만큼 반영됩니다. 화면은 **업종 이름과 합쳐 "카페 10% 혜택"처럼** 씁니다. (서버는 할인·적립·캐시백을 구분해 내려주지 않습니다)
 - `performance`: 이번 결제를 반영한 이번 달 사용 금액(`monthSpendKrw`)과 아직 채우지 못한 가장 낮은 실적 구간(`nextTierKrw`), 남은 금액(`remainingKrw`). 모두 채웠으면 두 값이 `null`이고, 카드의 실적 구간을 알 수 없으면 `performance` 자체가 `null`입니다. 화면의 "실적까지 40,000원 남음"은 `remainingKrw`로 만듭니다. 실적 제외 조건은 문장으로만 있어 금액에서 뺄 수 없어서 사용 금액 그대로입니다.
 - `reasons`: 체크 표시와 함께 보여줄 추천 이유. 서버가 정한 고정 문구입니다.
-- `alternatives`: **나머지 후보 카드 전부**(최대 10장)의 예상 혜택입니다. 혜택이 큰 순서이고, 혜택이 없는 카드는 `0`입니다.
+- `alternatives`: 나머지 후보 카드 중 **늘어나는 혜택이 양수인 카드**(최대 10장)입니다. 혜택이 큰 순서이고, 계산 가능한 다른 카드가 없으면 빈 목록입니다. (추천 채팅 `/chat`도 이 목록으로 "다른 카드가 있는지"를 판단합니다)
 - `planImpact`(결제 후 플랜 변화)는 아직 내려주지 않습니다. (#278 4단계)
 
 *`type=RANGE` (금액을 보내지 않음, RECOMMEND-03)*

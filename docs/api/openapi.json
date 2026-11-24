@@ -3335,7 +3335,7 @@
           },
           "alternatives": {
             "type": "array",
-            "description": "CARD일 때 나머지 후보 카드(최대 10장)의 예상 혜택. 혜택이 큰 순서",
+            "description": "CARD일 때 나머지 후보 중 늘어나는 혜택이 양수인 카드(최대 10장). 혜택이 큰 순서",
             "items": {
               "$ref": "#/components/schemas/ManualRecommendationComparison"
             }
