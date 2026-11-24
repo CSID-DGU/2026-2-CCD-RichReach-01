@@ -107,6 +107,12 @@
 
 **⚠️ 지금 실제 카드 데이터로는 `TEXT`가 나올 수 있습니다.** 서버는 기본 설정에서 사람이 원문과 대조해 승인한 혜택 규칙(`rule_engine_ready`)만 계산하고, 규칙의 `merchants`(가맹점) 칸에 값이 있으면 가맹점 지정 혜택으로 보고 계산에서 뺍니다. 시연 카드 12장의 규칙 21개는 대부분 가맹점 지정·정액 캐시백·시간대나 요일 조건부라 계산되지 않고, 전 가맹점 기본 비율 규칙(이지캐시백 0.2% 등)만 원문 확인과 가맹점 칸 정리를 거쳐 쓸 수 있습니다. 그래서 **앱은 `TEXT`를 정상 응답으로 처리해야 합니다.** `BENEFIT_RULE_SELECTION=ALL`은 개발·시연용이고 가맹점 지정 규칙을 계산에 넣어 주지 않으며 **운영에서는 쓰면 안 됩니다.**
 
+**앱 구현 (프론트 #338)**: 팀 결정으로 **앱이 질문에서 업종을 읽으면 `/manual`, 못 읽으면 `/chat`**을 씁니다(`ApiRecommendationRepository`).
+- 업종을 읽음 → 브랜드마다 혜택이 다른 업종(편의점·카페)은 앱이 브랜드를 되묻고 → `/manual`에 `category`, 읽은 `amount`, 가맹점 이름 `merchantName`(서버는 아직 계산에 쓰지 않음)을 보냅니다. 금액을 못 읽으면 `amount` 없이 보내 구간별 추천을 받습니다. 구간별 추천 뒤 금액만 답하면(예: "2만 원") 앞 답변의 업종으로 다시 `/manual`을 부릅니다.
+- 업종을 못 읽음 → `/chat`에 질문과 지금 대화의 이전 말(최근 10개, 500자까지)을 `history`로 보냅니다. 추천이 오면 `reply`를 말풍선 문구로, `recommendation`을 카드 UI로 보여 주고, 되물으면 `reply`만 보여 줍니다.
+- 화면 문구: 혜택 "{업종} {benefitRatePercent}% 혜택"(정수면 "10%", 아니면 소수 둘째 자리까지), 실적 "실적까지 {remainingKrw} 남음"(모두 채웠으면 "실적 기준 달성", `performance`가 null이면 숨김), 플랜 변화 "{업종} 남은 목표 {remainingBeforeKrw} → {remainingAfterKrw}"(넘기면 "→ {overTargetKrw} 초과", 플랜에 배분이 없으면 "목표 없음 · {overTargetKrw} 초과", `planImpact`가 null이면 숨김), 구간 "{amount} 결제 시 약 {expectedBenefit} 혜택".
+- `TEXT`는 일반 답변으로, `RECOMMEND-001`은 서버 문구를 그대로 보여 줍니다. 대화 기록은 서버가 저장하지 않아 앱을 켜 둔 동안만 남습니다.
+
 **프론트 연결 방법**: `FakeRecommendationRepository`를 실제 구현으로 바꿉니다. 입력 방식에 따라 두 API를 씁니다.
 
 1. **자연어 질문 그대로 보내기** → `POST /api/recommendations/chat` ([자세한 내용](recommendation-chat-ai.md)). 서버가 질문에서 금액·업종·가맹점을 읽고 검증한 뒤 이 `/manual` 계산을 호출합니다. 응답의 `recommendation`이 `/manual` 응답과 같은 구조입니다. 금액이나 업종이 없으면 서버가 되묻는 문구를 돌려줍니다.
