@@ -33,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,6 +88,26 @@ public class PlanQueryService {
             additionalBenefit(plan.getExpectedBenefit(), baseline), cardTargets,
             recalculationJobId(userId, planMonth), plan.effectiveRecommendationPreference(),
             confirmedBudget(plan.getProfileId()));
+    }
+
+    /**
+     * 그 달에 보여줄 플랜에서 보유카드 한 장이 한 업종에 쓰기로 한 목표 금액(원). 월간 플랜의 카드별·업종별 목표(PLAN-02·03)와 같은
+     * 값이다. 그 달의 플랜이 없으면 비어 있다. 플랜은 있는데 그 카드와 업종에 배분이 없으면 0이다. (플랜이 그 카드로 그 업종에 쓰지
+     * 않기로 했다는 뜻이다) 읽기만 하고, 결제 후 플랜 변화를 안내하는 추천이 쓴다.
+     */
+    @Transactional(readOnly = true)
+    public OptionalLong findCardCategoryTarget(long userId, YearMonth month, long userCardId,
+                                               SpendingCategory category) {
+        Map<PlanStrategy, MonthlyPlan> latest = latestByStrategy(plans.findByUserIdAndPlanMonth(userId,
+            month.toString()));
+        Optional<PlanStrategy> primary = PlanPrimarySelector.select(latest.keySet());
+        if (primary.isEmpty()) {
+            return OptionalLong.empty();
+        }
+        long target = allocations.findByPlanId(latest.get(primary.get()).getId()).stream()
+            .filter(allocation -> allocation.getUserCardId().equals(userCardId) && allocation.getCategory() == category)
+            .mapToLong(PlanCardAllocation::getTargetAmount).sum();
+        return OptionalLong.of(target);
     }
 
     /**
