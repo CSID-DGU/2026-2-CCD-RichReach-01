@@ -39,6 +39,56 @@ void main() {
       expect(RecommendationQuestion.categoryOf('뭐 쓰지?'), isNull);
     });
 
+    test('브랜드 줄임말도 알아보고, 가맹점은 정식 이름으로 돌려준다', () {
+      for (final question in ['스벅 갈래', '컴포즈 갈 건데', '빽다방 5천원', '씨유 갈래']) {
+        expect(
+          RecommendationQuestion.categoryOf(question),
+          isNotNull,
+          reason: question,
+        );
+      }
+      expect(RecommendationQuestion.merchantOf('스벅 5천원'), '스타벅스');
+      expect(RecommendationQuestion.merchantOf('투썸 갈래'), '투썸플레이스');
+      expect(RecommendationQuestion.merchantOf('커피빈 갈래'), '커피빈');
+      expect(RecommendationQuestion.merchantOf('아웃백에서 10만 원'), '아웃백');
+      // 업종 이름은 가맹점이 아니다.
+      expect(RecommendationQuestion.merchantOf('카페 갈래'), isNull);
+    });
+
+    test('브랜드를 말하면 되묻지 않고, 업종만 말하면 브랜드 버튼을 보여준다', () {
+      expect(
+        RecommendationQuestion.brandFollowUp('빽다방 갈래', SpendingCategory.cafe),
+        isNull,
+      );
+      final cafe = RecommendationQuestion.brandFollowUp(
+        '카페 갈 건데',
+        SpendingCategory.cafe,
+      )!;
+      expect(cafe.options.map((o) => o.label), [
+        '스타벅스',
+        '투썸플레이스',
+        '메가커피',
+        '컴포즈커피',
+        '이디야',
+        '빽다방',
+        '할리스',
+        '폴바셋',
+        '커피빈',
+        '파스쿠찌',
+      ]);
+      expect(cafe.options[3].question, '컴포즈커피 갈 건데');
+      final store = RecommendationQuestion.brandFollowUp(
+        '편의점 갈 건데',
+        SpendingCategory.convenienceStore,
+      )!;
+      expect(store.options.map((o) => o.label), [
+        'GS25',
+        'CU',
+        '세븐일레븐',
+        '이마트24',
+      ]);
+    });
+
     test('만·천·쉼표 금액을 원으로 바꾼다', () {
       expect(RecommendationQuestion.amountOf('10만 원 결제'), 100000);
       expect(RecommendationQuestion.amountOf('5만원이면?'), 50000);

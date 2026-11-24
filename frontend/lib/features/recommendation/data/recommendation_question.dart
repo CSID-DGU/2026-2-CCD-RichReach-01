@@ -6,36 +6,65 @@ import '../domain/recommendation.dart';
 /// 실제 API 구현은 여기서 업종을 읽으면 `POST /api/recommendations/manual`로, 못 읽으면
 /// `POST /api/recommendations/chat`(서버가 자연어를 해석)으로 보낸다.
 abstract final class RecommendationQuestion {
-  /// 업종을 알아볼 단어 (가맹점 이름 포함)
+  /// 업종을 알아볼 단어 (가맹점 이름 포함). 브랜드를 되묻는 업종의 브랜드는 [_brands]에 있다.
   static const _keywords = {
-    SpendingCategory.cafe: ['카페', '커피', '스타벅스', '투썸', '메가커피', '이디야'],
-    SpendingCategory.convenienceStore: [
-      '편의점',
-      'GS25',
-      'CU',
-      '세븐일레븐',
-      '이마트24',
-      '마트',
-    ],
+    SpendingCategory.cafe: ['카페', '커피'],
+    SpendingCategory.convenienceStore: ['편의점', '마트'],
     SpendingCategory.dining: ['외식', '식당', '아웃백', '맛집', '레스토랑', '배달', '치킨'],
     SpendingCategory.shopping: ['쇼핑', '쿠팡', '무신사', '온라인', '백화점', '옷'],
     SpendingCategory.transport: ['교통', '택시', '버스', '지하철', 'KTX'],
     SpendingCategory.fuelVehicle: ['주유', '충전소', '세차'],
   };
 
-  /// 브랜드마다 혜택이 다른 업종: 되묻는 대상, 브랜드를 알아볼 단어와, 되물을 때 보여줄 브랜드
+  /// 업종 이름이라 가맹점으로 보지 않는 단어
+  static const _generic = {
+    '카페', '커피', '편의점', '마트', '외식', '식당', '맛집', '레스토랑', '배달', //
+    '치킨', '쇼핑', '온라인', '백화점', '옷', '교통', '택시', '버스', '지하철', //
+    '주유', '충전소', '세차',
+  };
+
+  /// 브랜드마다 혜택이 다른 업종: 되묻는 대상과 브랜드(버튼 이름, 알아볼 단어. 줄임말 포함).
+  /// 되물을 때는 이 순서대로 버튼을 보여준다.
   static const _brands = {
     SpendingCategory.convenienceStore: (
       subject: '편의점',
-      words: ['GS25', 'CU', '세븐일레븐', '이마트24'],
-      options: ['GS25', 'CU', '세븐일레븐', '이마트24'],
+      brands: [
+        (name: 'GS25', words: ['GS25', 'GS 25', '지에스25']),
+        (name: 'CU', words: ['CU', '씨유']),
+        (name: '세븐일레븐', words: ['세븐일레븐', '7-ELEVEN', '7일레븐']),
+        (name: '이마트24', words: ['이마트24', 'EMART24']),
+      ],
     ),
     SpendingCategory.cafe: (
       subject: '카페',
-      words: ['스타벅스', '투썸', '메가커피', '이디야'],
-      options: ['스타벅스', '투썸플레이스', '메가커피', '이디야'],
+      brands: [
+        (name: '스타벅스', words: ['스타벅스', '스벅']),
+        (name: '투썸플레이스', words: ['투썸']),
+        (name: '메가커피', words: ['메가커피', '메가 커피', '메가MGC']),
+        (name: '컴포즈커피', words: ['컴포즈']),
+        (name: '이디야', words: ['이디야']),
+        (name: '빽다방', words: ['빽다방']),
+        (name: '할리스', words: ['할리스']),
+        (name: '폴바셋', words: ['폴바셋']),
+        (name: '커피빈', words: ['커피빈']),
+        (name: '파스쿠찌', words: ['파스쿠찌']),
+      ],
     ),
   };
+
+  /// 질문에 든 브랜드 (업종, 버튼 이름). 없으면 null.
+  static (SpendingCategory, String)? _brandOf(String question) {
+    final text = question.toUpperCase();
+    for (final MapEntry(key: category, value: (:brands, subject: _))
+        in _brands.entries) {
+      for (final (:name, :words) in brands) {
+        if (words.any((word) => text.contains(word.toUpperCase()))) {
+          return (category, name);
+        }
+      }
+    }
+    return null;
+  }
 
   /// 업종을 알 수 없을 때의 안내 (가짜 구현)
   static const unknownCategoryReply = TextReply(
@@ -46,6 +75,7 @@ abstract final class RecommendationQuestion {
 
   /// 질문에서 업종을 찾는다. 모르면 null.
   static SpendingCategory? categoryOf(String question) {
+    if (_brandOf(question) case (final category, _)) return category;
     final text = question.toUpperCase();
     for (final MapEntry(key: category, value: words) in _keywords.entries) {
       if (words.any((word) => text.contains(word.toUpperCase()))) {
@@ -74,18 +104,15 @@ abstract final class RecommendationQuestion {
     };
   }
 
-  /// 질문에 든 가맹점·브랜드 이름 (예: "스타벅스", "GS25", "아웃백"). 없으면 null.
+  /// 질문에 든 가맹점·브랜드 이름 (예: "스타벅스", "투썸플레이스", "아웃백"). 없으면 null.
+  /// 브랜드는 줄임말도 정식 이름으로 돌려준다 (예: "스벅" → "스타벅스").
   /// 업종 이름(예: "카페", "편의점")은 가맹점이 아니라 빼고 찾는다.
   static String? merchantOf(String question) {
-    const generic = {
-      '카페', '커피', '편의점', '마트', '외식', '식당', '맛집', '레스토랑', '배달', //
-      '치킨', '쇼핑', '온라인', '백화점', '옷', '교통', '택시', '버스', '지하철', //
-      '주유', '충전소', '세차',
-    };
+    if (_brandOf(question) case (_, final name)) return name;
     final text = question.toUpperCase();
     for (final words in _keywords.values) {
       for (final word in words) {
-        if (!generic.contains(word) && text.contains(word.toUpperCase())) {
+        if (!_generic.contains(word) && text.contains(word.toUpperCase())) {
           return word;
         }
       }
@@ -101,9 +128,8 @@ abstract final class RecommendationQuestion {
   ) {
     final brand = _brands[category];
     if (brand == null) return null;
-    final (:subject, :words, :options) = brand;
-    final text = question.toUpperCase();
-    if (words.any((word) => text.contains(word.toUpperCase()))) return null;
+    final (:subject, :brands) = brand;
+    if (_brandOf(question) != null) return null;
 
     // 질문에 들어 있는 대상 이름(예: "편의점", "편의·마트")을 브랜드로 바꾼다.
     final named = [
@@ -118,8 +144,8 @@ abstract final class RecommendationQuestion {
       category: category,
       subject: subject,
       options: [
-        for (final brand in options)
-          FollowUpOption(label: brand, question: withBrand(brand)),
+        for (final (:name, words: _) in brands)
+          FollowUpOption(label: name, question: withBrand(name)),
       ],
     );
   }
