@@ -3,6 +3,7 @@ package com.richreach.recommendation.service;
 import com.richreach.benefit.dto.BenefitQuery;
 import com.richreach.benefit.dto.BenefitResult;
 import com.richreach.benefit.service.BenefitCalculator;
+import com.richreach.benefit.service.BenefitRuleSupport;
 import com.richreach.benefit.service.CardPerformanceAnalyzer;
 import com.richreach.card.dto.CalculationRule;
 import com.richreach.card.dto.OwnedCardResponse;
@@ -220,7 +221,11 @@ public class ManualRecommendationService {
         List<String> reasons = new ArrayList<>();
         reasons.add(REASON_BEST);
 
-        OptionalLong limit = CardPerformanceAnalyzer.monthlyLimit(cardRules, spending.previousOf(card.cardId()));
+        // 한도 사유는 혜택 계산기가 실제로 계산에 넣는 규칙의 한도만으로 판단한다. 계산기가 빼는 규칙(가맹점 지정, 정액, 마일리지,
+        // 다른 혜택과의 관계를 따지는 규칙, 일·횟수 한도 규칙)의 한도가 합에 들어가면 한도가 이미 찼는데도 "남아 있다"고 안내한다.
+        OptionalLong limit = CardPerformanceAnalyzer.monthlyLimit(
+            cardRules.stream().filter(ManualRecommendationService::countedByCalculator).toList(),
+            spending.previousOf(card.cardId()));
         if (limit.isPresent()) {
             reasons.add(best.result().totalBenefit() >= limit.getAsLong() ? REASON_LIMIT_REACHED : REASON_LIMIT_LEFT);
         }
@@ -241,6 +246,19 @@ public class ManualRecommendationService {
         return new Card(card.cardId(), card.cardProductId(), card.cardCompany(), card.cardName(), card.imageUrl(),
             best.gain(), ratePercent(best.gain(), amount), performance, reasons, best.result().confirmedOnly(),
             best.result().notes());
+    }
+
+    /**
+     * 혜택 계산기가 이 규칙을 혜택 계산에 넣는지. {@code BenefitMath.skipReason}과 {@code SimpleBenefitCalculator}가 규칙을 빼는
+     * 기준(전월실적 조건은 제외)과 같다. 계산기를 바꾸면 이 기준도 함께 봐야 한다.
+     */
+    static boolean countedByCalculator(CalculationRule rule) {
+        String mode = rule.ruleMode();
+        return !rule.merchantSpecific()
+            && rule.ratePercent() != null
+            && !"MILE".equals(rule.rewardUnit())
+            && !("REPLACES_BASE".equals(mode) || "PREFER_HIGHER".equals(mode) || "ANNUAL_BONUS".equals(mode))
+            && !BenefitRuleSupport.hasUnmodelledLimits(rule);
     }
 
     /**

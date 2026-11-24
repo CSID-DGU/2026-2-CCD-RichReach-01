@@ -348,6 +348,55 @@ class ManualRecommendationServiceTest {
             .contains(ManualRecommendationService.REASON_LIMIT_REACHED);
     }
 
+    /** 계산기가 계산에 넣는지 여부만 바꿔 가며 쓰는 규칙. 월 한도를 가진다. */
+    private static CalculationRule limitRule(long id, boolean merchantSpecific, BigDecimal rate, String unit,
+                                             String mode, Long monthlyLimit) {
+        return new CalculationRule(id, Set.of(SpendingCategory.CAFE), false, merchantSpecific, rate, unit, monthlyLimit,
+            null, null, null, null, null, null, null, mode, null, null, true);
+    }
+
+    @Test
+    @DisplayName("계산기가 빼는 규칙(가맹점 지정, 정액, 마일리지, 대체 혜택)의 한도는 한도 사유에 넣지 않는다")
+    void limitReasonIgnoresRulesTheCalculatorSkips() {
+        cards(card(1, 100L, "카드", true));
+        calculator.rule(100L, 50, 1_000, 0); // 계산에 들어가는 일반 규칙의 월 한도는 1,000원
+        when(ruleQuery.findForCalculation(100L)).thenReturn(List.of(
+            limitRule(1, false, BigDecimal.ONE, "KRW", "BASE", 1_000L),           // 계산에 들어감
+            limitRule(2, true, BigDecimal.ONE, "KRW", null, 9_000L),              // 가맹점 지정: 계산기가 뺌
+            limitRule(3, false, null, "KRW", null, 9_000L),                       // 정액 혜택: 계산기가 뺌
+            limitRule(4, false, BigDecimal.ONE, "MILE", null, 9_000L),            // 마일리지: 계산기가 뺌
+            limitRule(5, false, BigDecimal.ONE, "KRW", "REPLACES_BASE", 9_000L))); // 대체 혜택: 계산기가 뺌
+        // 이미 1,000원을 써서 500원을 받았고, 이번 결제로 일반 규칙의 한도(1,000원)에 도달한다.
+        when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(
+            Map.of(1L, Map.of(SpendingCategory.DINING, 1_000L)));
+        when(transactions.cardSpend(USER, MONTH)).thenReturn(Map.of(1L, 1_000L));
+
+        ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 10_000L));
+
+        // 빼는 규칙의 한도(9,000원 x 4)가 합에 들어가면 한도가 크게 나와 "남아 있어요"가 붙는다. 실제로는 한도에 도달했다.
+        assertThat(response.card().reasons()).contains(ManualRecommendationService.REASON_LIMIT_REACHED)
+            .doesNotContain(ManualRecommendationService.REASON_LIMIT_LEFT);
+    }
+
+    @Test
+    @DisplayName("계산기가 계산에 넣는 규칙의 판단 기준")
+    void countedByCalculatorMatchesTheCalculatorsExclusions() {
+        assertThat(ManualRecommendationService.countedByCalculator(
+            limitRule(1, false, BigDecimal.ONE, "KRW", null, 1_000L))).isTrue();
+        assertThat(ManualRecommendationService.countedByCalculator(
+            limitRule(1, false, BigDecimal.ONE, "POINT", "ADDITIONAL", 1_000L))).isTrue();
+        assertThat(ManualRecommendationService.countedByCalculator(
+            limitRule(1, true, BigDecimal.ONE, "KRW", null, 1_000L))).isFalse();
+        assertThat(ManualRecommendationService.countedByCalculator(
+            limitRule(1, false, null, "KRW", null, 1_000L))).isFalse();
+        assertThat(ManualRecommendationService.countedByCalculator(
+            limitRule(1, false, BigDecimal.ONE, "MILE", null, 1_000L))).isFalse();
+        assertThat(ManualRecommendationService.countedByCalculator(
+            limitRule(1, false, BigDecimal.ONE, "KRW", "PREFER_HIGHER", 1_000L))).isFalse();
+        assertThat(ManualRecommendationService.countedByCalculator(
+            limitRule(1, false, BigDecimal.ONE, "KRW", "ANNUAL_BONUS", 1_000L))).isFalse();
+    }
+
     @Test
     @DisplayName("실적 구간 정보가 없으면 performance는 null이다")
     void noPerformanceWithoutTiers() {
