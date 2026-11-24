@@ -3542,6 +3542,39 @@
             "items": {
               "type": "string"
             }
+          },
+          "planImpact": {
+            "$ref": "#/components/schemas/ManualRecommendationPlanImpact"
+          }
+        }
+      },
+      "ManualRecommendationPlanImpact": {
+        "type": "object",
+        "description": "이 카드로 이번 결제를 한 뒤 이번 달 월간 플랜의 그 카드·업종 목표가 어떻게 바뀌는지. 이번 달 플랜이 없으면 상위 planImpact가 null이다.",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "결제 업종"
+          },
+          "targetKrw": {
+            "type": "integer",
+            "format": "int64",
+            "description": "플랜이 이 카드로 이 업종에 쓰기로 한 이번 달 목표(원). 배분이 없으면 0"
+          },
+          "remainingBeforeKrw": {
+            "type": "integer",
+            "format": "int64",
+            "description": "결제 전 남은 목표(원) = max(0, 목표 - 이미 쓴 금액)"
+          },
+          "remainingAfterKrw": {
+            "type": "integer",
+            "format": "int64",
+            "description": "결제 후 남은 목표(원) = max(0, 목표 - 이미 쓴 금액 - 이번 결제)"
+          },
+          "overTargetKrw": {
+            "type": "integer",
+            "format": "int64",
+            "description": "이번 결제로 목표를 넘기게 되는 금액(원). 넘기지 않으면 0"
           }
         }
       },

@@ -41,6 +41,8 @@
     "expectedBenefit": 1000,
     "benefitRatePercent": 10.0,
     "performance": { "monthSpendKrw": 260000, "nextTierKrw": 300000, "remainingKrw": 40000 },
+    "planImpact": { "category": "CAFE", "targetKrw": 130000, "remainingBeforeKrw": 80000,
+                    "remainingAfterKrw": 50000, "overTargetKrw": 0 },
     "reasons": [
       "이번 결제로 늘어나는 예상 혜택이 가장 커요.",
       "월 혜택 한도가 남아 있어요.",
@@ -63,7 +65,11 @@
 - `performance`: 이번 결제를 반영한 이번 달 사용 금액(`monthSpendKrw`)과 아직 채우지 못한 가장 낮은 실적 구간(`nextTierKrw`), 남은 금액(`remainingKrw`). 모두 채웠으면 두 값이 `null`이고, 카드의 실적 구간을 알 수 없으면 `performance` 자체가 `null`입니다. 화면의 "실적까지 40,000원 남음"은 `remainingKrw`로 만듭니다. 실적 제외 조건은 문장으로만 있어 금액에서 뺄 수 없어서 사용 금액 그대로입니다.
 - `reasons`: 체크 표시와 함께 보여줄 추천 이유. 서버가 정한 고정 문구입니다.
 - `alternatives`: 나머지 후보 카드 중 **늘어나는 혜택이 양수인 카드**(최대 10장)입니다. 혜택이 큰 순서이고, 계산 가능한 다른 카드가 없으면 빈 목록입니다. (추천 채팅 `/chat`도 이 목록으로 "다른 카드가 있는지"를 판단합니다)
-- `planImpact`(결제 후 플랜 변화)는 아직 내려주지 않습니다. (#278 4단계)
+- `planImpact`: 이 카드로 이번 결제를 한 뒤 **이번 달 월간 플랜의 그 카드·업종 목표**가 어떻게 바뀌는지입니다. 플랜의 목표(`targetKrw`)에서 이번 달 이미 쓴 금액을 뺀 "남은 목표"가 결제 전(`remainingBeforeKrw`)과 결제 후(`remainingAfterKrw`)에 얼마인지 줍니다. 화면은 "카페 목표 130,000원 → 50,000원 남음"처럼 이 숫자로 문구를 만듭니다.
+  - 이번 결제로 목표를 넘기면 `remainingAfterKrw`는 0이고 넘긴 금액이 `overTargetKrw`에 들어갑니다. (예: 목표 20,000원에 이미 10,000원 썼는데 30,000원을 결제하면 남은 목표 10,000원 → 0원, 20,000원 초과)
+  - 플랜에 그 카드·업종 배분이 없으면 `targetKrw`가 0이고 이번 결제 전액이 `overTargetKrw`입니다. (플랜이 그 카드로 그 업종에 쓰기로 하지 않았다는 뜻)
+  - **이번 달 플랜이 없으면 `planImpact`는 `null`입니다.** 이때 화면은 그 칸을 숨깁니다. 다른 달 플랜은 보지 않습니다.
+  - 이미 쓴 금액은 승인일 기준으로 취소·환불을 뺀 그 카드·업종의 순사용액이고, 플랜 화면의 "사용 금액"과 같은 값입니다. 읽기 전용이라 플랜을 바꾸지 않습니다. 대안 카드와 구간별 추천(`RANGE`)에는 없고 **가장 유리한 카드에만** 있습니다.
 
 *`type=RANGE` (금액을 보내지 않음, RECOMMEND-03)*
 ```json
