@@ -15,6 +15,13 @@ import com.richreach.codef.entity.CodefOrgAccount;
 import com.richreach.codef.repository.CodefConnectionRepository;
 import com.richreach.codef.repository.CodefOrgAccountRepository;
 import com.richreach.global.category.SpendingCategory;
+import com.richreach.plan.entity.MonthlyPlan;
+import com.richreach.plan.entity.PlanCardAllocation;
+import com.richreach.plan.entity.PlanStrategy;
+import com.richreach.plan.entity.SpendingProfile;
+import com.richreach.plan.repository.MonthlyPlanRepository;
+import com.richreach.plan.repository.PlanCardAllocationRepository;
+import com.richreach.plan.repository.SpendingProfileRepository;
 import com.richreach.transaction.dto.CollectedTransaction;
 import com.richreach.transaction.service.TransactionStoreService;
 import com.richreach.user.entity.User;
@@ -22,6 +29,8 @@ import com.richreach.user.repository.UserRepository;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
@@ -95,6 +104,12 @@ class ManualRecommendationApiTest {
     @Autowired
     private TransactionStoreService store;
     @Autowired
+    private SpendingProfileRepository profiles;
+    @Autowired
+    private MonthlyPlanRepository plans;
+    @Autowired
+    private PlanCardAllocationRepository allocations;
+    @Autowired
     private RefreshTokenRepository refreshTokens;
     @Autowired
     private AuthTokenService authTokenService;
@@ -117,6 +132,9 @@ class ManualRecommendationApiTest {
 
     @AfterEach
     void cleanUp() {
+        jdbc.update("delete from plan_card_allocations");
+        jdbc.update("delete from monthly_plans");
+        jdbc.update("delete from spending_profiles");
         jdbc.update("delete from card_transactions");
         jdbc.update("delete from user_cards");
         orgAccounts.deleteAll();
@@ -178,6 +196,18 @@ class ManualRecommendationApiTest {
     private void spendThisMonth(long cardId, long amount) {
         store.saveCollected(user.getId(), cardId, List.of(new CollectedTransaction("AP-" + UUID.randomUUID(),
             LocalDateTime.of(2026, 11, 10, 12, 0), "카페", amount, 0, 0, false, SpendingCategory.CAFE.name())));
+    }
+
+    /** 사용자에게 그 달의 월간 플랜을 만들고, 카드 한 장의 업종 목표를 배분한다. 만든 플랜의 ID를 돌려준다. */
+    private long savePlan(YearMonth month, Long cardId, SpendingCategory category, long target) {
+        SpendingProfile profile = profiles.save(SpendingProfile.create(user.getId(), month,
+            LocalDate.of(2026, 9, 1), LocalDate.of(2026, 10, 31)));
+        MonthlyPlan plan = plans.save(MonthlyPlan.create(user.getId(), profile.getId(), month, PlanStrategy.CP_SAT, 1,
+            450_000, 10_500));
+        if (cardId != null) {
+            allocations.save(PlanCardAllocation.create(plan.getId(), cardId, category, target, 5_000));
+        }
+        return plan.getId();
     }
 
     private ResultActions recommend(String jwt, String body) throws Exception {
@@ -298,6 +328,88 @@ class ManualRecommendationApiTest {
             .andExpect(jsonPath("$.code").value("RECOMMEND-001"));
         recommend(token, "{\"category\":\"CAFE\",\"amount\":-1}").andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("RECOMMEND-001"));
+    }
+
+    @Test
+    @DisplayName("이번 달 플랜이 있으면 결제 후 플랜 변화(planImpact)를 준다. 이미 쓴 금액과 이번 결제를 목표에서 뺀 값이다")
+    void reportsThePlanImpact() throws Exception {
+        long product = insertProduct("추천에이카드");
+        insertRule(product, 10, 5_000, true);
+        syncCards("추천에이카드");
+        long card = ownedCardId("추천에이카드");
+        savePlan(YearMonth.of(2026, 11), card, SpendingCategory.CAFE, 130_000);
+        spendThisMonth(card, 20_000); // 이번 달 카페에 이미 20,000원
+
+        recommend(token, "{\"category\":\"CAFE\",\"amount\":30000}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.type").value("CARD"))
+            .andExpect(jsonPath("$.data.card.planImpact.category").value("CAFE"))
+            .andExpect(jsonPath("$.data.card.planImpact.targetKrw").value(130000))
+            .andExpect(jsonPath("$.data.card.planImpact.remainingBeforeKrw").value(110000))
+            .andExpect(jsonPath("$.data.card.planImpact.remainingAfterKrw").value(80000))
+            .andExpect(jsonPath("$.data.card.planImpact.overTargetKrw").value(0));
+    }
+
+    @Test
+    @DisplayName("이번 결제로 목표를 넘기면 넘긴 금액을 준다")
+    void reportsTheAmountOverTheTarget() throws Exception {
+        long product = insertProduct("추천에이카드");
+        insertRule(product, 10, 5_000, true);
+        syncCards("추천에이카드");
+        long card = ownedCardId("추천에이카드");
+        savePlan(YearMonth.of(2026, 11), card, SpendingCategory.CAFE, 20_000);
+        spendThisMonth(card, 10_000);
+
+        recommend(token, "{\"category\":\"CAFE\",\"amount\":30000}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.card.planImpact.remainingBeforeKrw").value(10000))
+            .andExpect(jsonPath("$.data.card.planImpact.remainingAfterKrw").value(0))
+            .andExpect(jsonPath("$.data.card.planImpact.overTargetKrw").value(20000));
+    }
+
+    @Test
+    @DisplayName("이번 달 플랜이 없으면(다른 달 플랜만 있어도) planImpact는 없다")
+    void noPlanImpactWithoutThisMonthsPlan() throws Exception {
+        long product = insertProduct("추천에이카드");
+        insertRule(product, 10, 5_000, true);
+        syncCards("추천에이카드");
+        long card = ownedCardId("추천에이카드");
+        savePlan(YearMonth.of(2026, 12), card, SpendingCategory.CAFE, 130_000); // 다음 달 플랜
+
+        recommend(token, "{\"category\":\"CAFE\",\"amount\":30000}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.type").value("CARD"))
+            .andExpect(jsonPath("$.data.card.planImpact").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("플랜은 있는데 그 카드·업종 배분이 없으면 목표 0이고 이번 결제 전액이 목표 초과다")
+    void aPlanWithoutAnAllocationForTheCardAndCategory() throws Exception {
+        long product = insertProduct("추천에이카드");
+        insertRule(product, 10, 5_000, true);
+        syncCards("추천에이카드");
+        long card = ownedCardId("추천에이카드");
+        savePlan(YearMonth.of(2026, 11), card, SpendingCategory.DINING, 100_000); // 카페가 아니라 외식에만 배분
+
+        recommend(token, "{\"category\":\"CAFE\",\"amount\":30000}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.card.planImpact.targetKrw").value(0))
+            .andExpect(jsonPath("$.data.card.planImpact.remainingAfterKrw").value(0))
+            .andExpect(jsonPath("$.data.card.planImpact.overTargetKrw").value(30000));
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 플랜은 보지 않는다")
+    void ignoresAnotherUsersPlan() throws Exception {
+        long product = insertProduct("추천에이카드");
+        insertRule(product, 10, 5_000, true);
+        syncCards("추천에이카드");
+        long card = ownedCardId("추천에이카드");
+        User other = newUser();
+        SpendingProfile profile = profiles.save(SpendingProfile.create(other.getId(), YearMonth.of(2026, 11),
+            LocalDate.of(2026, 9, 1), LocalDate.of(2026, 10, 31)));
+        MonthlyPlan plan = plans.save(MonthlyPlan.create(other.getId(), profile.getId(), YearMonth.of(2026, 11),
+            PlanStrategy.CP_SAT, 1, 450_000, 10_500));
+        allocations.save(PlanCardAllocation.create(plan.getId(), card, SpendingCategory.CAFE, 130_000, 5_000));
+
+        recommend(token, "{\"category\":\"CAFE\",\"amount\":30000}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.card.planImpact").doesNotExist());
     }
 
     @Test

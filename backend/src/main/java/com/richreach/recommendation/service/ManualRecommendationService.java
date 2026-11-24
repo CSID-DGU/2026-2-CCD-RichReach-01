@@ -12,12 +12,14 @@ import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.global.category.SpendingCategory;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
+import com.richreach.plan.service.PlanQueryService;
 import com.richreach.recommendation.dto.ManualRecommendationRequest;
 import com.richreach.recommendation.dto.ManualRecommendationResponse;
 import com.richreach.recommendation.dto.ManualRecommendationResponse.Card;
 import com.richreach.recommendation.dto.ManualRecommendationResponse.Comparison;
 import com.richreach.recommendation.dto.ManualRecommendationResponse.Parsed;
 import com.richreach.recommendation.dto.ManualRecommendationResponse.Performance;
+import com.richreach.recommendation.dto.ManualRecommendationResponse.PlanImpact;
 import com.richreach.recommendation.dto.ManualRecommendationResponse.RangeOption;
 import com.richreach.recommendation.dto.ManualRecommendationResponse.Type;
 import com.richreach.transaction.dto.CardScope;
@@ -94,6 +96,7 @@ public class ManualRecommendationService {
     private final TransactionSummaryService transactions;
     private final BenefitCalculator calculator;
     private final BenefitRuleQueryService rules;
+    private final PlanQueryService plans;
     private final Clock clock;
 
     /**
@@ -143,12 +146,12 @@ public class ManualRecommendationService {
 
         return amount == null
             ? ranges(userId, candidates, category, spending)
-            : single(candidates, category, amount, spending);
+            : single(userId, month, candidates, category, amount, spending);
     }
 
     /** 금액을 알 때: 가장 유리한 카드 한 장과 나머지 카드의 예상 혜택. */
-    private ManualRecommendationResponse single(List<OwnedCardResponse> candidates, SpendingCategory category,
-                                                long amount, Spending spending) {
+    private ManualRecommendationResponse single(long userId, YearMonth month, List<OwnedCardResponse> candidates,
+                                                SpendingCategory category, long amount, Spending spending) {
         List<Scored> ranked = rank(candidates, category, amount, spending);
         Parsed parsed = new Parsed(category, amount);
         Scored best = ranked.get(0);
@@ -160,7 +163,7 @@ public class ManualRecommendationService {
         List<Comparison> alternatives = ranked.stream().skip(1).filter(entry -> entry.gain() > 0).limit(MAX_ALTERNATIVES)
             .map(ManualRecommendationService::comparison).toList();
         String scope = best.result().confirmedOnly() ? SCOPE : SCOPE + UNCONFIRMED_SCOPE_SUFFIX;
-        return new ManualRecommendationResponse(Type.CARD, message(best), parsed, detail(best, amount, spending),
+        return new ManualRecommendationResponse(Type.CARD, message(best), parsed, detail(best, userId, month, category, amount, spending),
             alternatives, List.of(), null, scope);
     }
 
@@ -212,7 +215,8 @@ public class ManualRecommendationService {
     }
 
     /** 가장 유리한 카드의 혜택 비율, 이번 달 실적, 추천 이유. */
-    private Card detail(Scored best, long amount, Spending spending) {
+    private Card detail(Scored best, long userId, YearMonth month, SpendingCategory category, long amount,
+                        Spending spending) {
         OwnedCardResponse card = best.card();
         List<CalculationRule> cardRules = rules.findForCalculation(card.cardProductId());
         // 실적은 카드별 순사용액으로 센다. 업종별 합계는 순사용액이 0 이하인 업종을 버려서, 환불이 있으면 실제보다 커진다.
@@ -245,7 +249,23 @@ public class ManualRecommendationService {
         }
         return new Card(card.cardId(), card.cardProductId(), card.cardCompany(), card.cardName(), card.imageUrl(),
             best.gain(), ratePercent(best.gain(), amount), performance, reasons, best.result().confirmedOnly(),
-            best.result().notes());
+            best.result().notes(), planImpact(userId, month, card, category, amount, spending));
+    }
+
+    /**
+     * 이번 결제를 이 카드로 한 뒤 이번 달 월간 플랜의 그 카드·업종 남은 목표가 어떻게 되는지. 이번 달 플랜이 없으면 null이다. 이미 쓴
+     * 금액은 승인일 기준으로 취소·환불을 뺀 업종별 순사용액이다. (플랜 화면의 "사용 금액"과 같은 값)
+     */
+    private PlanImpact planImpact(long userId, YearMonth month, OwnedCardResponse card, SpendingCategory category,
+                                  long amount, Spending spending) {
+        OptionalLong target = plans.findCardCategoryTarget(userId, month, card.cardId(), category);
+        if (target.isEmpty()) {
+            return null;
+        }
+        long spent = spending.of(card.cardId()).getOrDefault(category, 0L);
+        long used = Math.addExact(spent, amount);
+        return new PlanImpact(category, target.getAsLong(), Math.max(0, target.getAsLong() - spent),
+            Math.max(0, target.getAsLong() - used), Math.max(0, used - target.getAsLong()));
     }
 
     /**

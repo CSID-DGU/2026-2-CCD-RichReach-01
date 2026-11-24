@@ -53,6 +53,7 @@ public record ManualRecommendationResponse(
      * @param reasons            추천 이유. 서버가 정한 고정 문구이고, 숫자는 서버가 계산한 값이다.
      * @param confirmedOnly      사람이 원문과 대조해 확인한 규칙만 썼는지. false이면 확인 전 규칙이 섞여 있어 참고용이다.
      * @param notes              계산에서 빼거나 단순화한 내용
+     * @param planImpact         이 카드로 이번 결제를 한 뒤 이번 달 월간 플랜이 어떻게 바뀌는지. 이번 달 플랜이 없으면 {@code null}이다.
      */
     public record Card(
         long cardId,
@@ -65,7 +66,35 @@ public record ManualRecommendationResponse(
         Performance performance,
         List<String> reasons,
         boolean confirmedOnly,
-        List<String> notes) {
+        List<String> notes,
+        PlanImpact planImpact) {
+
+        /** 결제 후 플랜 변화를 모르는 카드. 플랜 변화가 없는 곳에서 쓰는 생성자다. */
+        public Card(long cardId, long cardProductId, CardCompany cardCompany, String cardName, String imageUrl,
+                    long expectedBenefit, double benefitRatePercent, Performance performance, List<String> reasons,
+                    boolean confirmedOnly, List<String> notes) {
+            this(cardId, cardProductId, cardCompany, cardName, imageUrl, expectedBenefit, benefitRatePercent,
+                performance, reasons, confirmedOnly, notes, null);
+        }
+
+    }
+
+    /**
+     * 이번 결제가 이번 달 월간 플랜의 그 카드·업종 목표에 미치는 영향. 플랜의 목표 금액에서 이번 달 이미 쓴 금액을 뺀 "남은 목표"가
+     * 이번 결제로 얼마나 줄어드는지를 보여준다. 읽기 전용이라 플랜은 바뀌지 않는다.
+     *
+     * @param category            결제 업종
+     * @param targetKrw           플랜이 이 카드로 이 업종에 쓰기로 한 이번 달 목표(원). 플랜에 이 카드·업종 배분이 없으면 0이다.
+     * @param remainingBeforeKrw  이번 결제 전 남은 목표(원). {@code max(0, 목표 - 이번 달 이미 쓴 금액)}
+     * @param remainingAfterKrw   이번 결제 후 남은 목표(원). {@code max(0, 목표 - 이미 쓴 금액 - 이번 결제)}
+     * @param overTargetKrw       이번 결제로 목표를 넘기게 되는 금액(원). 넘기지 않으면 0이다.
+     */
+    public record PlanImpact(
+        SpendingCategory category,
+        long targetKrw,
+        long remainingBeforeKrw,
+        long remainingAfterKrw,
+        long overTargetKrw) {
 
     }
 

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +22,7 @@ import com.richreach.codef.entity.CardCompany;
 import com.richreach.global.category.SpendingCategory;
 import com.richreach.global.exception.BusinessException;
 import com.richreach.global.exception.ErrorCode;
+import com.richreach.plan.service.PlanQueryService;
 import com.richreach.recommendation.dto.ManualRecommendationRequest;
 import com.richreach.recommendation.dto.ManualRecommendationResponse;
 import com.richreach.recommendation.dto.ManualRecommendationResponse.Comparison;
@@ -39,6 +41,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -80,6 +83,7 @@ class ManualRecommendationServiceTest {
     private OwnedCardQueryService ownedCards;
     private TransactionSummaryService transactions;
     private BenefitRuleQueryService ruleQuery;
+    private PlanQueryService plans;
     private FakeCalculator calculator;
 
     @BeforeEach
@@ -87,15 +91,18 @@ class ManualRecommendationServiceTest {
         ownedCards = mock(OwnedCardQueryService.class);
         transactions = mock(TransactionSummaryService.class);
         ruleQuery = mock(BenefitRuleQueryService.class);
+        plans = mock(PlanQueryService.class);
         calculator = new FakeCalculator();
         when(transactions.cardCategorySpend(anyLong(), any())).thenReturn(Map.of());
         when(transactions.cardSpend(anyLong(), any())).thenReturn(Map.of());
         when(ruleQuery.findForCalculation(anyLong())).thenReturn(List.of());
+        // 기본은 이번 달 플랜이 없는 사용자다.
+        when(plans.findCardCategoryTarget(anyLong(), any(), anyLong(), any())).thenReturn(OptionalLong.empty());
         typicalSpend(List.of());
     }
 
     private ManualRecommendationService service() {
-        return new ManualRecommendationService(ownedCards, transactions, calculator, ruleQuery, CLOCK);
+        return new ManualRecommendationService(ownedCards, transactions, calculator, ruleQuery, plans, CLOCK);
     }
 
     private void typicalSpend(List<CategorySummary> categories) {
@@ -424,6 +431,104 @@ class ManualRecommendationServiceTest {
         assertThat(response.calculationScope()).endsWith(ManualRecommendationService.UNCONFIRMED_SCOPE_SUFFIX);
     }
 
+    // ---- 결제 후 플랜 변화 ----
+
+    @Test
+    @DisplayName("이번 달 플랜이 없으면 planImpact는 null이다")
+    void noPlanImpactWithoutAPlan() {
+        cards(card(1, 100L, "카드", true));
+        calculator.rule(100L, 5, 100_000, 0);
+
+        ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 10_000L));
+
+        assertThat(response.card().planImpact()).isNull();
+    }
+
+    @Test
+    @DisplayName("플랜의 카드·업종 목표에서 이미 쓴 금액과 이번 결제를 뺀 남은 목표를 준다")
+    void reportsTheRemainingPlanTarget() {
+        cards(card(1, 100L, "카드", true));
+        calculator.rule(100L, 5, 100_000, 0);
+        // 플랜이 이 카드로 카페에 130,000원을 쓰기로 했고, 이번 달 카페에 이미 50,000원을 썼다.
+        when(plans.findCardCategoryTarget(USER, MONTH, 1L, SpendingCategory.CAFE)).thenReturn(OptionalLong.of(130_000));
+        when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(
+            Map.of(1L, Map.of(SpendingCategory.CAFE, 50_000L, SpendingCategory.DINING, 70_000L)));
+
+        ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 30_000L));
+
+        // 다른 업종(외식)의 사용액은 카페 목표에 영향을 주지 않는다.
+        assertThat(response.card().planImpact().category()).isEqualTo(SpendingCategory.CAFE);
+        assertThat(response.card().planImpact().targetKrw()).isEqualTo(130_000);
+        assertThat(response.card().planImpact().remainingBeforeKrw()).isEqualTo(80_000);
+        assertThat(response.card().planImpact().remainingAfterKrw()).isEqualTo(50_000);
+        assertThat(response.card().planImpact().overTargetKrw()).isZero();
+    }
+
+    @Test
+    @DisplayName("이번 결제로 목표를 넘기면 남은 목표는 0이고 넘긴 금액을 준다")
+    void reportsTheAmountOverTheTarget() {
+        cards(card(1, 100L, "카드", true));
+        calculator.rule(100L, 5, 100_000, 0);
+        when(plans.findCardCategoryTarget(USER, MONTH, 1L, SpendingCategory.CAFE)).thenReturn(OptionalLong.of(100_000));
+        when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(
+            Map.of(1L, Map.of(SpendingCategory.CAFE, 90_000L)));
+
+        ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 30_000L));
+
+        assertThat(response.card().planImpact().remainingBeforeKrw()).isEqualTo(10_000);
+        assertThat(response.card().planImpact().remainingAfterKrw()).isZero();
+        assertThat(response.card().planImpact().overTargetKrw()).isEqualTo(20_000);
+    }
+
+    @Test
+    @DisplayName("이미 목표를 채웠으면 결제 전 남은 목표도 0이고, 이번 결제 전액이 초과분이다")
+    void alreadyOverTheTargetBeforeThePayment() {
+        cards(card(1, 100L, "카드", true));
+        calculator.rule(100L, 5, 100_000, 0);
+        when(plans.findCardCategoryTarget(USER, MONTH, 1L, SpendingCategory.CAFE)).thenReturn(OptionalLong.of(50_000));
+        when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(
+            Map.of(1L, Map.of(SpendingCategory.CAFE, 80_000L)));
+
+        ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 10_000L));
+
+        assertThat(response.card().planImpact().remainingBeforeKrw()).isZero();
+        assertThat(response.card().planImpact().remainingAfterKrw()).isZero();
+        // 이미 80,000원을 써서 목표(50,000원)를 30,000원 넘겼고, 이번 결제로 40,000원 넘긴다.
+        assertThat(response.card().planImpact().overTargetKrw()).isEqualTo(40_000);
+    }
+
+    @Test
+    @DisplayName("플랜에 그 카드·업종 배분이 없으면(목표 0) 이번 결제 전액이 목표 초과다")
+    void aPlanWithoutAnAllocationForTheCardAndCategory() {
+        cards(card(1, 100L, "카드", true));
+        calculator.rule(100L, 5, 100_000, 0);
+        when(plans.findCardCategoryTarget(USER, MONTH, 1L, SpendingCategory.CAFE)).thenReturn(OptionalLong.of(0));
+
+        ManualRecommendationResponse response = service().recommend(USER, request("CAFE", 10_000L));
+
+        assertThat(response.card().planImpact().targetKrw()).isZero();
+        assertThat(response.card().planImpact().remainingAfterKrw()).isZero();
+        assertThat(response.card().planImpact().overTargetKrw()).isEqualTo(10_000);
+    }
+
+    @Test
+    @DisplayName("planImpact는 가장 유리한 카드에만 있고, 대안 카드와 구간별 추천에는 없다")
+    void onlyTheBestCardHasAPlanImpact() {
+        cards(card(1, 100L, "추천 카드", true), card(2, 200L, "대안 카드", true));
+        calculator.rule(100L, 5, 100_000, 0);
+        calculator.rule(200L, 3, 100_000, 0);
+        when(plans.findCardCategoryTarget(anyLong(), any(), anyLong(), any())).thenReturn(OptionalLong.of(100_000));
+
+        ManualRecommendationResponse single = service().recommend(USER, request("CAFE", 10_000L));
+        ManualRecommendationResponse ranges = service().recommend(USER, request("CAFE", null));
+
+        assertThat(single.card().planImpact()).isNotNull();
+        verify(plans).findCardCategoryTarget(USER, MONTH, 1L, SpendingCategory.CAFE);
+        verify(plans, never()).findCardCategoryTarget(USER, MONTH, 2L, SpendingCategory.CAFE);
+        assertThat(ranges.type()).isEqualTo(Type.RANGE);
+        assertThat(ranges.card()).isNull();
+    }
+
     // ---- 금액 구간별 추천 ----
 
     @Test
@@ -539,7 +644,7 @@ class ManualRecommendationServiceTest {
         calculator.rule(100L, 5, 100_000, 0);
         // 2027-01-01 00:10 KST
         ManualRecommendationService january = new ManualRecommendationService(ownedCards, transactions, calculator,
-            ruleQuery, Clock.fixed(Instant.parse("2026-12-31T15:10:00Z"), ZoneId.of("Asia/Seoul")));
+            ruleQuery, plans, Clock.fixed(Instant.parse("2026-12-31T15:10:00Z"), ZoneId.of("Asia/Seoul")));
 
         january.recommend(USER, request("CAFE", 10_000L));
 
