@@ -277,7 +277,7 @@ select issuer_code, card_id, recommendable from card_products order by 1, 2;
 
 ### 이미 적재된 스테이징 카드 승격 (CSV 8종 재적재 없음)
 
-공용 DB에 `stg_card_catalog`는 있지만 `card_products`가 0건일 때 사용합니다. 기존 스테이징 혜택을 다시 적재하지 않으므로 DB에만 추가된 행을 오래된 CSV로 덮어쓰지 않습니다. 카드 331종을 모두 승격하려면 **현재 DB의 카드 키와 대조한** `issuer_code,card_id` 형식의 `mvp_cards.csv`를 준비합니다. 331종보다 적게 승격할 때는 해당 카드만 적고 예상 카드 수도 동일하게 지정합니다. 이 작업은 카드 상품과 보류 중 혜택 행을 운영 테이블로 복사하지만, `rule_engine_ready`를 승인하지는 않습니다.
+공용 DB에 `stg_card_catalog`는 있지만 필요한 카드가 `card_products`에 빠져 있을 때 사용합니다. 운영 상품이 일부 있는 경우에도 같은 원본 키는 갱신하고 누락된 상품은 추가합니다. 기존 스테이징 혜택을 다시 적재하지 않으므로 DB에만 추가된 행을 오래된 CSV로 덮어쓰지 않습니다. 카드 331종을 모두 승격하려면 **현재 DB의 카드 키와 대조한** `issuer_code,card_id` 형식의 `mvp_cards.csv`를 준비합니다. 331종보다 적게 승격할 때는 해당 카드만 적고 예상 카드 수도 동일하게 지정합니다. 이 작업은 카드 상품과 보류 중 혜택 행을 운영 테이블로 복사하지만, `rule_engine_ready`를 승인하지는 않습니다.
 
 ```sql
 -- 실행 전, 공용 DB에서 읽기 전용으로 확인
