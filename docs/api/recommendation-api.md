@@ -6,13 +6,13 @@
 
 결제 전 카드 추천 대화 화면에 필요한 API 형식을 정리한 제안 문서입니다. 수동 입력 추천은 아래 설명대로 구현됐고, 자연어 질문은 별도 [`/chat` API](recommendation-chat-ai.md)로 구현됐습니다. 현재 구현된 예산 조정 대화는 [월 예산 챗봇 API](plan-chat-openai.md)를 참고하세요.
 **경로는 API 명세서 초안의 `POST /api/recommendations`를 기준으로 했고, 필드 이름과 JSON은 프론트 제안**이니 편하게 바꿔 주세요.
-프론트는 이 형식과 같은 모양의 가짜 데이터로 화면을 먼저 만들어 두었습니다 (`FakeRecommendationRepository`).
+프론트에는 실제 API 저장소(`ApiRecommendationRepository`)가 있으며, 빌드 설정 `USE_FAKE_API=false`일 때 사용합니다. 기본 빌드는 가짜 데이터 저장소를 선택합니다.
 
 공통 형식(응답 감싸기, 금액·날짜·enum 표기, 인증)은 [온보딩 문서의 1. 공통 형식](onboarding-data-requirements.md#1-공통-형식)과 같습니다. 아래 예시는 `ApiResponse`의 `data` 부분만 적었습니다.
 
 ## 구현됨: 수동 입력 추천 (#278 1단계)
 
-`POST /api/recommendations/manual` — 로그인 필요. 사용자가 **결제 금액과 업종을 직접 골라** 보내면, 서버가 분석 대상으로 고른 보유카드끼리 **이번 결제 1건으로 늘어나는 혜택**을 비교해 가장 유리한 카드를 알려줍니다. LLM은 쓰지 않고 카드·금액·순위·문구를 모두 서버가 정합니다. 읽기 전용이라 거래나 월간 플랜을 바꾸지 않습니다. (아래 2번 이후의 `POST /api/recommendations`는 이 API가 아니라 자연어 질문용 초안입니다.)
+`POST /api/recommendations/manual` — 로그인 필요. 앱이 질문 글자에서 **업종과 금액을 읽어** 보내면(읽는 일은 앱이 합니다), 서버가 분석 대상으로 고른 보유카드끼리 **이번 결제 1건으로 늘어나는 혜택**을 비교해 가장 유리한 카드를 알려줍니다. LLM은 쓰지 않고 카드·금액·순위·문구를 모두 서버가 정합니다. 읽기 전용이라 거래나 월간 플랜을 바꾸지 않습니다. (아래 2번 이후의 `POST /api/recommendations`는 이 API가 아니라 자연어 질문용 초안입니다.)
 
 **요청**
 ```json
@@ -21,10 +21,12 @@
 
 | 필드 | 형식 | 조건 |
 |---|---|---|
-| `category` | 문자열 | `DINING`, `CAFE`, `CONVENIENCE_STORE`, `SHOPPING`, `TRANSPORT`, `FUEL_VEHICLE`, `LIFE_HEALTH`, `TELECOM_SUBSCRIPTION`, `CULTURE_TRAVEL`, `EDUCATION`, `ETC` 중 하나 (대소문자 무시) |
-| `amount` | 정수 | 1 ~ 100,000,000 (원) |
+| `category` | 문자열 | 필수. `DINING`, `CAFE`, `CONVENIENCE_STORE`, `SHOPPING`, `TRANSPORT`, `FUEL_VEHICLE`, `LIFE_HEALTH`, `TELECOM_SUBSCRIPTION`, `CULTURE_TRAVEL`, `EDUCATION`, `ETC` 중 하나 (대소문자 무시) |
+| `amount` | 정수 | 1 ~ 100,000,000 (원). **금액을 모르면 보내지 않습니다.** 그러면 금액 구간별 추천(`type=RANGE`)을 줍니다. |
 
-**응답 `data`** (`type=CARD`)
+**응답 `data`** — `type`은 `CARD`, `RANGE`, `TEXT` 중 하나입니다.
+
+*`type=CARD` (금액을 보냄, RECOMMEND-02)*
 ```json
 {
   "type": "CARD",
@@ -37,33 +39,88 @@
     "cardName": "KB국민카드 노리 체크카드",
     "imageUrl": null,
     "expectedBenefit": 1000,
+    "benefitRatePercent": 10.0,
+    "performance": { "monthSpendKrw": 260000, "nextTierKrw": 300000, "remainingKrw": 40000 },
+    "planImpact": { "category": "CAFE", "targetKrw": 130000, "remainingBeforeKrw": 80000,
+                    "remainingAfterKrw": 50000, "overTargetKrw": 0 },
+    "reasons": [
+      "이번 결제로 늘어나는 예상 혜택이 가장 커요.",
+      "월 혜택 한도가 남아 있어요.",
+      "다음 실적 구간까지 40,000원 남았어요."
+    ],
     "confirmedOnly": true,
     "notes": [],
     "ruleEvidence": []
   },
   "alternatives": [
     { "cardId": 5, "cardProductId": 500, "cardCompany": "SHINHAN", "cardName": "신한카드 Deep Dream",
-      "imageUrl": null, "expectedBenefit": 500, "confirmedOnly": true, "notes": [], "ruleEvidence": [] }
+      "imageUrl": null, "expectedBenefit": 500 }
   ],
+  "ranges": [],
+  "followUp": null,
   "calculationScope": "카드 혜택 규칙 중 업종과 월간 사용액으로 계산할 수 있는 비율 혜택만 비교했어요. 전월 실적은 수집한 거래로 계산한 추정값이에요."
 }
 ```
 
-- `type`: `CARD`(늘어나는 혜택이 양수인 카드가 있음) 또는 `TEXT`. `TEXT`이면 `card`는 `null`이고 `alternatives`는 빈 목록이며 `message`는 "현재 확인된 혜택 규칙으로는 이번 결제의 추가 혜택을 확인하지 못했어요."입니다. **`TEXT`는 카드에 혜택이 없다는 뜻이 아니라 현재 확인된 규칙으로 계산할 수 있는 혜택이 없다는 뜻**입니다.
-- `card`: 가장 유리한 카드. `alternatives`: 그다음으로 유리한 카드이고 혜택이 양수인 카드만 **최대 3장**이며 큰 순서입니다.
+- `card`: 가장 유리한 카드. `benefitRatePercent`는 이번 결제 금액 대비 예상 혜택의 비율(%)이라 한도 때문에 줄어든 만큼 반영됩니다. 화면은 **업종 이름과 합쳐 "카페 10% 혜택"처럼** 씁니다. (서버는 할인·적립·캐시백을 구분해 내려주지 않습니다)
+- `performance`: 이번 결제를 반영한 이번 달 사용 금액(`monthSpendKrw`)과 아직 채우지 못한 가장 낮은 실적 구간(`nextTierKrw`), 남은 금액(`remainingKrw`). 모두 채웠으면 두 값이 `null`이고, 카드의 실적 구간을 알 수 없으면 `performance` 자체가 `null`입니다. 화면의 "실적까지 40,000원 남음"은 `remainingKrw`로 만듭니다. 실적 제외 조건은 문장으로만 있어 금액에서 뺄 수 없어서 사용 금액 그대로입니다.
+- `reasons`: 체크 표시와 함께 보여줄 추천 이유. 서버가 정한 고정 문구입니다.
+- `alternatives`: 나머지 후보 카드 중 **늘어나는 혜택이 양수인 카드**(최대 10장)입니다. 혜택이 큰 순서이고, 계산 가능한 다른 카드가 없으면 빈 목록입니다. (추천 채팅 `/chat`도 이 목록으로 "다른 카드가 있는지"를 판단합니다)
+- `planImpact`: 이 카드로 이번 결제를 한 뒤 **이번 달 월간 플랜의 그 카드·업종 목표**가 어떻게 바뀌는지입니다. 플랜의 목표(`targetKrw`)에서 이번 달 이미 쓴 금액을 뺀 "남은 목표"가 결제 전(`remainingBeforeKrw`)과 결제 후(`remainingAfterKrw`)에 얼마인지 줍니다. 화면은 "카페 목표 130,000원 → 50,000원 남음"처럼 이 숫자로 문구를 만듭니다.
+  - 이번 결제로 목표를 넘기면 `remainingAfterKrw`는 0이고 넘긴 금액이 `overTargetKrw`에 들어갑니다. (예: 목표 20,000원에 이미 10,000원 썼는데 30,000원을 결제하면 남은 목표 10,000원 → 0원, 20,000원 초과)
+  - 플랜에 그 카드·업종 배분이 없으면 `targetKrw`가 0이고 이번 결제 전액이 `overTargetKrw`입니다. (플랜이 그 카드로 그 업종에 쓰기로 하지 않았다는 뜻)
+  - **이번 달 플랜이 없으면 `planImpact`는 `null`입니다.** 이때 화면은 그 칸을 숨깁니다. 다른 달 플랜은 보지 않습니다.
+  - 이미 쓴 금액은 승인일 기준으로 취소·환불을 뺀 그 카드·업종의 순사용액이고, 플랜 화면의 "사용 금액"과 같은 값입니다. 읽기 전용이라 플랜을 바꾸지 않습니다. 대안 카드와 구간별 추천(`RANGE`)에는 없고 **가장 유리한 카드에만** 있습니다.
+
+*`type=RANGE` (금액을 보내지 않음, RECOMMEND-03)*
+```json
+{
+  "type": "RANGE",
+  "message": "결제 금액을 아직 모른다면 금액 구간별로 가장 유리한 카드를 알려드릴게요.",
+  "parsed": { "category": "CAFE", "amount": null },
+  "card": null,
+  "alternatives": [],
+  "ranges": [
+    { "label": "10,000원 이하", "amount": 5000, "best": true,
+      "card": { "cardId": 2, "cardProductId": 200, "cardCompany": "KB", "cardName": "KB국민카드 노리 체크카드",
+                "imageUrl": null, "expectedBenefit": 500 } },
+    { "label": "10,000원 초과 ~ 30,000원", "amount": 20000, "best": false, "card": { "...": "..." } },
+    { "label": "30,000원 초과", "amount": 50000, "best": false, "card": { "...": "..." } }
+  ],
+  "followUp": "정확한 금액을 입력하면 카드 한 장과 예상 혜택을 바로 추천해 드려요.",
+  "calculationScope": "..."
+}
+```
+
+- 대표 금액 5,000원, 20,000원, 50,000원으로 각각 계산해 구간마다 가장 유리한 카드를 줍니다. 유리한 카드가 없는 구간은 목록에서 빠집니다.
+- `best`: 평소 결제 금액이 든 구간입니다. 최근 3개월 그 업종의 **결제 한 건 평균**으로 정하고, 거래가 없으면 모든 구간이 `false`입니다.
+
+*`type=TEXT`*: 늘어나는 혜택이 양수인 카드가 없습니다. `card`는 `null`이고 `alternatives`와 `ranges`는 빈 목록이며 `message`는 "현재 확인된 혜택 규칙으로는 이번 결제의 추가 혜택을 확인하지 못했어요."입니다. **`TEXT`는 카드에 혜택이 없다는 뜻이 아니라 현재 확인된 규칙으로 계산할 수 있는 혜택이 없다는 뜻**입니다. 화면의 `TextReply`로 보여주면 됩니다.
+
 - `cardId`는 보유카드 ID(`GET /api/cards`의 `cardId`)이고 `cardProductId`는 카드 상품 ID입니다. 혜택 상세(`GET /api/cards/{cardId}/benefits`)에는 상품 ID를 씁니다. `imageUrl`은 모르면 `null`입니다.
-- `expectedBenefit`: **이번 결제 1건으로 늘어나는 예상 혜택**(원)입니다. `계산(이번 달 지금까지 쓴 금액 + 이번 결제) - 계산(지금까지 쓴 금액)`이라서 월 한도와 전월 실적 조건이 반영됩니다. 한도가 이미 찬 카드는 0이라 후보에서 빠집니다. 혜택이 같으면 보유카드 ID가 작은 카드가 먼저입니다.
-- `confirmedOnly`: 사람이 원문과 대조해 확인한 규칙만 썼는지. `false`이면 확인 전 규칙이 섞여 있어 **참고용**이고 `calculationScope`에 그 안내가 붙습니다. `notes`는 계산에서 빼거나 단순화한 내용입니다.
-- `ruleEvidence`: 추천 전후 계산값이 달라진 규칙을 같은 카드의 수집 원문 블록에 연결한 목록입니다. `SOURCE_FOUND`도 현재 약관 시행일이나 효력을 검증했다는 뜻은 아닙니다. `documentVersion`은 현재 수집 자료에 없어 `null`이고, 원문이 누락되면 `SOURCE_NOT_FOUND`입니다. 구조는 [추천 AI 연결 문서](recommendation-chat-ai.md)를 참고하세요.
-- 이번 달 사용액은 승인일 기준으로 취소·환불을 뺀 값이고, 전월 실적은 수집한 지난달 거래로 계산한 **추정값**입니다. 건별 최소 결제금액, 일별·횟수·할인대상금액 한도, 가맹점·결제수단 지정 혜택 등 업종과 월간 사용액만으로 계산할 수 없는 규칙은 제외합니다. 업종 대응표에 없는 코드를 임의로 `ETC` 혜택에 연결하지 않습니다.
+- `expectedBenefit`: **이번 결제 1건으로 늘어나는 예상 혜택**(원)입니다. `계산(이번 달 지금까지 쓴 금액 + 이번 결제) - 계산(지금까지 쓴 금액)`이라서 월 한도와 전월 실적 조건이 반영됩니다. 한도가 이미 찬 카드는 0이라 추천에서 빠집니다. 혜택이 같으면 보유카드 ID가 작은 카드가 먼저입니다.
+- `confirmedOnly`: 사람이 원문과 대조해 확인한 규칙만 썼는지. `false`이면 확인 전 규칙이 섞여 있어 **참고용**이고 `calculationScope`와 `reasons`에 그 안내가 붙습니다. `notes`는 계산에서 빼거나 단순화한 내용입니다.
+- `ruleEvidence`: 추천 전후 계산값이 달라진 규칙을 같은 카드의 `source_scope_id`로 찾아 수집 원문과 연결합니다. `SOURCE_FOUND`는 원문 블록을 찾았다는 뜻이며 현재 유효한 약관 조항임을 보증하지 않습니다. `sourceSnapshotDate`는 수집일이고 문서 버전이 확인되지 않으면 `documentVersion=null`입니다. `SOURCE_NOT_FOUND`는 원문 누락입니다. 상세 구조는 [추천 AI 연결 문서](recommendation-chat-ai.md)를 참고하세요.
+- 이번 달 사용액은 승인일 기준으로 취소·환불을 뺀 값이고, 전월 실적은 수집한 지난달 거래로 계산한 **추정값**입니다. 일별·횟수·할인대상금액 한도, 가맹점 지정 혜택 등 업종과 월간 사용액만으로 계산할 수 없는 규칙은 제외합니다.
 
 **후보 카드**: 로그인 사용자의 보유카드 중 **분석 대상으로 고르고(`selected=true`) 카드 상품에 매칭된** 카드만입니다. 수집한 331종 카드 상품 전체와 비교하지 않습니다.
 
-**오류**: 400 `RECOMMEND-001` — 업종이 없거나 지원하지 않는 값, 금액이 범위 밖이거나 없음, 또는 분석 대상으로 고른 카드가 없음. 로그인이 없으면 401입니다.
+**오류**: 400 `RECOMMEND-001` — 업종이 없거나 지원하지 않는 값, 금액이 0 이하이거나 1억 원 초과, 또는 분석 대상으로 고른 카드가 없음. 로그인이 없으면 401입니다.
 
-**⚠️ 승인된 규칙이 없으면 항상 `TEXT`입니다.** 서버는 기본 설정에서 사람이 원문과 대조해 승인한 혜택 규칙(`rule_engine_ready`)만 계산합니다. 시연 전에 시연 보유카드의 규칙을 원문과 대조해 승인해야 합니다. `BENEFIT_RULE_SELECTION=ALL`은 개발·시연용 임시 설정이고 결과가 참고용(`confirmedOnly=false`)이며 **운영에서는 쓰면 안 됩니다.**
+**⚠️ 지금 실제 카드 데이터로는 `TEXT`가 나올 수 있습니다.** 서버는 기본 설정에서 사람이 원문과 대조해 승인한 혜택 규칙(`rule_engine_ready`)만 계산하고, 규칙의 `merchants`(가맹점) 칸에 값이 있으면 가맹점 지정 혜택으로 보고 계산에서 뺍니다. 시연 카드 12장의 규칙 21개는 대부분 가맹점 지정·정액 캐시백·시간대나 요일 조건부라 계산되지 않고, 전 가맹점 기본 비율 규칙(이지캐시백 0.2% 등)만 원문 확인과 가맹점 칸 정리를 거쳐 쓸 수 있습니다. 그래서 **앱은 `TEXT`를 정상 응답으로 처리해야 합니다.** `BENEFIT_RULE_SELECTION=ALL`은 개발·시연용이고 가맹점 지정 규칙을 계산에 넣어 주지 않으며 **운영에서는 쓰면 안 됩니다.**
 
-**프론트 연결**: 추천 화면의 `FakeRecommendationRepository`를 실제 API로 바꿔야 화면이 바뀝니다. 금액과 업종을 직접 고르면 이 `/manual` API를, 자연어 질문이면 [별도의 `/chat` API](recommendation-chat-ai.md)를 호출합니다. 화면은 `CARD`와 `TEXT`, 되묻기, 400, 로딩 상태를 처리해야 합니다.
+**앱 구현 (프론트 #338)**: 팀 결정으로 **앱이 질문에서 업종을 읽으면 `/manual`, 못 읽으면 `/chat`**을 씁니다(`ApiRecommendationRepository`).
+- 업종을 읽음 → 브랜드마다 혜택이 다른 업종(편의점·카페)은 앱이 브랜드를 되묻고 → `/manual`에 `category`, 읽은 `amount`, 가맹점 이름 `merchantName`(서버는 아직 계산에 쓰지 않음)을 보냅니다. 금액을 못 읽으면 `amount` 없이 보내 구간별 추천을 받습니다. 구간별 추천 뒤 금액만 답하면(예: "2만 원") 앞 답변의 업종으로 다시 `/manual`을 부릅니다.
+- 업종을 못 읽음 → `/chat`에 질문과 지금 대화의 이전 말(최근 10개, 500자까지)을 `history`로 보냅니다. 추천이 오면 `reply`를 말풍선 문구로, `recommendation`을 카드 UI로 보여 주고, 되물으면 `reply`만 보여 줍니다.
+- 화면 문구: 혜택 "{업종} {benefitRatePercent}% 혜택"(정수면 "10%", 아니면 소수 둘째 자리까지), 실적 "실적까지 {remainingKrw} 남음"(모두 채웠으면 "실적 기준 달성", `performance`가 null이면 숨김), 플랜 변화 "{업종} 남은 목표 {remainingBeforeKrw} → {remainingAfterKrw}"(넘기면 "→ {overTargetKrw} 초과", 플랜에 배분이 없으면 "목표 없음 · {overTargetKrw} 초과", `planImpact`가 null이면 숨김), 구간 "{amount} 결제 시 약 {expectedBenefit} 혜택".
+- `TEXT`는 일반 답변으로, `RECOMMEND-001`은 서버 문구를 그대로 보여 줍니다. 대화 기록은 서버가 저장하지 않아 앱을 켜 둔 동안만 남습니다.
+
+**프론트 연결 방법**: 빌드 설정 `USE_FAKE_API=false`로 실제 구현을 선택합니다. 입력 방식에 따라 두 API를 씁니다. `ruleEvidence`를 화면에 표시하려면 프론트 응답 모델과 렌더링 코드를 추가해야 합니다.
+
+1. **자연어 질문 그대로 보내기** → `POST /api/recommendations/chat` ([자세한 내용](recommendation-chat-ai.md)). 서버가 질문에서 금액·업종·가맹점을 읽고 검증한 뒤 이 `/manual` 계산을 호출합니다. 응답의 `recommendation`이 `/manual` 응답과 같은 구조입니다. 금액이나 업종이 없으면 서버가 되묻는 문구를 돌려줍니다.
+2. **앱이 업종·금액을 읽어 보내기** → `POST /api/recommendations/manual`. 금액을 못 읽었으면 `amount` 없이 호출하면 금액 구간별 추천(`RANGE`)을 줍니다. `/chat`은 금액이 없으면 구간 추천 대신 되묻기만 하므로, 화면의 구간별 추천(RECOMMEND-03)이 필요하면 이 방식을 함께 씁니다.
+
+응답을 화면 모델로 바꿀 때: `CARD` → `CardRecommendation`(`card`, `expectedBenefit`, `benefitRatePercent`, `reasons`, `alternatives`, `performance`), `RANGE` → `AmountRangeRecommendation`, `TEXT` → `TextReply`. `cardId`로 보유카드 목록(`GET /api/cards`)의 카드를 찾아 카드 이미지와 이름을 씁니다. 브랜드마다 혜택이 다른 업종의 되묻기(FollowUp)는 `/chat`이 가맹점을 읽어 처리하고, `/manual`만 쓰면 앱이 처리해야 합니다.
 
 ## 1. 전체 구조
 
@@ -81,11 +138,11 @@
 | 단계 | 누가 | 하는 일 |
 |---|---|---|
 | ① 질문 해석 | OpenAI | "아웃백에서 10만 원 결제할 거야" → 업종 `DINING`, 가맹점 `아웃백`, 금액 `100000` |
-| ② 혜택 계산 | 백엔드 | 선택한 보유카드별 이번 결제의 예상 추가 혜택 계산. 플랜은 바꾸지 않음 |
+| ② 혜택 계산 | 백엔드 | 보유카드별 예상 혜택, 실적·남은 한도, 결제 후 플랜 변화 계산 |
 | ③ 문구 다듬기 | OpenAI (선택) | ②의 숫자를 바꾸지 않고 답변 문장·추천 이유만 자연스럽게 |
 
 - **OpenAI API 키는 백엔드에만 둡니다.** 앱에 키를 넣으면 앱 파일에서 누구나 꺼낼 수 있습니다.
-- 금액이 없으면 결제 금액을 되묻습니다. 가맹점명은 필수가 아니며, 알려진 가맹점의 업종과 입력 업종이 충돌하거나 업종을 알 수 없으면 결제 용도를 확인합니다.
+- 질문에 업종만 있고 브랜드가 없으면(예: "편의점 갈 건데") ②에서 계산하지 않고 브랜드를 되묻습니다. (3-3)
 - **혜택 금액은 LLM이 계산하지 않습니다.** LLM은 숫자를 그럴듯하게 지어낼 수 있으므로, 금액·순위는 ②에서 서버가 정하고 LLM에는 결과를 문장으로 바꾸는 일만 맡깁니다.
 - ③은 없어도 됩니다. 그러면 서버가 정해진 문장 틀("현재 플랜을 기준으로 {카드}가 가장 유리해요.")을 씁니다.
 
@@ -179,7 +236,7 @@
 }
 ```
 
-- 구간 이름("10,000원 미만", "10,000원 초과 ~ 30,000원", "30,000원 초과")은 `minAmount`·`maxAmount`로 프론트가 만듭니다.
+- 구간 이름("10,000원 이하", "10,000원 초과 ~ 30,000원", "30,000원 초과")은 `minAmount`·`maxAmount`로 프론트가 만듭니다.
 - `isBest`: "현재 최적" 표시. 기준(예: 그 업종의 평소 결제 금액이 들어가는 구간)을 정해야 합니다. (→ R6)
 
 ### 3-3. `FOLLOW_UP`: 브랜드를 되물을 때
