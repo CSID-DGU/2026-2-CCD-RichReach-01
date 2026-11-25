@@ -28,6 +28,7 @@ class AppBottomNavBar extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   static const _itemHeight = 60.0;
+  static const _itemWidth = 76.0;
   static const _iconSize = 21.0;
 
   /// 위쪽 경계선 색
@@ -52,10 +53,13 @@ class AppBottomNavBar extends StatelessWidget {
         minimum: const EdgeInsets.only(bottom: 8),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          // 항목 너비는 76으로 두고 양 끝에 붙여 사이를 고르게 벌린다 (Figma Active6).
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               for (final (index, item) in items.indexed)
-                Expanded(
+                SizedBox(
+                  width: _itemWidth,
                   child: _NavItem(
                     item: item,
                     selected: index == currentIndex,

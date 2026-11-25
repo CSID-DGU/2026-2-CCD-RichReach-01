@@ -64,7 +64,6 @@ enum AppRoute {
     '카드 추천',
     showBack: false,
   ),
-  report('/report', 'REPORT', '리포트', showBack: false),
 
   // 월간 플랜 탭 안의 상세 화면 (하단 네비게이션이 그대로 보인다)
   cardPlanDetail('/plan/cards/:cardId', 'PLAN-02', '카드별 플랜 상세'),
@@ -94,7 +93,8 @@ enum AppRoute {
   settings('/settings', 'SETTINGS', '설정', showBack: false);
 
   /// 하단 네비게이션 탭 순서.
-  static const tabs = [home, monthlyPlan, cardRecommendation, report, settings];
+  /// 리포트는 일정상 제외했다 (#340).
+  static const tabs = [home, monthlyPlan, cardRecommendation, settings];
 
   /// 탭 안에서 여는 하위 화면. 하단 네비게이션이 그대로 보인다.
   static const tabChildren = {

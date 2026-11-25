@@ -93,7 +93,6 @@ abstract final class AppAssets {
   static const navigationMonthlyPlan = '$_navigationIcons/plan.svg';
   static const navigationCardRecommendation =
       '$_navigationIcons/recommendation.svg';
-  static const navigationReport = '$_navigationIcons/report.svg';
   static const navigationSettings = '$_navigationIcons/setting.svg';
 
   // Direction icons
@@ -157,7 +156,6 @@ abstract final class AppAssets {
     navigationHome,
     navigationMonthlyPlan,
     navigationCardRecommendation,
-    navigationReport,
     navigationSettings,
     iconNavigateNext,
     iconArrowLeft,
