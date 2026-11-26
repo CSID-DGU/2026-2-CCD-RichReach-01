@@ -83,10 +83,9 @@ flutter run --dart-define=INITIAL_ROUTE=/onboarding/codef-consent
 | RECOMMEND-00 | 카드 추천 대화 기록 | `/recommendation/history` | `recommendationHistory` |
 | PLAN-02 | 카드별 플랜 상세 (카드 추천의 "다른 카드와 비교"에서) | `/recommendation/cards/:cardId` | `recommendationCardDetail` |
 | SETTINGS-03 | 카드 정보 및 연결 관리 (카드 추천에서 연 PLAN-02의 카드 설정 버튼) | `/recommendation/cards/:cardId/settings` | `recommendationCardSettings` |
-| REPORT | 리포트 (하단 탭, 준비 중) | `/report` | `report` |
 | SETTINGS | 설정 (하단 탭, 준비 중) | `/settings` | `settings` |
 
-- 하단 탭 화면(홈·월간 플랜·카드 추천·리포트·설정)은 하단 네비게이션과 함께 열립니다. 리포트·설정은 아직 디자인이 없어 "준비 중" 화면입니다.
+- 하단 탭 화면(홈·월간 플랜·카드 추천·설정)은 하단 네비게이션과 함께 열립니다. 설정은 아직 디자인이 없어 "준비 중" 화면입니다. 리포트는 일정상 제외했습니다(#340).
 - ONB-02B 카드사 계정 인증은 화면이 아니라 ONB-02A에서 띄우는 팝업이라 경로가 없습니다. 카드사를 선택하고 연결하기를 누르면 나타납니다.
 
 ## 백엔드 연동 (실제 API)

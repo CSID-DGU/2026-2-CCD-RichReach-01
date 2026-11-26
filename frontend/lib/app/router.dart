@@ -130,7 +130,6 @@ Widget _screenFor(AppRoute route, GoRouterState state) {
     ),
     AppRoute.cardSettings || AppRoute.recommendationCardSettings =>
       CardSettingsScreen(cardId: state.pathParameters['cardId'] ?? ''),
-    AppRoute.report ||
     AppRoute.settings => ComingSoonScreen(title: route.title),
   };
 }

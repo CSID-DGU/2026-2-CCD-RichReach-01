@@ -173,7 +173,6 @@ void main() {
       AppAssets.navigationHome,
       AppAssets.navigationMonthlyPlan,
       AppAssets.navigationCardRecommendation,
-      AppAssets.navigationReport,
       AppAssets.navigationSettings,
       AppAssets.iconNavigateNext,
     ]) {

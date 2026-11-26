@@ -290,9 +290,11 @@ void main() {
       await pumpAppAt(tester, AppRoute.monthlyPlan);
       expect(find.byType(MonthlyPlanScreen), findsOneWidget);
 
-      await tester.tap(find.bySemanticsLabel('리포트'));
+      await tester.tap(find.bySemanticsLabel('설정'));
       await tester.pumpAndSettle();
-      expect(findText('리포트 화면은 준비 중이에요.'), findsOneWidget);
+      expect(findText('설정 화면은 준비 중이에요.'), findsOneWidget);
+      // 리포트 탭은 제외했다 (#340).
+      expect(find.bySemanticsLabel('리포트'), findsNothing);
 
       await tester.tap(find.bySemanticsLabel('월간 플랜'));
       await tester.pumpAndSettle();

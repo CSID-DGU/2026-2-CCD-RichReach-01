@@ -15,7 +15,6 @@ class MainShell extends StatelessWidget {
     AppRoute.home => AppAssets.navigationHome,
     AppRoute.monthlyPlan => AppAssets.navigationMonthlyPlan,
     AppRoute.cardRecommendation => AppAssets.navigationCardRecommendation,
-    AppRoute.report => AppAssets.navigationReport,
     _ => AppAssets.navigationSettings,
   };
 
