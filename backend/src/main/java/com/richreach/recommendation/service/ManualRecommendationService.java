@@ -7,6 +7,7 @@ import com.richreach.benefit.service.BenefitRuleSupport;
 import com.richreach.benefit.service.CardPerformanceAnalyzer;
 import com.richreach.card.dto.CalculationRule;
 import com.richreach.card.dto.OwnedCardResponse;
+import com.richreach.card.service.AppliedRuleEvidenceService;
 import com.richreach.card.service.BenefitRuleQueryService;
 import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.global.category.SpendingCategory;
@@ -97,6 +98,7 @@ public class ManualRecommendationService {
     private final BenefitCalculator calculator;
     private final BenefitRuleQueryService rules;
     private final PlanQueryService plans;
+    private final AppliedRuleEvidenceService evidence;
     private final Clock clock;
 
     /**
@@ -124,7 +126,7 @@ public class ManualRecommendationService {
     }
 
     /** 카드 한 장과 이번 결제로 늘어나는 혜택. {@code gain}이 0 이하면 혜택이 없는 카드다. */
-    private record Scored(OwnedCardResponse card, long gain, BenefitResult result) {
+    private record Scored(OwnedCardResponse card, long gain, BenefitResult before, BenefitResult result) {
 
     }
 
@@ -205,13 +207,12 @@ public class ManualRecommendationService {
     private Scored score(OwnedCardResponse card, SpendingCategory category, long amount,
                          Map<SpendingCategory, Long> spentByCategory, long previousMonthSpend) {
         long productId = card.cardProductId();
-        long before = calculator.calculate(new BenefitQuery(productId, spentByCategory, previousMonthSpend))
-            .totalBenefit();
+        BenefitResult before = calculator.calculate(new BenefitQuery(productId, spentByCategory, previousMonthSpend));
         Map<SpendingCategory, Long> afterSpend = new EnumMap<>(SpendingCategory.class);
         afterSpend.putAll(spentByCategory);
         afterSpend.merge(category, amount, Math::addExact);
         BenefitResult after = calculator.calculate(new BenefitQuery(productId, afterSpend, previousMonthSpend));
-        return new Scored(card, after.totalBenefit() - before, after);
+        return new Scored(card, after.totalBenefit() - before.totalBenefit(), before, after);
     }
 
     /** 가장 유리한 카드의 혜택 비율, 이번 달 실적, 추천 이유. */
@@ -249,7 +250,8 @@ public class ManualRecommendationService {
         }
         return new Card(card.cardId(), card.cardProductId(), card.cardCompany(), card.cardName(), card.imageUrl(),
             best.gain(), ratePercent(best.gain(), amount), performance, reasons, best.result().confirmedOnly(),
-            best.result().notes(), planImpact(userId, month, card, category, amount, spending));
+            best.result().notes(), planImpact(userId, month, card, category, amount, spending),
+            evidence.find(card.cardProductId(), best.before().benefitByRule(), best.result().benefitByRule()));
     }
 
     /**

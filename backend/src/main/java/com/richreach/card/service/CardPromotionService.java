@@ -55,7 +55,7 @@ public class CardPromotionService {
             List.of(key("card_product_id", "p.id"), key("source_benefit_id", "s.benefit_id")),
             "benefit_type", "category", "category_name", "merchants", "target_raw", "targets_normalized",
             "payment_methods", "rate_percent", "rate_min_percent", "rate_max_percent", "amount", "reward_unit",
-            "amount_basis", "monthly_limit", "monthly_limit_unit", "monthly_limit_status", "daily_limit",
+            "amount_basis", "per_transaction_min_krw", "monthly_limit", "monthly_limit_unit", "monthly_limit_status", "daily_limit",
             "shared_monthly_limit", "cap_group_id", "eligible_spend_monthly_limit_krw", "daily_count_limit",
             "monthly_count_limit", "annual_count_limit", "rule_mode", "conditions", "review_notes",
             "review_status", "source_scope_id", "extraction_method"),

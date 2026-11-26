@@ -24,8 +24,7 @@ import org.springframework.stereotype.Service;
  *       같은 업종으로 모이면 하나로 본다. (예: {@code CAFE|BAKERY}는 카페 하나)</li>
  *   <li>업종이 아닌 코드(결제 수단, 해외 조건)는 업종을 만들지 않고, 전 가맹점 코드({@code ALL_MERCHANTS}, {@code ALL})는
  *       {@code allMerchants}만 켠다.</li>
- *   <li>대응표에 없는 코드는 {@code ETC}로 본다. 코드표에 새 업종이 생겨도 혜택이 사라지지 않게 하려는 것이고, 서버 로그에
- *       코드를 남겨서 대응표에 추가하도록 알린다.</li>
+ *   <li>대응표에 없는 코드가 하나라도 있으면 규칙 전체를 계산 가능한 업종으로 추측하지 않는다. 서버 로그에 코드를 남겨 대응표 검토를 요청한다.</li>
  *   <li>{@code OTHER}는 {@code ETC}로 바꾼다. 다만 가맹점이 지정된 혜택(예: 특정 브랜드)은 업종만으로 거래와 이을 수 없어서
  *       혜택 계산이 가맹점 정보를 따로 봐야 한다.</li>
  * </ul>
@@ -63,6 +62,7 @@ public class BenefitCategoryMapper {
         Map<String, BenefitCategoryMapping> current = table();
         Set<SpendingCategory> categories = EnumSet.noneOf(SpendingCategory.class);
         boolean allMerchants = false;
+        boolean unknown = false;
         for (String raw : benefitCategory.split("\\|")) {
             String code = raw.strip().toUpperCase(Locale.ROOT);
             if (code.isEmpty()) {
@@ -70,14 +70,15 @@ public class BenefitCategoryMapper {
             }
             BenefitCategoryMapping mapping = current.get(code);
             if (mapping == null) {
-                log.warn("대응표에 없는 혜택 업종 코드입니다. ETC로 봅니다: code={}", code);
-                categories.add(SpendingCategory.ETC);
+                log.warn("대응표에 없는 혜택 업종 코드입니다. 혜택 계산에서 제외합니다: code={}", code);
+                unknown = true;
                 continue;
             }
             mapping.spendingCategory().ifPresent(categories::add);
             allMerchants |= mapping.isAllMerchants();
         }
-        return new MappedCategories(Collections.unmodifiableSet(categories), allMerchants);
+        return unknown ? MappedCategories.NONE
+            : new MappedCategories(Collections.unmodifiableSet(categories), allMerchants);
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.richreach.recommendation.dto;
 
+import com.richreach.card.dto.AppliedRuleEvidence;
 import com.richreach.codef.entity.CardCompany;
 import com.richreach.global.category.SpendingCategory;
 import java.util.List;
@@ -54,6 +55,7 @@ public record ManualRecommendationResponse(
      * @param confirmedOnly      사람이 원문과 대조해 확인한 규칙만 썼는지. false이면 확인 전 규칙이 섞여 있어 참고용이다.
      * @param notes              계산에서 빼거나 단순화한 내용
      * @param planImpact         이 카드로 이번 결제를 한 뒤 이번 달 월간 플랜이 어떻게 바뀌는지. 이번 달 플랜이 없으면 {@code null}이다.
+     * @param ruleEvidence       이번 결제 전후 계산값이 달라진 규칙과 수집 원문. 빈 목록은 추적 가능한 규칙이 없다는 뜻이다.
      */
     public record Card(
         long cardId,
@@ -67,14 +69,15 @@ public record ManualRecommendationResponse(
         List<String> reasons,
         boolean confirmedOnly,
         List<String> notes,
-        PlanImpact planImpact) {
+        PlanImpact planImpact,
+        List<AppliedRuleEvidence> ruleEvidence) {
 
         /** 결제 후 플랜 변화를 모르는 카드. 플랜 변화가 없는 곳에서 쓰는 생성자다. */
         public Card(long cardId, long cardProductId, CardCompany cardCompany, String cardName, String imageUrl,
                     long expectedBenefit, double benefitRatePercent, Performance performance, List<String> reasons,
                     boolean confirmedOnly, List<String> notes) {
             this(cardId, cardProductId, cardCompany, cardName, imageUrl, expectedBenefit, benefitRatePercent,
-                performance, reasons, confirmedOnly, notes, null);
+                performance, reasons, confirmedOnly, notes, null, List.of());
         }
 
     }

@@ -29,7 +29,11 @@
     "message": "추천 카드는 '예시카드'이고, 이번 결제의 예상 혜택은 1,000원이에요.",
     "parsed": {"category":"SHOPPING","amount":30000},
     "card": {"cardId":1,"cardProductId":2,"cardCompany":"KB","cardName":"예시카드",
-             "imageUrl":null,"expectedBenefit":1000,"confirmedOnly":true,"notes":[]},
+             "imageUrl":null,"expectedBenefit":1000,"confirmedOnly":true,"notes":[],
+             "ruleEvidence":[{"ruleId":42,"impact":"INCREASED","status":"SOURCE_FOUND",
+               "sourceScopeId":"scope-42","sourceUrl":"https://example.com/card",
+               "excerpt":"카페 5% 할인","sourceType":"PRODUCT_PAGE_EXCERPT",
+               "sourceSnapshotDate":"2026-11-20","documentVersion":null}]},
     "alternatives": [],
     "calculationScope": "계산 범위 안내"
   }
@@ -38,7 +42,9 @@
 
 예시는 응답 모양만 보여주는 합성값이다. 실제 카드·혜택은 서버 계산 결과를 따른다. `recommendation`은 기존 `/manual` API와 같은 구조다. 프론트는 `reply`를 말풍선으로, `recommendation.card`와 `alternatives`를 카드 UI로 보여준다. `answerMode=ALTERNATIVES`이면 `alternatives` 목록을 보여준다.
 
-금액·업종이 없으면 `needsClarification=true`, `recommendation=null`이며 서버 고정 질문을 반환한다. 모델이 가맹점 이름을 만들었거나 가맹점 DB 분류와 업종이 충돌해도 계산하지 않는다. DB에 없는 가맹점의 업종은 사용자가 확인해야 한다. 확인한 뒤 **같은 질문**과 `confirmedCategory`(11개 업종 코드 중 하나)를 다시 보낸다. 가맹점 전용 할인은 현재 수동 계산기에서 제외되므로 `merchantName`을 받았다는 이유만으로 적용했다고 안내하면 안 된다.
+`ruleEvidence`는 해당 결제 전후에 계산값이 달라진 규칙을 **같은 카드의 `source_scope_id`**로 찾아 붙인다. `impact=DECREASED`는 공유 한도 배분 등으로 그 규칙의 계산 몫이 줄었다는 뜻이다. `expectedBenefit`은 전체 계산 결과의 차이이며, 이 목록의 금액을 다시 합산해 만들지 않는다. `SOURCE_NOT_FOUND`이면 연결된 원문이 없고, 빈 배열이면 계산기가 규칙별 추적값을 제공하지 않은 것이다. 수집 원문을 표시할 수는 있지만 현재 유효한 약관 조항이라고 확정해서는 안 된다.
+
+금액·업종이 없으면 `needsClarification=true`, `recommendation=null`이며 서버 고정 질문을 반환한다. 모델이 가맹점 이름을 만들었거나 가맹점 DB 분류와 업종이 충돌해도 계산하지 않는다. DB에 없는 가맹점의 업종은 사용자가 확인해야 한다. 확인한 뒤 **같은 질문**과 `confirmedCategory`(11개 업종 코드 중 하나)를 다시 보낸다. 가맹점·간편결제 전용 할인은 현재 수동 계산기에서 제외되므로 이름을 인식했다는 이유만으로 적용했다고 안내하면 안 된다.
 
 모델 호출에 실패하면 금액·카드를 추측하지 않고 직접 입력 안내를 돌려준다. 설명 생성이 실패하거나 확인 전 규칙이 섞인 경우에는 서버의 기존 `message`를 사용한다. `OPENAI_API_KEY`는 서버 환경변수로만 둔다. 기본 모델은 `gpt-5-nano`다.
 
@@ -52,7 +58,9 @@
 
 이미 승격된 상품 ID가 있으면 `POST /api/cards/{cardProductId}/evidence`에 `{"question":"..."}`를 보낼 수 있다. 두 경로 모두 `stg_source_scope`에서 **해당 카드의 원문만** 찾아 최대 3개 조각을 모델에 제공한다. 응답은 `status`(`ANSWERED`, `SOURCE_FOUND`, `INSUFFICIENT_EVIDENCE`), `answer`, `sourceSnapshotDate`, `documentVersion`, `citations[]`다. 각 citation에는 `citationId`, `sourceUrl`, `excerpt`, `sourceType=PRODUCT_PAGE_EXCERPT`가 있다. 모델 응답의 출처 ID가 검색 결과에 없으면 생성 답변은 버리고 원문 조각만 반환한다.
 
-현재 자료는 **카드사 상품 페이지 수집본**이다. `sourceSnapshotDate`는 수집일이지 약관 시행일이 아니다. 331종의 상품설명서·약관 PDF 및 문서 버전은 모두 확보되지 않았으므로 `documentVersion=null`이다. 이 API는 상품 원문 설명용이며, **이번 추천 금액에 실제 적용된 조항이라는 증명은 아니다.** 그런 표시를 하려면 계산기가 적용 혜택 규칙 ID를 반환하고 그 규칙의 `source_scope_id`와 연결해야 한다.
+검색은 카드 이름을 먼저 고정하고 질문의 구체적인 단어가 원문 조각에 나타나는 횟수와 가까운 정도를 사용한다. `이 카드 혜택 알려줘`처럼 구체적인 검색어가 없는 질문에는 임의의 안내 문단을 근거로 고르지 않고 `INSUFFICIENT_EVIDENCE`를 반환한다. 프론트에서는 업종·가맹점·혜택명을 더 구체적으로 물어보도록 안내할 수 있다.
+
+현재 자료는 **카드사 상품 페이지 수집본**이다. `sourceSnapshotDate`는 수집일이지 약관 시행일이 아니다. 331종의 상품설명서·약관 PDF 및 문서 버전은 모두 확보되지 않았으므로 `documentVersion=null`이다. `/evidence`는 질문에 맞는 상품 원문 설명용이며 추천 계산과는 독립적이다. 추천 응답의 `ruleEvidence`는 계산값이 달라진 규칙 ID와 원문 블록을 연결하지만, PDF 조항·시행일의 검증이 끝났다는 의미는 아니다.
 
 ## 프론트·백엔드 연결 시 확인할 점
 

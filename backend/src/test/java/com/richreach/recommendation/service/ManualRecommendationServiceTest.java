@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -16,6 +17,7 @@ import com.richreach.card.dto.CalculationRule;
 import com.richreach.card.dto.OwnedCardResponse;
 import com.richreach.card.dto.OwnedCardResponse.AnalysisStatus;
 import com.richreach.card.dto.OwnedCardResponse.CardKind;
+import com.richreach.card.service.AppliedRuleEvidenceService;
 import com.richreach.card.service.BenefitRuleQueryService;
 import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.codef.entity.CardCompany;
@@ -75,7 +77,7 @@ class ManualRecommendationServiceTest {
             long total = query.monthlySpend().values().stream().mapToLong(Long::longValue).sum();
             long benefit = Math.min((long) rule[1], (long) (total * rule[0] / 100));
             return new BenefitResult(benefit, Map.of(SpendingCategory.CAFE, benefit), confirmedOnly,
-                List.of("테스트 메모"));
+                List.of("테스트 메모"), benefit == 0 ? Map.of() : Map.of(String.valueOf(query.cardProductId()), benefit));
         }
 
     }
@@ -84,6 +86,7 @@ class ManualRecommendationServiceTest {
     private TransactionSummaryService transactions;
     private BenefitRuleQueryService ruleQuery;
     private PlanQueryService plans;
+    private AppliedRuleEvidenceService evidence;
     private FakeCalculator calculator;
 
     @BeforeEach
@@ -92,7 +95,9 @@ class ManualRecommendationServiceTest {
         transactions = mock(TransactionSummaryService.class);
         ruleQuery = mock(BenefitRuleQueryService.class);
         plans = mock(PlanQueryService.class);
+        evidence = mock(AppliedRuleEvidenceService.class);
         calculator = new FakeCalculator();
+        when(evidence.find(anyLong(), any(), any())).thenReturn(List.of());
         when(transactions.cardCategorySpend(anyLong(), any())).thenReturn(Map.of());
         when(transactions.cardSpend(anyLong(), any())).thenReturn(Map.of());
         when(ruleQuery.findForCalculation(anyLong())).thenReturn(List.of());
@@ -102,7 +107,7 @@ class ManualRecommendationServiceTest {
     }
 
     private ManualRecommendationService service() {
-        return new ManualRecommendationService(ownedCards, transactions, calculator, ruleQuery, plans, CLOCK);
+        return new ManualRecommendationService(ownedCards, transactions, calculator, ruleQuery, plans, evidence, CLOCK);
     }
 
     private void typicalSpend(List<CategorySummary> categories) {
@@ -158,6 +163,8 @@ class ManualRecommendationServiceTest {
         assertThat(response.parsed().amount()).isEqualTo(10_000);
         assertThat(response.message()).contains("B 카드").contains("500원");
         assertThat(response.calculationScope()).isEqualTo(ManualRecommendationService.SCOPE);
+        assertThat(response.card().ruleEvidence()).isEmpty();
+        verify(evidence).find(eq(200L), eq(Map.of()), eq(Map.of("200", 500L)));
     }
 
     @Test
@@ -644,7 +651,7 @@ class ManualRecommendationServiceTest {
         calculator.rule(100L, 5, 100_000, 0);
         // 2027-01-01 00:10 KST
         ManualRecommendationService january = new ManualRecommendationService(ownedCards, transactions, calculator,
-            ruleQuery, plans, Clock.fixed(Instant.parse("2026-12-31T15:10:00Z"), ZoneId.of("Asia/Seoul")));
+            ruleQuery, plans, evidence, Clock.fixed(Instant.parse("2026-12-31T15:10:00Z"), ZoneId.of("Asia/Seoul")));
 
         january.recommend(USER, request("CAFE", 10_000L));
 

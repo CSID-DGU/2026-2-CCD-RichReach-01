@@ -13,11 +13,18 @@ import java.util.Map;
  * @param notes             계산에서 빼거나 단순화한 내용(예: "가맹점 지정 혜택은 업종으로 매칭할 수 없어 제외"). 화면과 로그 점검용이다.
  */
 public record BenefitResult(long totalBenefit, Map<SpendingCategory, Long> benefitByCategory, boolean confirmedOnly,
-                            List<String> notes) {
+                            List<String> notes, Map<String, Long> benefitByRule) {
 
     public BenefitResult {
         benefitByCategory = Map.copyOf(benefitByCategory);
         notes = List.copyOf(notes);
+        benefitByRule = Map.copyOf(benefitByRule);
+    }
+
+    /** 기존 계산기와 테스트 구현을 위한 생성자. 규칙별 추적 정보가 없는 결과다. */
+    public BenefitResult(long totalBenefit, Map<SpendingCategory, Long> benefitByCategory,
+                         boolean confirmedOnly, List<String> notes) {
+        this(totalBenefit, benefitByCategory, confirmedOnly, notes, Map.of());
     }
 
     /** 혜택이 전혀 없는 결과. */

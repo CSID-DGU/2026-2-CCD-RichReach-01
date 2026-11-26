@@ -6,7 +6,7 @@
 
 결제 전 카드 추천 대화 화면에 필요한 API 형식을 정리한 제안 문서입니다. 수동 입력 추천은 아래 설명대로 구현됐고, 자연어 질문은 별도 [`/chat` API](recommendation-chat-ai.md)로 구현됐습니다. 현재 구현된 예산 조정 대화는 [월 예산 챗봇 API](plan-chat-openai.md)를 참고하세요.
 **경로는 API 명세서 초안의 `POST /api/recommendations`를 기준으로 했고, 필드 이름과 JSON은 프론트 제안**이니 편하게 바꿔 주세요.
-프론트는 이 형식과 같은 모양의 가짜 데이터로 화면을 먼저 만들어 두었습니다 (`FakeRecommendationRepository`).
+프론트에는 실제 API 저장소(`ApiRecommendationRepository`)가 있으며, 빌드 설정 `USE_FAKE_API=false`일 때 사용합니다. 기본 빌드는 가짜 데이터 저장소를 선택합니다.
 
 공통 형식(응답 감싸기, 금액·날짜·enum 표기, 인증)은 [온보딩 문서의 1. 공통 형식](onboarding-data-requirements.md#1-공통-형식)과 같습니다. 아래 예시는 `ApiResponse`의 `data` 부분만 적었습니다.
 
@@ -49,7 +49,8 @@
       "다음 실적 구간까지 40,000원 남았어요."
     ],
     "confirmedOnly": true,
-    "notes": []
+    "notes": [],
+    "ruleEvidence": []
   },
   "alternatives": [
     { "cardId": 5, "cardProductId": 500, "cardCompany": "SHINHAN", "cardName": "신한카드 Deep Dream",
@@ -99,6 +100,7 @@
 - `cardId`는 보유카드 ID(`GET /api/cards`의 `cardId`)이고 `cardProductId`는 카드 상품 ID입니다. 혜택 상세(`GET /api/cards/{cardId}/benefits`)에는 상품 ID를 씁니다. `imageUrl`은 모르면 `null`입니다.
 - `expectedBenefit`: **이번 결제 1건으로 늘어나는 예상 혜택**(원)입니다. `계산(이번 달 지금까지 쓴 금액 + 이번 결제) - 계산(지금까지 쓴 금액)`이라서 월 한도와 전월 실적 조건이 반영됩니다. 한도가 이미 찬 카드는 0이라 추천에서 빠집니다. 혜택이 같으면 보유카드 ID가 작은 카드가 먼저입니다.
 - `confirmedOnly`: 사람이 원문과 대조해 확인한 규칙만 썼는지. `false`이면 확인 전 규칙이 섞여 있어 **참고용**이고 `calculationScope`와 `reasons`에 그 안내가 붙습니다. `notes`는 계산에서 빼거나 단순화한 내용입니다.
+- `ruleEvidence`: 추천 전후 계산값이 달라진 규칙을 같은 카드의 `source_scope_id`로 찾아 수집 원문과 연결합니다. `SOURCE_FOUND`는 원문 블록을 찾았다는 뜻이며 현재 유효한 약관 조항임을 보증하지 않습니다. `sourceSnapshotDate`는 수집일이고 문서 버전이 확인되지 않으면 `documentVersion=null`입니다. `SOURCE_NOT_FOUND`는 원문 누락입니다. 상세 구조는 [추천 AI 연결 문서](recommendation-chat-ai.md)를 참고하세요.
 - 이번 달 사용액은 승인일 기준으로 취소·환불을 뺀 값이고, 전월 실적은 수집한 지난달 거래로 계산한 **추정값**입니다. 일별·횟수·할인대상금액 한도, 가맹점 지정 혜택 등 업종과 월간 사용액만으로 계산할 수 없는 규칙은 제외합니다.
 
 **후보 카드**: 로그인 사용자의 보유카드 중 **분석 대상으로 고르고(`selected=true`) 카드 상품에 매칭된** 카드만입니다. 수집한 331종 카드 상품 전체와 비교하지 않습니다.
@@ -113,7 +115,7 @@
 - 화면 문구: 혜택 "{업종} {benefitRatePercent}% 혜택"(정수면 "10%", 아니면 소수 둘째 자리까지), 실적 "실적까지 {remainingKrw} 남음"(모두 채웠으면 "실적 기준 달성", `performance`가 null이면 숨김), 플랜 변화 "{업종} 남은 목표 {remainingBeforeKrw} → {remainingAfterKrw}"(넘기면 "→ {overTargetKrw} 초과", 플랜에 배분이 없으면 "목표 없음 · {overTargetKrw} 초과", `planImpact`가 null이면 숨김), 구간 "{amount} 결제 시 약 {expectedBenefit} 혜택".
 - `TEXT`는 일반 답변으로, `RECOMMEND-001`은 서버 문구를 그대로 보여 줍니다. 대화 기록은 서버가 저장하지 않아 앱을 켜 둔 동안만 남습니다.
 
-**프론트 연결 방법**: `FakeRecommendationRepository`를 실제 구현으로 바꿉니다. 입력 방식에 따라 두 API를 씁니다.
+**프론트 연결 방법**: 빌드 설정 `USE_FAKE_API=false`로 실제 구현을 선택합니다. 입력 방식에 따라 두 API를 씁니다. `ruleEvidence`를 화면에 표시하려면 프론트 응답 모델과 렌더링 코드를 추가해야 합니다.
 
 1. **자연어 질문 그대로 보내기** → `POST /api/recommendations/chat` ([자세한 내용](recommendation-chat-ai.md)). 서버가 질문에서 금액·업종·가맹점을 읽고 검증한 뒤 이 `/manual` 계산을 호출합니다. 응답의 `recommendation`이 `/manual` 응답과 같은 구조입니다. 금액이나 업종이 없으면 서버가 되묻는 문구를 돌려줍니다.
 2. **앱이 업종·금액을 읽어 보내기** → `POST /api/recommendations/manual`. 금액을 못 읽었으면 `amount` 없이 호출하면 금액 구간별 추천(`RANGE`)을 줍니다. `/chat`은 금액이 없으면 구간 추천 대신 되묻기만 하므로, 화면의 구간별 추천(RECOMMEND-03)이 필요하면 이 방식을 함께 씁니다.

@@ -41,6 +41,37 @@ class BenefitMathTest {
 
         assertThat(result.totalBenefit()).isEqualTo(15_000);
         assertThat(result.benefitByCategory()).containsOnly(Map.entry(SpendingCategory.DINING, 15_000L));
+        assertThat(result.benefitByRule()).containsEntry("r", 15_000L);
+    }
+
+    @Test
+    @DisplayName("공유 한도 뒤의 규칙별 추적값은 총 혜택을 바꾸지 않는다")
+    void tracesSharedLimitWithoutChangingBenefit() {
+        RuleInput dining = new RuleInput("101", Set.of(SpendingCategory.DINING), false, false,
+            new BigDecimal("10"), "KRW", null, "shared", 30_000L, "BASE", null, null, List.of());
+        RuleInput shopping = new RuleInput("102", Set.of(SpendingCategory.SHOPPING), false, false,
+            new BigDecimal("10"), "KRW", null, "shared", 30_000L, "BASE", null, null, List.of());
+
+        BenefitResult result = compute(0, dining, shopping);
+
+        assertThat(result.totalBenefit()).isEqualTo(30_000);
+        assertThat(result.benefitByRule()).containsOnly(Map.entry("101", 18_000L), Map.entry("102", 12_000L));
+        assertThat(result.benefitByRule().values().stream().mapToLong(Long::longValue).sum())
+            .isEqualTo(result.totalBenefit());
+    }
+
+    @Test
+    @DisplayName("1원 미만 기여 규칙은 최종 원 단위 혜택에 영향을 준 경우에만 추적한다")
+    void excludesRulesWithZeroRoundedContribution() {
+        RuleInput first = new RuleInput("101", Set.of(SpendingCategory.CAFE), false, false,
+            new BigDecimal("0.006"), "KRW", null, null, null, "BASE", null, null, List.of());
+        RuleInput second = new RuleInput("102", Set.of(SpendingCategory.CAFE), false, false,
+            new BigDecimal("0.006"), "KRW", null, null, null, "BASE", null, null, List.of());
+        BenefitResult result = BenefitMath.compute(List.of(first, second),
+            Map.of(SpendingCategory.CAFE, 10_000L), 0, true);
+
+        assertThat(result.totalBenefit()).isEqualTo(1);
+        assertThat(result.benefitByRule()).containsOnly(Map.entry("101", 1L));
     }
 
     @Test
