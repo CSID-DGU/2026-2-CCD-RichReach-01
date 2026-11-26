@@ -25,17 +25,23 @@ class StagingRunner implements ApplicationRunner {
     private final CardPromotionService promotionService;
     private final CardImageLoader imageLoader;
     private final String csvDir;
+    private final boolean promoteExisting;
 
     StagingRunner(StagingService stagingService, CardPromotionService promotionService, CardImageLoader imageLoader,
-                  @Value("${richreach.staging.csv-dir:}") String csvDir) {
+                  @Value("${richreach.staging.csv-dir:}") String csvDir,
+                  @Value("${richreach.staging.promote-existing-on-startup:false}") boolean promoteExisting) {
         this.stagingService = stagingService;
         this.promotionService = promotionService;
         this.imageLoader = imageLoader;
         this.csvDir = csvDir;
+        this.promoteExisting = promoteExisting;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        if (promoteExisting) {
+            throw new IllegalStateException("기존 스테이징 승격과 CSV 재적재를 동시에 켤 수 없습니다.");
+        }
         if (csvDir.isBlank()) {
             throw new IllegalStateException(
                 "richreach.staging.load-on-startup이 켜져 있지만 richreach.staging.csv-dir(STAGING_CSV_DIR)가 비어 있습니다.");
