@@ -38,6 +38,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalLong;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,6 +67,7 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  * 금액은 소비 정보라서 로그에 남기지 않는다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ManualRecommendationService {
@@ -134,6 +136,7 @@ public class ManualRecommendationService {
     public ManualRecommendationResponse recommend(long userId, ManualRecommendationRequest request) {
         SpendingCategory category = parseCategory(request);
         Long amount = parseAmount(request);
+        long startedAt = System.nanoTime();
 
         List<OwnedCardResponse> candidates = ownedCards.list(userId).stream()
             .filter(card -> card.selected() && card.cardProductId() != null).toList();
@@ -146,9 +149,20 @@ public class ManualRecommendationService {
         Spending spending = new Spending(transactions.cardCategorySpend(userId, month),
             transactions.cardSpend(userId, month), transactions.cardSpend(userId, month.minusMonths(1)));
 
-        return amount == null
+        long loadedAt = System.nanoTime();
+
+        ManualRecommendationResponse response = amount == null
             ? ranges(userId, candidates, category, spending)
             : single(userId, month, candidates, category, amount, spending);
+        // 구간별 소요 시간만 남긴다. 금액과 업종은 남기지 않는다.
+        long finishedAt = System.nanoTime();
+        log.info("recommend.manual type={} cards={} loadMs={} calcMs={} totalMs={}", response.type(), candidates.size(),
+            millis(startedAt, loadedAt), millis(loadedAt, finishedAt), millis(startedAt, finishedAt));
+        return response;
+    }
+
+    private static long millis(long fromNanos, long toNanos) {
+        return (toNanos - fromNanos) / 1_000_000;
     }
 
     /** 금액을 알 때: 가장 유리한 카드 한 장과 나머지 카드의 예상 혜택. */
