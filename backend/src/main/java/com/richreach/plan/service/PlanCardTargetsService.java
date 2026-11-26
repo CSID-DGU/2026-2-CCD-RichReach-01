@@ -1,7 +1,5 @@
 package com.richreach.plan.service;
 
-import com.richreach.benefit.dto.BenefitQuery;
-import com.richreach.benefit.service.BenefitCalculator;
 import com.richreach.benefit.service.CardPerformanceAnalyzer;
 import com.richreach.card.dto.CalculationRule;
 import com.richreach.card.dto.OwnedCardResponse;
@@ -21,6 +19,7 @@ import com.richreach.plan.entity.PlanCardAllocation;
 import com.richreach.plan.repository.MonthlyPlanRepository;
 import com.richreach.plan.repository.PlanCardAllocationRepository;
 import com.richreach.transaction.service.TransactionSummaryService;
+import com.richreach.transaction.service.TransactionBenefitService;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -58,7 +57,7 @@ public class PlanCardTargetsService {
     private final TransactionSummaryService transactions;
     private final BenefitRuleQueryService rules;
     private final CardPerformanceQueryService performanceNotes;
-    private final BenefitCalculator calculator;
+    private final TransactionBenefitService transactionBenefits;
 
     @Transactional(readOnly = true)
     public PlanCardTargetsResponse cardTargets(long userId, long planId) {
@@ -80,7 +79,7 @@ public class PlanCardTargetsService {
         for (Map.Entry<Long, List<PlanCardAllocation>> entry : byCard.entrySet()) {
             long cardId = entry.getKey();
             OwnedCardResponse card = cards.get(cardId);
-            details.add(detail(cardId, card, entry.getValue(), spent.getOrDefault(cardId, Map.of()),
+            details.add(detail(userId, month, cardId, card, entry.getValue(), spent.getOrDefault(cardId, Map.of()),
                 previousSpend.getOrDefault(cardId, 0L)));
         }
         details.sort(Comparator.comparingLong(CardDetail::targetAmount).reversed()
@@ -88,7 +87,8 @@ public class PlanCardTargetsService {
         return new PlanCardTargetsResponse(plan.getId(), plan.getPlanMonth(), details);
     }
 
-    private CardDetail detail(long cardId, OwnedCardResponse card, List<PlanCardAllocation> planned,
+    private CardDetail detail(long userId, YearMonth month, long cardId, OwnedCardResponse card,
+                              List<PlanCardAllocation> planned,
                               Map<SpendingCategory, Long> spentByCategory, long previousMonthSpend) {
         long target = planned.stream().mapToLong(PlanCardAllocation::getTargetAmount).sum();
         long expectedBenefit = planned.stream().mapToLong(PlanCardAllocation::getExpectedBenefit).sum();
@@ -97,8 +97,8 @@ public class PlanCardTargetsService {
 
         List<CalculationRule> cardRules = productId == null ? List.of() : rules.findForCalculation(productId);
         // 카드 상품과 매칭되지 않았거나 혜택 규칙이 없으면 혜택을 알 수 없다. 계산기는 이때 0을 돌려주므로 부르지 않는다.
-        Long currentBenefit = cardRules.isEmpty() ? null : calculator
-            .calculate(new BenefitQuery(productId, spentByCategory, previousMonthSpend)).totalBenefit();
+        Long currentBenefit = cardRules.isEmpty() ? null
+            : transactionBenefits.monthTotal(userId, month, List.of(cardId));
 
         return new CardDetail(cardId, card == null ? null : card.cardName(), target, spent,
             Math.max(0, target - spent), expectedBenefit, currentBenefit,

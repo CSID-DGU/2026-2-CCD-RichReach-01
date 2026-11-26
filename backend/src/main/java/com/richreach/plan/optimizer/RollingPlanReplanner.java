@@ -34,6 +34,7 @@ public class RollingPlanReplanner {
         Set<Long> eligibleForFuture = new java.util.HashSet<>();
         List<CardInput> cards = new ArrayList<>();
         long approvedBenefit = 0;
+        Map<Long, Map<SpendingCategory, Long>> approvedBenefits = new java.util.HashMap<>();
         Set<String> notes = new LinkedHashSet<>();
         for (var card : input.cards()) {
             fixed.put(card.userCardId(), card.approvedSpendByCategory());
@@ -41,10 +42,23 @@ public class RollingPlanReplanner {
             cards.add(new CardInput(card.userCardId(), card.cardProductId(), card.previousMonthSpend()));
             card.approvedSpendByCategory().forEach((category, amount) ->
                 approved.merge(category, amount, Math::addExact));
-            BenefitResult benefit = benefitCalculator.calculate(new BenefitQuery(card.cardProductId(),
-                card.approvedSpendByCategory(), card.previousMonthSpend()));
-            approvedBenefit = Math.addExact(approvedBenefit, benefit.totalBenefit());
-            notes.addAll(benefit.notes());
+            if (input.approvedPurchasesByCard().containsKey(card.userCardId())) {
+                Map<SpendingCategory, Long> byCategory = new EnumMap<>(SpendingCategory.class);
+                for (BenefitResult benefit : benefitCalculator.calculatePurchases(card.cardProductId(),
+                    input.approvedPurchasesByCard().get(card.userCardId()), card.previousMonthSpend()).values()) {
+                    approvedBenefit = Math.addExact(approvedBenefit, benefit.totalBenefit());
+                    benefit.benefitByCategory().forEach((category, amount) ->
+                        byCategory.merge(category, amount, Math::addExact));
+                    notes.addAll(benefit.notes());
+                }
+                approvedBenefits.put(card.userCardId(), byCategory);
+            } else {
+                BenefitResult benefit = benefitCalculator.calculate(new BenefitQuery(card.cardProductId(),
+                    card.approvedSpendByCategory(), card.previousMonthSpend()));
+                approvedBenefit = Math.addExact(approvedBenefit, benefit.totalBenefit());
+                approvedBenefits.put(card.userCardId(), benefit.benefitByCategory());
+                notes.addAll(benefit.notes());
+            }
         }
 
         Map<SpendingCategory, Long> effective = new EnumMap<>(SpendingCategory.class);
@@ -61,7 +75,7 @@ public class RollingPlanReplanner {
         }
 
         PlanStrategyInput strategyInput = new PlanStrategyInput(input.userId(), input.month(), effective,
-            cards, input.timeLimit());
+            cards, input.timeLimit(), input.forecastPurchases(), input.approvedPurchasesByCard());
         PlanStrategyResult result = cpSat.runWithCommitted(strategyInput, fixed, eligibleForFuture);
         if (!result.success()) {
             return new RollingPlanResult(false, approved, remaining, List.of(), approvedBenefit, 0,
@@ -75,8 +89,15 @@ public class RollingPlanReplanner {
                 return new RollingPlanResult(false, approved, remaining, List.of(), approvedBenefit, 0,
                     result.solverStatus(), new ArrayList<>(notes), "확정된 거래를 다른 카드로 옮길 수 없습니다.");
             }
+            long currentBenefit = approvedBenefits.getOrDefault(allocation.userCardId(), Map.of())
+                .getOrDefault(allocation.category(), 0L);
+            long futureBenefit = allocation.expectedBenefit() - currentBenefit;
+            if (futureBenefit < 0) {
+                return new RollingPlanResult(false, approved, remaining, List.of(), approvedBenefit, 0,
+                    result.solverStatus(), new ArrayList<>(notes), "남은 혜택을 일관되게 계산하지 못했습니다.");
+            }
             if (target > 0) future.add(new RemainingAllocation(allocation.userCardId(),
-                allocation.category(), target));
+                allocation.category(), target, futureBenefit));
         }
         Map<SpendingCategory, Long> distributed = new EnumMap<>(SpendingCategory.class);
         future.forEach(allocation -> distributed.merge(allocation.category(), allocation.targetAmount(),

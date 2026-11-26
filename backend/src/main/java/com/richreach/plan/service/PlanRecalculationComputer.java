@@ -1,14 +1,13 @@
 package com.richreach.plan.service;
 
-import com.richreach.benefit.dto.BenefitQuery;
-import com.richreach.benefit.dto.BenefitResult;
-import com.richreach.benefit.service.BenefitCalculator;
+import com.richreach.benefit.dto.BenefitPurchase;
 import com.richreach.card.dto.OwnedCardResponse;
 import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.global.category.SpendingCategory;
 import com.richreach.plan.config.PlanProperties;
 import com.richreach.plan.entity.SolverStatus;
 import com.richreach.plan.optimizer.RollingPlanInput;
+import com.richreach.plan.optimizer.ForecastPurchaseBuilder;
 import com.richreach.plan.optimizer.RollingPlanInput.CardState;
 import com.richreach.plan.optimizer.RollingPlanReplanner;
 import com.richreach.plan.optimizer.RollingPlanResult;
@@ -16,6 +15,9 @@ import com.richreach.plan.service.PlanBaselineReader.Baseline;
 import com.richreach.plannedexpense.dto.PlannedExpenseResponse;
 import com.richreach.plannedexpense.service.PlannedExpenseService;
 import com.richreach.transaction.service.TransactionSummaryService;
+import com.richreach.transaction.service.TransactionBenefitService;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -40,7 +42,8 @@ import org.springframework.stereotype.Component;
  *       전체라서 새 거래를 더하는 것이 아니라 통째로 다시 읽은 값이다.</li>
  *   <li>분석 대상으로 고른 카드는 앞으로의 배분에 쓰고, 분석 대상이 아니지만 이미 쓴 카드는 쓴 금액만 고정한다.</li>
  *   <li>결과의 카드별 목표 금액은 <b>이번 달 전체 목표</b>(이미 쓴 금액 + 남은 목표)라서 기존 플랜 조회와 같은 의미다.</li>
- *   <li>예상 혜택은 카드마다 그 목표로 혜택 계산기를 다시 불러 구한다. 업종별 배분의 혜택 합이 플랜의 예상 혜택과 같다.</li>
+ *   <li>이미 승인된 거래의 혜택은 거래별로 재생하고, 남은 예산의 혜택은 예상 거래를 배분해 계산한다.
+ *       업종별 혜택 합은 플랜의 예상 혜택과 같다.</li>
  * </ul>
  * <b>한계</b>: 카드 상품과 매칭되지 않은 카드의 승인액은 재계산 엔진이 카드 상품 ID를 요구해서 입력에서 빠진다.
  * 금액은 소비 정보라서 로그에 남기지 않는다.
@@ -63,9 +66,10 @@ class PlanRecalculationComputer {
     private final OwnedCardQueryService ownedCards;
     private final TransactionSummaryService transactions;
     private final RollingPlanReplanner replanner;
-    private final BenefitCalculator benefitCalculator;
     private final PlanProperties properties;
     private final PlannedExpenseService plannedExpenses;
+    private final TransactionBenefitService transactionBenefits;
+    private final Clock clock;
 
     /**
      * 계산 결과. 성공이면 출발점 플랜과 바뀐 뒤의 목표·혜택을, 실패면 코드와 이유를 가진다.
@@ -140,10 +144,27 @@ class PlanRecalculationComputer {
         }
         PlanBudget planned = PlannedExpenseBudgetOverlay.apply(budget, plannedItems(userId, month), spentByCategory);
 
+        Map<Long, List<BenefitPurchase>> actualPurchases = new HashMap<>();
+        List<BenefitPurchase> history = new ArrayList<>();
+        for (CardState card : cards) {
+            actualPurchases.put(card.userCardId(), transactionBenefits.cardPurchases(userId, card.userCardId(), month));
+            if (card.eligibleForFuture()) {
+                history.addAll(transactionBenefits.cardPurchases(userId, card.userCardId(), month.minusMonths(1)));
+            }
+        }
+        Map<SpendingCategory, Long> futureBudget = new EnumMap<>(SpendingCategory.class);
+        planned.byCategory().forEach((category, amount) -> {
+            long remaining = amount - spentByCategory.getOrDefault(category, 0L);
+            if (remaining > 0) futureBudget.put(category, remaining);
+        });
+        LocalDateTime earliestFuture = month.equals(YearMonth.now(clock)) ? LocalDateTime.now(clock)
+            : month.atDay(1).atStartOfDay();
+        List<BenefitPurchase> forecast = ForecastPurchaseBuilder.build(month, futureBudget, history, earliestFuture);
+
         RollingPlanResult result;
         try {
             result = replanner.replan(new RollingPlanInput(userId, month, planned.byCategory(), cards,
-                properties.strategyTimeLimit()));
+                properties.strategyTimeLimit(), forecast, actualPurchases));
         } catch (RuntimeException e) {
             // 메시지에 금액이 섞일 수 있어서 종류만 남긴다.
             log.error("플랜 재계산 중 오류: type={}", e.getClass().getSimpleName());
@@ -176,12 +197,20 @@ class PlanRecalculationComputer {
         long totalBenefit = 0;
         for (Map.Entry<Long, Map<SpendingCategory, Long>> entry : targets.entrySet()) {
             totalSpend += entry.getValue().values().stream().mapToLong(Long::longValue).sum();
-            BenefitResult benefit = benefitCalculator.calculate(new BenefitQuery(productByCard.get(entry.getKey()),
-                entry.getValue(), previousSpend.getOrDefault(entry.getKey(), 0L)));
             Map<SpendingCategory, Long> perCategory = new EnumMap<>(SpendingCategory.class);
-            perCategory.putAll(benefit.benefitByCategory());
+            perCategory.putAll(transactionBenefits.monthByCategory(userId, entry.getKey(),
+                productByCard.get(entry.getKey()), month, previousSpend.getOrDefault(entry.getKey(), 0L)));
             benefits.put(entry.getKey(), perCategory);
-            totalBenefit += benefit.totalBenefit();
+        }
+        for (RollingPlanResult.RemainingAllocation allocation : result.remainingAllocations()) {
+            benefits.computeIfAbsent(allocation.userCardId(), id -> new EnumMap<>(SpendingCategory.class))
+                .merge(allocation.category(), allocation.expectedBenefit(), Math::addExact);
+        }
+        for (Map<SpendingCategory, Long> byCategory : benefits.values()) {
+            totalBenefit = Math.addExact(totalBenefit, byCategory.values().stream().mapToLong(Long::longValue).sum());
+        }
+        if (totalBenefit != result.estimatedApprovedBenefit() + result.estimatedRemainingBenefit()) {
+            return Computation.failure(CODE_SOLVER_ERROR, "혜택 합계를 일관되게 계산하지 못했습니다.");
         }
         return new Computation(true, null, null, baseline, budget, targets, benefits, totalSpend, totalBenefit,
             result.solverStatus());

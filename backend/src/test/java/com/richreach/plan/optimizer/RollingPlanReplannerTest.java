@@ -39,8 +39,8 @@ class RollingPlanReplannerTest {
         assertThat(result.approvedByCategory()).containsEntry(SpendingCategory.CAFE, 40_000L);
         assertThat(result.remainingByCategory()).containsEntry(SpendingCategory.CAFE, 60_000L);
         assertThat(result.remainingAllocations()).containsExactlyInAnyOrder(
-            new RollingPlanResult.RemainingAllocation(11, SpendingCategory.CAFE, 10_000),
-            new RollingPlanResult.RemainingAllocation(22, SpendingCategory.CAFE, 50_000));
+            new RollingPlanResult.RemainingAllocation(11, SpendingCategory.CAFE, 10_000, 1_000),
+            new RollingPlanResult.RemainingAllocation(22, SpendingCategory.CAFE, 50_000, 2_500));
         assertThat(result.estimatedApprovedBenefit()).isEqualTo(4_000);
         assertThat(result.estimatedRemainingBenefit()).isEqualTo(3_500);
     }
@@ -55,8 +55,8 @@ class RollingPlanReplannerTest {
         assertThat(result.success()).isTrue();
         assertThat(result.remainingByCategory()).containsEntry(SpendingCategory.CAFE, 40_000L);
         assertThat(result.remainingAllocations()).containsExactlyInAnyOrder(
-            new RollingPlanResult.RemainingAllocation(11, SpendingCategory.CAFE, 10_000),
-            new RollingPlanResult.RemainingAllocation(22, SpendingCategory.CAFE, 30_000));
+            new RollingPlanResult.RemainingAllocation(11, SpendingCategory.CAFE, 10_000, 1_000),
+            new RollingPlanResult.RemainingAllocation(22, SpendingCategory.CAFE, 30_000, 1_500));
         assertThat(result.estimatedApprovedBenefit()).isEqualTo(5_000);
         assertThat(result.estimatedRemainingBenefit()).isEqualTo(2_500);
     }
@@ -74,7 +74,7 @@ class RollingPlanReplannerTest {
 
         assertThat(result.success()).isTrue();
         assertThat(result.remainingAllocations()).containsExactly(
-            new RollingPlanResult.RemainingAllocation(22, SpendingCategory.CAFE, 60_000));
+            new RollingPlanResult.RemainingAllocation(22, SpendingCategory.CAFE, 60_000, 3_000));
         assertThat(result.estimatedApprovedBenefit()).isEqualTo(4_000);
         assertThat(result.estimatedRemainingBenefit()).isEqualTo(3_000);
     }
@@ -100,7 +100,7 @@ class RollingPlanReplannerTest {
 
         assertThat(result.success()).isTrue();
         assertThat(result.remainingAllocations()).containsExactly(
-            new RollingPlanResult.RemainingAllocation(22, SpendingCategory.CAFE, 100_000));
+            new RollingPlanResult.RemainingAllocation(22, SpendingCategory.CAFE, 100_000, 5_000));
         assertThat(result.estimatedRemainingBenefit()).isEqualTo(5_000);
     }
 

@@ -44,7 +44,7 @@ public class BenefitRuleQueryService {
 
     private CalculationRule toCalculationRule(BenefitRule rule, PerformanceTier tier) {
         MappedCategories mapped = categoryMapper.map(rule.getCategory());
-        // 월간 업종 합계에는 결제 수단 정보도 없다. 지정 결제 수단을 모든 결제에 적용하지 않는다.
+        // 입력에 지정 가맹점과 결제 경로의 확인 정보가 없다. 이 혜택을 일반 카드 결제에 적용하지 않는다.
         boolean merchantSpecific = notBlank(rule.getMerchants()) || notBlank(rule.getTargetsNormalized())
             || notBlank(rule.getPaymentMethods());
         return new CalculationRule(rule.getId(), mapped.categories(), mapped.allMerchants(), merchantSpecific,
@@ -53,7 +53,7 @@ public class BenefitRuleQueryService {
             rule.getMonthlyCountLimit(), rule.getAnnualCountLimit(), rule.getEligibleSpendMonthlyLimitKrw(),
             rule.getRuleMode(), tier == null ? null : tier.getPreviousMonthMinKrw(),
             tier == null ? null : tier.getPreviousMonthMaxExclusiveKrw(), rule.isRuleEngineReady(),
-            rule.getPerTransactionMinKrw());
+            rule.getPerTransactionMinKrw(), rule.getPerTransactionMaxKrw());
     }
 
     private static boolean notBlank(String value) {

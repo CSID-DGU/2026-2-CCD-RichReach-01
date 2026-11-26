@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.richreach.benefit.dto.BenefitQuery;
+import com.richreach.benefit.dto.BenefitPurchase;
 import com.richreach.benefit.dto.BenefitResult;
 import com.richreach.benefit.service.BenefitCalculator;
 import com.richreach.card.dto.CalculationRule;
@@ -35,9 +36,11 @@ import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionSummaryResponse;
 import com.richreach.transaction.dto.TransactionSummaryResponse.CategorySummary;
 import com.richreach.transaction.service.TransactionSummaryService;
+import com.richreach.transaction.service.TransactionBenefitService;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -80,6 +83,12 @@ class ManualRecommendationServiceTest {
                 List.of("테스트 메모"), benefit == 0 ? Map.of() : Map.of(String.valueOf(query.cardProductId()), benefit));
         }
 
+        @Override
+        public Map<Long, BenefitResult> calculatePurchases(long cardProductId, List<BenefitPurchase> purchases,
+                                                           long previousMonthSpend) {
+            throw new UnsupportedOperationException("수동 추천 서비스 테스트는 거래별 계산을 별도로 대체합니다.");
+        }
+
     }
 
     private OwnedCardQueryService ownedCards;
@@ -88,6 +97,7 @@ class ManualRecommendationServiceTest {
     private PlanQueryService plans;
     private AppliedRuleEvidenceService evidence;
     private FakeCalculator calculator;
+    private TransactionBenefitService purchaseBenefits;
 
     @BeforeEach
     void setUp() {
@@ -97,6 +107,32 @@ class ManualRecommendationServiceTest {
         plans = mock(PlanQueryService.class);
         evidence = mock(AppliedRuleEvidenceService.class);
         calculator = new FakeCalculator();
+        purchaseBenefits = mock(TransactionBenefitService.class);
+        when(purchaseBenefits.preview(anyLong(), anyLong(), anyLong(), any(), any(), anyLong(), any(), anyLong()))
+            .thenAnswer(invocation -> {
+                long cardId = invocation.getArgument(1);
+                long productId = invocation.getArgument(2);
+                YearMonth month = invocation.getArgument(3);
+                SpendingCategory category = invocation.getArgument(4);
+                long amount = invocation.getArgument(5);
+                long previous = invocation.getArgument(7);
+                Map<SpendingCategory, Long> spent = transactions.cardCategorySpend(USER, month)
+                    .getOrDefault(cardId, Map.of());
+                BenefitResult before = calculator.calculate(new BenefitQuery(productId, spent, previous));
+                Map<SpendingCategory, Long> afterSpend = new java.util.EnumMap<>(SpendingCategory.class);
+                afterSpend.putAll(spent);
+                afterSpend.merge(category, amount, Long::sum);
+                BenefitResult after = calculator.calculate(new BenefitQuery(productId, afterSpend, previous));
+                long gain = Math.max(0, after.totalBenefit() - before.totalBenefit());
+                Map<String, Long> difference = new HashMap<>();
+                after.benefitByRule().forEach((id, value) -> {
+                    long delta = value - before.benefitByRule().getOrDefault(id, 0L);
+                    if (delta > 0) difference.put(id, delta);
+                });
+                BenefitResult purchase = new BenefitResult(gain,
+                    gain == 0 ? Map.of() : Map.of(category, gain), after.confirmedOnly(), after.notes(), difference);
+                return new TransactionBenefitService.Preview(purchase, after.totalBenefit(), before.benefitByRule());
+            });
         when(evidence.find(anyLong(), any(), any())).thenReturn(List.of());
         when(transactions.cardCategorySpend(anyLong(), any())).thenReturn(Map.of());
         when(transactions.cardSpend(anyLong(), any())).thenReturn(Map.of());
@@ -107,7 +143,7 @@ class ManualRecommendationServiceTest {
     }
 
     private ManualRecommendationService service() {
-        return new ManualRecommendationService(ownedCards, transactions, calculator, ruleQuery, plans, evidence, CLOCK);
+        return new ManualRecommendationService(ownedCards, transactions, purchaseBenefits, ruleQuery, plans, evidence, CLOCK);
     }
 
     private void typicalSpend(List<CategorySummary> categories) {
@@ -650,12 +686,12 @@ class ManualRecommendationServiceTest {
         cards(card(1, 100L, "카드", true));
         calculator.rule(100L, 5, 100_000, 0);
         // 2027-01-01 00:10 KST
-        ManualRecommendationService january = new ManualRecommendationService(ownedCards, transactions, calculator,
+        ManualRecommendationService january = new ManualRecommendationService(ownedCards, transactions, purchaseBenefits,
             ruleQuery, plans, evidence, Clock.fixed(Instant.parse("2026-12-31T15:10:00Z"), ZoneId.of("Asia/Seoul")));
 
         january.recommend(USER, request("CAFE", 10_000L));
 
-        verify(transactions).cardCategorySpend(USER, YearMonth.of(2027, 1));
+        verify(transactions, org.mockito.Mockito.atLeastOnce()).cardCategorySpend(USER, YearMonth.of(2027, 1));
         verify(transactions).cardSpend(USER, YearMonth.of(2026, 12));
     }
 

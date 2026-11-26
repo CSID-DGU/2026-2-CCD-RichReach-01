@@ -1,5 +1,6 @@
 package com.richreach.plan.optimizer;
 
+import com.richreach.benefit.dto.BenefitPurchase;
 import com.richreach.global.category.SpendingCategory;
 import java.time.Duration;
 import java.time.YearMonth;
@@ -25,11 +26,22 @@ public record PlanStrategyInput(
     YearMonth month,
     Map<SpendingCategory, Long> budgetByCategory,
     List<CardInput> cards,
-    Duration timeLimit) {
+    Duration timeLimit,
+    List<BenefitPurchase> forecastPurchases,
+    Map<Long, List<BenefitPurchase>> approvedPurchasesByCard) {
+
+    public PlanStrategyInput(long userId, YearMonth month, Map<SpendingCategory, Long> budgetByCategory,
+                             List<CardInput> cards, Duration timeLimit) {
+        this(userId, month, budgetByCategory, cards, timeLimit, List.of(), Map.of());
+    }
 
     public PlanStrategyInput {
         budgetByCategory = budgetByCategory == null ? Map.of() : Map.copyOf(budgetByCategory);
         cards = cards == null ? List.of() : List.copyOf(cards);
+        forecastPurchases = forecastPurchases == null ? List.of() : List.copyOf(forecastPurchases);
+        approvedPurchasesByCard = approvedPurchasesByCard == null ? Map.of() : approvedPurchasesByCard.entrySet()
+            .stream().collect(java.util.stream.Collectors.toUnmodifiableMap(Map.Entry::getKey,
+                entry -> List.copyOf(entry.getValue())));
         budgetByCategory.forEach((category, amount) -> {
             if (amount == null || amount < 0) {
                 throw new IllegalArgumentException("예산은 0 이상이어야 합니다.");

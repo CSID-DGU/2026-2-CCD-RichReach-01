@@ -2,6 +2,7 @@ package com.richreach.plan.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -26,6 +27,10 @@ import com.richreach.plan.service.PlanRecalculationComputer.Computation;
 import com.richreach.plannedexpense.dto.PlannedExpenseResponse;
 import com.richreach.plannedexpense.service.PlannedExpenseService;
 import com.richreach.transaction.service.TransactionSummaryService;
+import com.richreach.transaction.service.TransactionBenefitService;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.Duration;
 import java.time.YearMonth;
 import java.util.EnumMap;
@@ -48,6 +53,7 @@ class PlanRecalculationComputerTest {
     private TransactionSummaryService transactions;
     private RollingPlanReplanner replanner;
     private BenefitCalculator calculator;
+    private TransactionBenefitService transactionBenefits;
     private PlannedExpenseService plannedExpenses;
     private PlanRecalculationComputer computer;
 
@@ -58,13 +64,17 @@ class PlanRecalculationComputerTest {
         transactions = mock(TransactionSummaryService.class);
         replanner = mock(RollingPlanReplanner.class);
         calculator = mock(BenefitCalculator.class);
+        transactionBenefits = mock(TransactionBenefitService.class);
         plannedExpenses = mock(PlannedExpenseService.class);
-        computer = new PlanRecalculationComputer(baselines, ownedCards, transactions, replanner, calculator,
-            new PlanProperties(Duration.ofMinutes(5), Duration.ofSeconds(10)), plannedExpenses);
+        computer = new PlanRecalculationComputer(baselines, ownedCards, transactions, replanner,
+            new PlanProperties(Duration.ofMinutes(5), Duration.ofSeconds(10)), plannedExpenses,
+            transactionBenefits, Clock.fixed(Instant.parse("2026-11-24T03:00:00Z"), ZoneId.of("Asia/Seoul")));
         when(baselines.read(USER, MONTH)).thenReturn(Optional.of(baseline(Map.of(SpendingCategory.DINING, 300_000L,
             SpendingCategory.CAFE, 100_000L))));
         when(transactions.cardSpend(USER, MONTH.minusMonths(1))).thenReturn(Map.of(10L, 700_000L));
         when(calculator.calculate(any())).thenReturn(BenefitResult.none(true, List.of()));
+        when(transactionBenefits.monthByCategory(anyLong(), anyLong(), anyLong(), any(), anyLong()))
+            .thenReturn(Map.of());
     }
 
     private static Baseline baseline(Map<SpendingCategory, Long> budget) {
@@ -83,6 +93,12 @@ class PlanRecalculationComputerTest {
     private static RollingPlanResult success(RemainingAllocation... remaining) {
         return new RollingPlanResult(true, Map.of(), Map.of(), List.of(remaining), 0, 0, SolverStatus.OPTIMAL,
             List.of(), null);
+    }
+
+    private static RollingPlanResult success(long approvedBenefit, long remainingBenefit,
+                                              RemainingAllocation... remaining) {
+        return new RollingPlanResult(true, Map.of(), Map.of(), List.of(remaining), approvedBenefit,
+            remainingBenefit, SolverStatus.OPTIMAL, List.of(), null);
     }
 
     @Test
@@ -161,15 +177,12 @@ class PlanRecalculationComputerTest {
         when(ownedCards.list(USER)).thenReturn(List.of(card(10L, 100L, true), card(11L, 200L, true)));
         when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(Map.of(
             10L, Map.of(SpendingCategory.DINING, 50_000L)));
-        when(replanner.replan(any())).thenReturn(success(
-            new RemainingAllocation(10L, SpendingCategory.DINING, 100_000),
-            new RemainingAllocation(11L, SpendingCategory.DINING, 150_000),
-            new RemainingAllocation(11L, SpendingCategory.CAFE, 100_000)));
-        when(calculator.calculate(any(BenefitQuery.class))).thenAnswer(invocation -> {
-            BenefitQuery query = invocation.getArgument(0);
-            long dining = query.monthlySpend().getOrDefault(SpendingCategory.DINING, 0L);
-            return new BenefitResult(dining / 100, Map.of(SpendingCategory.DINING, dining / 100), true, List.of());
-        });
+        when(replanner.replan(any())).thenReturn(success(500, 2_500,
+            new RemainingAllocation(10L, SpendingCategory.DINING, 100_000, 1_000),
+            new RemainingAllocation(11L, SpendingCategory.DINING, 150_000, 1_500),
+            new RemainingAllocation(11L, SpendingCategory.CAFE, 100_000, 0)));
+        when(transactionBenefits.monthByCategory(USER, 10L, 100L, MONTH, 700_000L))
+            .thenReturn(Map.of(SpendingCategory.DINING, 500L));
 
         Computation result = computer.compute(USER, MONTH);
 

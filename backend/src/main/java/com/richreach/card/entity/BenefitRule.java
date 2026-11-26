@@ -88,9 +88,13 @@ public class BenefitRule extends BaseEntity {
     @Column(name = "amount_basis", length = 100)
     private String amountBasis;
 
-    /** 건별 최소 결제금액. 월간 업종 합계만으로 판정할 수 없어 현재 계산에서는 제외한다. */
+    /** 건별 최소 결제금액. 거래별 혜택 계산에서 사용한다. */
     @Column(name = "per_transaction_min_krw")
     private Long perTransactionMinKrw;
+
+    /** Per-payment reward ceiling; independent of monthly_limit. Populated after source review. */
+    @Column(name = "per_transaction_max_krw")
+    private Long perTransactionMaxKrw;
 
     @Column(name = "monthly_limit")
     private Long monthlyLimit;
