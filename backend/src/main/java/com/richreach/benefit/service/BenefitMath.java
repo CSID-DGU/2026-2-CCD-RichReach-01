@@ -97,7 +97,8 @@ final class BenefitMath {
             }
             Map<SpendingCategory, Long> targets = new EnumMap<>(SpendingCategory.class);
             for (Map.Entry<SpendingCategory, Long> entry : spend.entrySet()) {
-                if (entry.getValue() > 0 && (rule.allMerchants() || rule.categories().contains(entry.getKey()))) {
+                if (entry.getKey() != SpendingCategory.ETC && entry.getValue() > 0
+                    && (rule.allMerchants() || rule.categories().contains(entry.getKey()))) {
                     targets.put(entry.getKey(), entry.getValue());
                 }
             }

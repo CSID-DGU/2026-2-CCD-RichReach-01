@@ -74,4 +74,17 @@ class PurchaseBenefitMathTest {
         assertThat(result.get(1L).totalBenefit()).isZero();
         assertThat(result.get(2L).totalBenefit()).isEqualTo(2_000);
     }
+
+    @Test
+    void identifiedEtcPurchaseDoesNotReceiveAllMerchantBenefit() {
+        CalculationRule all = new CalculationRule(1L, Set.of(), true, false,
+            BigDecimal.ONE, "KRW", null, null, null, null, null, null, null, null,
+            "BASE", null, null, true, null);
+        BenefitPurchase etc = new BenefitPurchase(1L, LocalDateTime.of(2026, 11, 1, 12, 0),
+            SpendingCategory.ETC, 10_000L, true);
+        BenefitPurchase cafe = purchase(2L, 10_000L, 2, true);
+        Map<Long, BenefitResult> result = PurchaseBenefitMath.calculate(List.of(all), List.of(etc, cafe), 0, true);
+        assertThat(result.get(1L).totalBenefit()).isZero();
+        assertThat(result.get(2L).totalBenefit()).isEqualTo(100);
+    }
 }

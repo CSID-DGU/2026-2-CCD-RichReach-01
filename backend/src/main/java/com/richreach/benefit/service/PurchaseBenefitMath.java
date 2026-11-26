@@ -58,7 +58,7 @@ final class PurchaseBenefitMath {
             if (result.containsKey(purchase.id())) {
                 throw new IllegalArgumentException("거래 ID가 중복되었습니다.");
             }
-            if (!purchase.merchantIdentified() || purchase.amount() == 0) {
+            if (!purchase.merchantIdentified() || purchase.category() == SpendingCategory.ETC || purchase.amount() == 0) {
                 List<String> notes = purchase.merchantIdentified() ? List.of()
                     : List.of("가맹점을 식별하지 못해 소비액만 기타로 집계하고 혜택은 계산하지 않았습니다.");
                 result.put(purchase.id(), BenefitResult.none(confirmedOnly, notes));
