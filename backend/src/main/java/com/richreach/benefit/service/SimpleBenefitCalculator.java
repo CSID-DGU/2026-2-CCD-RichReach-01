@@ -32,8 +32,13 @@ public class SimpleBenefitCalculator implements BenefitCalculator {
 
     @Override
     public BenefitResult calculate(BenefitQuery query) {
+        return calculate(query, ruleQuery.findForCalculation(query.cardProductId()));
+    }
+
+    @Override
+    public BenefitResult calculate(BenefitQuery query, List<CalculationRule> rules) {
         boolean readyOnly = properties.ruleSelection() == RuleSelection.READY_ONLY;
-        List<CalculationRule> candidates = ruleQuery.findForCalculation(query.cardProductId()).stream()
+        List<CalculationRule> candidates = rules.stream()
             .filter(rule -> !readyOnly || rule.ruleEngineReady()).toList();
         if (candidates.isEmpty()) {
             List<String> notes = readyOnly

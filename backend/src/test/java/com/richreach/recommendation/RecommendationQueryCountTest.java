@@ -141,21 +141,21 @@ class RecommendationQueryCountTest {
     }
 
     @Test
-    @DisplayName("카드 5장: 금액이 있을 때 혜택 규칙을 11번 읽는다")
+    @DisplayName("카드 5장: 금액이 있을 때 혜택 규칙을 카드당 한 번(5번) 읽는다")
     void countsRuleReadsForASingleAmount() {
         long statements = statementsFor(10_000L);
 
         System.out.printf("QUERY_COUNT single ruleReads=%d statements=%d%n", ruleReads(), statements);
-        verify(ruleQuery, times(11)).findForCalculation(anyLong());
+        verify(ruleQuery, times(5)).findForCalculation(anyLong());
     }
 
     @Test
-    @DisplayName("카드 5장: 금액이 없을 때(구간 3개) 혜택 규칙을 30번 읽는다")
+    @DisplayName("카드 5장: 금액이 없을 때(구간 3개) 혜택 규칙을 카드당 한 번(5번) 읽는다")
     void countsRuleReadsForRanges() {
         long statements = statementsFor(null);
 
         System.out.printf("QUERY_COUNT range ruleReads=%d statements=%d%n", ruleReads(), statements);
-        verify(ruleQuery, times(30)).findForCalculation(anyLong());
+        verify(ruleQuery, times(5)).findForCalculation(anyLong());
     }
 
     private long ruleReads() {
