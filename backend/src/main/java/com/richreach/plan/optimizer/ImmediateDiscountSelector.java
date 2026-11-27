@@ -25,6 +25,12 @@ public class ImmediateDiscountSelector {
 
     private final BenefitCalculator benefitCalculator;
 
+    public TransactionCardOptimizer.Choice chooseTransaction(
+        com.richreach.benefit.dto.BenefitTransaction current,List<TransactionCardOptimizer.Card> cards,boolean allowUnverified) {
+        return new TransactionCardOptimizer(new com.richreach.benefit.service.TransactionBenefitCalculator())
+            .immediate(current,cards,allowUnverified);
+    }
+
     public Choice choose(SpendingCategory category, long amount, List<CardState> cards) {
         if (category == null || amount <= 0 || cards == null || cards.isEmpty()) {
             throw new IllegalArgumentException("업종, 양수 결제금액, 보유카드가 필요합니다.");
