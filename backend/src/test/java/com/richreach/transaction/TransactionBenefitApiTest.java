@@ -2,6 +2,7 @@ package com.richreach.transaction;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,7 +14,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.richreach.TestcontainersConfiguration;
 import com.richreach.auth.repository.RefreshTokenRepository;
 import com.richreach.auth.service.AuthTokenService;
-import com.richreach.benefit.dto.BenefitQuery;
+import com.richreach.benefit.dto.BenefitPurchase;
 import com.richreach.benefit.dto.BenefitResult;
 import com.richreach.benefit.service.BenefitCalculator;
 import com.richreach.card.dto.CollectedCard;
@@ -34,7 +35,6 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.Base64;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -57,7 +57,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 /**
  * 거래별 예상 혜택({@code benefitAmount})을 거래 목록·상세·카테고리 수정과 월 요약에서 실제 MySQL로 확인한다.
- * 혜택 계산기는 가짜로 바꿔서 "카페 소비의 10%"를 돌려주게 하고, 이 테스트는 계산 결과를 카드·달 단위로 거래에 나누고
+ * 혜택 계산기는 가짜로 바꿔서 "카페 거래 한 건당 10%"를 돌려주게 하고, 이 테스트는 계산 결과를 카드·달 단위로 거래에 연결하고
  * 응답에 담는 부분만 본다. (혜택 규칙 계산은 {@code SimpleBenefitCalculatorTest}가 본다)
  */
 @ActiveProfiles("test")
@@ -111,15 +111,16 @@ class TransactionBenefitApiTest {
 
     @BeforeEach
     void setUp() {
-        // 카페 소비의 10%를 혜택으로 준다.
-        when(calculator.calculate(any(BenefitQuery.class))).thenAnswer(invocation -> {
-            BenefitQuery query = invocation.getArgument(0);
-            long cafe = query.monthlySpend().getOrDefault(SpendingCategory.CAFE, 0L);
-            Map<SpendingCategory, Long> byCategory = new EnumMap<>(SpendingCategory.class);
-            if (cafe > 0) {
-                byCategory.put(SpendingCategory.CAFE, cafe / 10);
+        // 거래별 계산기는 가짜로 바꿔 카페 결제 한 건마다 10%를 돌려준다.
+        when(calculator.calculatePurchases(anyLong(), any(), anyLong())).thenAnswer(invocation -> {
+            List<BenefitPurchase> purchases = invocation.getArgument(1);
+            Map<Long, BenefitResult> result = new java.util.LinkedHashMap<>();
+            for (BenefitPurchase purchase : purchases) {
+                long benefit = purchase.category() == SpendingCategory.CAFE ? purchase.amount() / 10 : 0;
+                result.put(purchase.id(), new BenefitResult(benefit,
+                    benefit == 0 ? Map.of() : Map.of(SpendingCategory.CAFE, benefit), true, List.of()));
             }
-            return new BenefitResult(cafe / 10, byCategory, true, List.of());
+            return result;
         });
         user = newUser();
         accessToken = authTokenService.issue(user.getId()).accessToken();

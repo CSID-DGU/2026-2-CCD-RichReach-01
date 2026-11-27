@@ -69,7 +69,8 @@ public interface CardTransactionRepository extends JpaRepository<CardTransaction
      */
     @Query("""
         select new com.richreach.transaction.repository.TransactionNet(
-            t.id, coalesce(t.categoryOverride, t.category), t.amount - t.canceledAmount)
+            t.id, coalesce(t.categoryOverride, t.category), t.amount - t.canceledAmount,
+            t.approvedAt, t.merchantName, t.categoryOverride)
         from CardTransaction t
         where t.userId = :userId and t.userCardId = :cardId and t.approvedAt >= :from and t.approvedAt < :to
         order by t.approvedAt, t.id

@@ -1,11 +1,15 @@
 package com.richreach.plan.service;
 
 import com.richreach.card.dto.OwnedCardResponse;
+import com.richreach.benefit.dto.BenefitPurchase;
+import com.richreach.plan.optimizer.ForecastPurchaseBuilder;
 import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.plan.optimizer.PlanStrategyInput;
 import com.richreach.plan.optimizer.PlanStrategyInput.CardInput;
 import com.richreach.transaction.service.TransactionSummaryService;
+import com.richreach.transaction.service.TransactionBenefitService;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,6 +30,7 @@ public class PlanInputAssembler {
 
     private final OwnedCardQueryService ownedCards;
     private final TransactionSummaryService transactions;
+    private final TransactionBenefitService purchaseBenefits;
 
     /** 분석 대상 카드가 하나도 없으면 비어 있다. 카드와 거래 조회가 같은 시점의 데이터를 보도록 읽기 전용 트랜잭션 하나로 묶는다. */
     @Transactional(readOnly = true)
@@ -38,7 +43,14 @@ public class PlanInputAssembler {
         List<CardInput> cards = targets.stream()
             .map(card -> new CardInput(card.cardId(), card.cardProductId(), previousSpend.getOrDefault(card.cardId(), 0L)))
             .toList();
-        return Optional.of(new PlanStrategyInput(userId, budget.month(), budget.byCategory(), cards, timeLimit));
+        List<BenefitPurchase> history = new ArrayList<>();
+        for (OwnedCardResponse card : targets) {
+            history.addAll(purchaseBenefits.cardPurchases(userId, card.cardId(), budget.month().minusMonths(1)));
+        }
+        List<BenefitPurchase> forecast = ForecastPurchaseBuilder.build(budget.month(), budget.byCategory(), history,
+            budget.month().atDay(1).atStartOfDay());
+        return Optional.of(new PlanStrategyInput(userId, budget.month(), budget.byCategory(), cards, timeLimit,
+            forecast, Map.of()));
     }
 
     /** 사용자가 분석 대상으로 고른 카드. 카드 상품에 매칭된 카드만 분석 대상이 될 수 있다. */

@@ -22,6 +22,10 @@ public record RollingPlanResult(boolean success,
         notes = List.copyOf(notes);
     }
 
-    public record RemainingAllocation(long userCardId, SpendingCategory category, long targetAmount) {
+    public record RemainingAllocation(long userCardId, SpendingCategory category, long targetAmount,
+                                      long expectedBenefit) {
+        public RemainingAllocation(long userCardId, SpendingCategory category, long targetAmount) {
+            this(userCardId, category, targetAmount, 0);
+        }
     }
 }

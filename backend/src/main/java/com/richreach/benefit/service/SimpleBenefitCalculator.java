@@ -3,12 +3,14 @@ package com.richreach.benefit.service;
 import com.richreach.benefit.config.BenefitProperties;
 import com.richreach.benefit.config.BenefitProperties.RuleSelection;
 import com.richreach.benefit.dto.BenefitQuery;
+import com.richreach.benefit.dto.BenefitPurchase;
 import com.richreach.benefit.dto.BenefitResult;
 import com.richreach.benefit.service.BenefitMath.RuleInput;
 import com.richreach.card.dto.CalculationRule;
 import com.richreach.card.service.BenefitRuleQueryService;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,15 @@ public class SimpleBenefitCalculator implements BenefitCalculator {
 
     private final BenefitRuleQueryService ruleQuery;
     private final BenefitProperties properties;
+
+    @Override
+    public Map<Long, BenefitResult> calculatePurchases(long cardProductId, List<BenefitPurchase> purchases,
+                                                       long previousMonthSpend) {
+        boolean readyOnly = properties.ruleSelection() == RuleSelection.READY_ONLY;
+        List<CalculationRule> candidates = ruleQuery.findForCalculation(cardProductId).stream()
+            .filter(rule -> !readyOnly || rule.ruleEngineReady()).toList();
+        return PurchaseBenefitMath.calculate(candidates, purchases, previousMonthSpend, readyOnly);
+    }
 
     @Override
     public BenefitResult calculate(BenefitQuery query) {

@@ -75,6 +75,10 @@ public class CpSatPlanStrategyRunner implements PlanStrategyRunner {
     public PlanStrategyResult runWithCommitted(PlanStrategyInput input,
                                                Map<Long, Map<SpendingCategory, Long>> committed,
                                                Set<Long> futureEligibleCardIds) {
+        if (!input.forecastPurchases().isEmpty()) {
+            return ForecastCpSatPlanner.run(input, committed, futureEligibleCardIds, ruleQuery,
+                benefitCalculator, benefitProperties);
+        }
         long started = System.nanoTime();
         if (input.cards().isEmpty()) {
             return PlanStrategyResult.failure(null, elapsedMs(started), "분석할 보유카드가 없습니다.");

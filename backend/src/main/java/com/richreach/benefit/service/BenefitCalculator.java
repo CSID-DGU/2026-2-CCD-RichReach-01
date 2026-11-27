@@ -1,14 +1,17 @@
 package com.richreach.benefit.service;
 
 import com.richreach.benefit.dto.BenefitQuery;
+import com.richreach.benefit.dto.BenefitPurchase;
 import com.richreach.benefit.dto.BenefitResult;
+import java.util.List;
+import java.util.Map;
 
 /**
- * 혜택 계산기. 카드 한 장에 한 달 동안 업종별로 이만큼 쓰면 예상 혜택이 얼마인지를 계산한다.
- * 월간 플랜(카드 배분)은 이 인터페이스만 보고 혜택을 구하므로, 계산 방식을 바꿔도 플랜 쪽은 고치지 않는다.
+ * 혜택 계산기. 기존 업종별 월 합계 계산과 거래별 승인 순서 계산을 제공한다.
+ * 거래별 계산은 즉시 추천과 실제 거래 반영 플랜에 사용한다.
  *
  * <p>구현을 바꾸려면 이 인터페이스를 구현한 빈을 만들고 {@code richreach.benefit.engine}을 그 이름으로 맞춘다.
- * 기본 구현({@link SimpleBenefitCalculator}, 이름 {@code simple})은 임시 계산기다.
+ * 기본 구현({@link SimpleBenefitCalculator}, 이름 {@code simple})을 운영 경로에서 사용한다.
  *
  * <p>구현이 지켜야 할 약속
  * <ul>
@@ -22,5 +25,11 @@ import com.richreach.benefit.dto.BenefitResult;
 public interface BenefitCalculator {
 
     BenefitResult calculate(BenefitQuery query);
+
+    /** Approved purchases and a prospective purchase in approval order. IDs must be unique. */
+    default Map<Long, BenefitResult> calculatePurchases(long cardProductId, List<BenefitPurchase> purchases,
+                                                        long previousMonthSpend) {
+        throw new UnsupportedOperationException("거래별 혜택 계산을 지원하지 않는 계산기입니다.");
+    }
 
 }

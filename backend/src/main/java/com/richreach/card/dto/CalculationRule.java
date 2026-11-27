@@ -25,7 +25,8 @@ import java.util.Set;
  * @param previousMonthMinKrw        전월실적 하한(이상)
  * @param previousMonthMaxExclusiveKrw 전월실적 상한(미만)
  * @param ruleEngineReady            사람이 원문과 대조해 확인한 규칙인지
- * @param perTransactionMinKrw       건별 최소 결제금액. 월간 업종 합계 계산에서는 이 규칙을 제외한다.
+ * @param perTransactionMinKrw       건별 최소 결제금액. 거래별 계산에서 해당 결제 한 건에 적용한다.
+ * @param perTransactionMaxKrw       건별 최대 혜택액. 월 혜택 한도와 별개다.
  */
 public record CalculationRule(
     Long id,
@@ -46,7 +47,8 @@ public record CalculationRule(
     Long previousMonthMinKrw,
     Long previousMonthMaxExclusiveKrw,
     boolean ruleEngineReady,
-    Long perTransactionMinKrw) {
+    Long perTransactionMinKrw,
+    Long perTransactionMaxKrw) {
 
     /** 기존 계산기 테스트와 미리보기 코드가 쓰는 생성자. */
     public CalculationRule(Long id, Set<SpendingCategory> categories, boolean allMerchants,
@@ -58,7 +60,19 @@ public record CalculationRule(
         this(id, categories, allMerchants, merchantSpecific, ratePercent, rewardUnit, monthlyLimit,
             capGroupId, sharedMonthlyLimit, dailyLimit, dailyCountLimit, monthlyCountLimit,
             annualCountLimit, eligibleSpendMonthlyLimit, ruleMode, previousMonthMinKrw,
-            previousMonthMaxExclusiveKrw, ruleEngineReady, null);
+            previousMonthMaxExclusiveKrw, ruleEngineReady, null, null);
+    }
+
+    public CalculationRule(Long id, Set<SpendingCategory> categories, boolean allMerchants,
+                           boolean merchantSpecific, BigDecimal ratePercent, String rewardUnit,
+                           Long monthlyLimit, String capGroupId, Long sharedMonthlyLimit, Long dailyLimit,
+                           Integer dailyCountLimit, Integer monthlyCountLimit, Integer annualCountLimit,
+                           Long eligibleSpendMonthlyLimit, String ruleMode, Long previousMonthMinKrw,
+                           Long previousMonthMaxExclusiveKrw, boolean ruleEngineReady, Long perTransactionMinKrw) {
+        this(id, categories, allMerchants, merchantSpecific, ratePercent, rewardUnit, monthlyLimit,
+            capGroupId, sharedMonthlyLimit, dailyLimit, dailyCountLimit, monthlyCountLimit,
+            annualCountLimit, eligibleSpendMonthlyLimit, ruleMode, previousMonthMinKrw,
+            previousMonthMaxExclusiveKrw, ruleEngineReady, perTransactionMinKrw, null);
     }
 
 }

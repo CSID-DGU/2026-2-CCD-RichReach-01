@@ -1,9 +1,6 @@
 package com.richreach.recommendation.service;
 
-import com.richreach.benefit.dto.BenefitQuery;
 import com.richreach.benefit.dto.BenefitResult;
-import com.richreach.benefit.service.BenefitCalculator;
-import com.richreach.benefit.service.BenefitRuleSupport;
 import com.richreach.benefit.service.CardPerformanceAnalyzer;
 import com.richreach.card.dto.CalculationRule;
 import com.richreach.card.dto.OwnedCardResponse;
@@ -27,12 +24,14 @@ import com.richreach.transaction.dto.CardScope;
 import com.richreach.transaction.dto.SummaryPeriod;
 import com.richreach.transaction.dto.TransactionSummaryResponse.CategorySummary;
 import com.richreach.transaction.service.TransactionSummaryService;
+import com.richreach.transaction.service.TransactionBenefitService;
+import com.richreach.transaction.service.TransactionBenefitService.Preview;
 import java.text.NumberFormat;
 import java.time.Clock;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -49,9 +48,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <ul>
  *   <li>후보는 로그인 사용자의 <b>분석 대상으로 고른 보유카드</b>(활성, 선택, 카드 상품에 매칭)뿐이다. 수집한 카드 상품 전체와
  *       비교하지 않는다. 후보가 없으면 {@code RECOMMEND-001}이다.</li>
- *   <li>카드별 추가 혜택은 {@code 계산(이번 달 지금까지 쓴 금액 + 이번 결제) - 계산(지금까지 쓴 금액)}이다. 혜택 계산기가 월 한도와
- *       전월 실적 조건을 이미 반영하므로, 한도가 거의 찬 카드는 늘어나는 혜택이 작거나 0이 된다. 이번 달 사용액은 승인일 기준으로
- *       취소·환불을 뺀 값이고, 전월 실적은 수집한 지난달 거래로 계산한 추정값이다.</li>
+ *   <li>카드별 혜택은 승인 거래를 순서대로 재생한 뒤 현재 결제 한 건을 추가해 계산한다. 건별 최소금액과 남은 월 한도를 반영한다.
+ *       미리보기는 저장하지 않으며, 전월 실적은 수집한 지난달 거래로 계산한 추정값이다.</li>
  *   <li><b>금액을 보내면</b> 가장 유리한 카드({@code CARD})와 나머지 후보 중 혜택이 양수인 카드(대안)를 준다. 혜택이 큰 순서이고,
  *       같으면 보유카드 ID가 작은 쪽이 먼저다. 늘어나는 혜택이 양수인 카드가 하나도 없으면 {@code TEXT}다. 이것은 "카드에 혜택이
  *       없다"가 아니라 "현재 확인된 규칙으로 계산할 수 있는 혜택이 없다"는 뜻이다.</li>
@@ -83,7 +81,7 @@ public class ManualRecommendationService {
     static final String TEXT_MESSAGE = "현재 확인된 혜택 규칙으로는 이번 결제의 추가 혜택을 확인하지 못했어요.";
     static final String RANGE_MESSAGE = "결제 금액을 아직 모른다면 금액 구간별로 가장 유리한 카드를 알려드릴게요.";
     static final String RANGE_FOLLOW_UP = "정확한 금액을 입력하면 카드 한 장과 예상 혜택을 바로 추천해 드려요.";
-    static final String SCOPE = "카드 혜택 규칙 중 업종과 월간 사용액으로 계산할 수 있는 비율 혜택만 비교했어요. "
+    static final String SCOPE = "이번 거래의 금액·업종과 기존 거래에서 사용한 혜택 한도를 반영해 계산 가능한 비율 혜택을 비교했어요. "
         + "전월 실적은 수집한 거래로 계산한 추정값이에요.";
     static final String UNCONFIRMED_SCOPE_SUFFIX = " 아직 원문 확인 전인 규칙이 포함돼 있어 참고용이에요.";
 
@@ -95,7 +93,7 @@ public class ManualRecommendationService {
 
     private final OwnedCardQueryService ownedCards;
     private final TransactionSummaryService transactions;
-    private final BenefitCalculator calculator;
+    private final TransactionBenefitService purchaseBenefits;
     private final BenefitRuleQueryService rules;
     private final PlanQueryService plans;
     private final AppliedRuleEvidenceService evidence;
@@ -104,7 +102,7 @@ public class ManualRecommendationService {
     /**
      * 한 번의 요청에서 모든 카드가 같이 쓰는 이번 달 사용액과 전월 실적.
      *
-     * @param thisMonth      이번 달 카드·업종별 사용액. 혜택 계산에 쓴다. 순사용액이 0 이하인 업종은 빠져 있다.
+     * @param thisMonth      이번 달 카드·업종별 사용액. 플랜 목표 잔액 표시에 쓴다.
      * @param thisMonthTotal 이번 달 카드별 순사용액. 실적 구간 계산에 쓴다. 환불로 음수가 된 업종도 합계에 반영돼 있다.
      * @param previousMonth  지난달 카드별 순사용액(전월 실적)
      */
@@ -126,7 +124,8 @@ public class ManualRecommendationService {
     }
 
     /** 카드 한 장과 이번 결제로 늘어나는 혜택. {@code gain}이 0 이하면 혜택이 없는 카드다. */
-    private record Scored(OwnedCardResponse card, long gain, BenefitResult before, BenefitResult result) {
+    private record Scored(OwnedCardResponse card, long gain, Map<String, Long> beforeByRule,
+                          BenefitResult result, long monthBenefitAfter) {
 
     }
 
@@ -147,14 +146,14 @@ public class ManualRecommendationService {
             transactions.cardSpend(userId, month), transactions.cardSpend(userId, month.minusMonths(1)));
 
         return amount == null
-            ? ranges(userId, candidates, category, spending)
+            ? ranges(userId, month, candidates, category, spending)
             : single(userId, month, candidates, category, amount, spending);
     }
 
     /** 금액을 알 때: 가장 유리한 카드 한 장과 나머지 카드의 예상 혜택. */
     private ManualRecommendationResponse single(long userId, YearMonth month, List<OwnedCardResponse> candidates,
                                                 SpendingCategory category, long amount, Spending spending) {
-        List<Scored> ranked = rank(candidates, category, amount, spending);
+        List<Scored> ranked = rank(userId, month, candidates, category, amount, spending);
         Parsed parsed = new Parsed(category, amount);
         Scored best = ranked.get(0);
         if (best.gain() <= 0) {
@@ -170,13 +169,13 @@ public class ManualRecommendationService {
     }
 
     /** 금액을 모를 때: 대표 금액으로 구간마다 가장 유리한 카드를 구한다. 유리한 카드가 없는 구간은 뺀다. */
-    private ManualRecommendationResponse ranges(long userId, List<OwnedCardResponse> candidates,
+    private ManualRecommendationResponse ranges(long userId, YearMonth month, List<OwnedCardResponse> candidates,
                                                 SpendingCategory category, Spending spending) {
         int bestIndex = typicalRangeIndex(userId, category);
         List<RangeOption> options = new ArrayList<>();
         boolean confirmed = true;
         for (int i = 0; i < RANGE_AMOUNTS.length; i++) {
-            Scored best = rank(candidates, category, RANGE_AMOUNTS[i], spending).get(0);
+            Scored best = rank(userId, month, candidates, category, RANGE_AMOUNTS[i], spending).get(0);
             if (best.gain() > 0) {
                 options.add(new RangeOption(RANGE_LABELS[i], RANGE_AMOUNTS[i], i == bestIndex, comparison(best)));
                 confirmed &= best.result().confirmedOnly();
@@ -192,27 +191,24 @@ public class ManualRecommendationService {
     }
 
     /** 모든 후보 카드의 늘어나는 혜택을 구해 큰 순서로 돌려준다. 같으면 보유카드 ID가 작은 쪽이 먼저다. */
-    private List<Scored> rank(List<OwnedCardResponse> candidates, SpendingCategory category, long amount,
-                              Spending spending) {
+    private List<Scored> rank(long userId, YearMonth month, List<OwnedCardResponse> candidates,
+                              SpendingCategory category, long amount, Spending spending) {
         List<Scored> scored = new ArrayList<>();
         for (OwnedCardResponse card : candidates) {
-            scored.add(score(card, category, amount, spending.of(card.cardId()), spending.previousOf(card.cardId())));
+            scored.add(score(userId, month, card, category, amount, spending.previousOf(card.cardId())));
         }
         scored.sort(Comparator.comparingLong(Scored::gain).reversed()
             .thenComparingLong(entry -> entry.card().cardId()));
         return scored;
     }
 
-    /** 이번 결제를 그 카드로 하기 전과 후의 혜택 계산 결과를 비교해 늘어나는 혜택을 구한다. */
-    private Scored score(OwnedCardResponse card, SpendingCategory category, long amount,
-                         Map<SpendingCategory, Long> spentByCategory, long previousMonthSpend) {
-        long productId = card.cardProductId();
-        BenefitResult before = calculator.calculate(new BenefitQuery(productId, spentByCategory, previousMonthSpend));
-        Map<SpendingCategory, Long> afterSpend = new EnumMap<>(SpendingCategory.class);
-        afterSpend.putAll(spentByCategory);
-        afterSpend.merge(category, amount, Math::addExact);
-        BenefitResult after = calculator.calculate(new BenefitQuery(productId, afterSpend, previousMonthSpend));
-        return new Scored(card, after.totalBenefit() - before.totalBenefit(), before, after);
+    /** Quote this purchase only. Previous approvals are replayed to determine the remaining wallets. */
+    private Scored score(long userId, YearMonth month, OwnedCardResponse card, SpendingCategory category,
+                         long amount, long previousMonthSpend) {
+        Preview preview = purchaseBenefits.preview(userId, card.cardId(), card.cardProductId(), month,
+            category, amount, LocalDateTime.now(clock), previousMonthSpend);
+        return new Scored(card, preview.purchase().totalBenefit(), preview.beforeByRule(),
+            preview.purchase(), preview.monthBenefitAfter());
     }
 
     /** 가장 유리한 카드의 혜택 비율, 이번 달 실적, 추천 이유. */
@@ -226,13 +222,12 @@ public class ManualRecommendationService {
         List<String> reasons = new ArrayList<>();
         reasons.add(REASON_BEST);
 
-        // 한도 사유는 혜택 계산기가 실제로 계산에 넣는 규칙의 한도만으로 판단한다. 계산기가 빼는 규칙(가맹점 지정, 정액, 마일리지,
-        // 다른 혜택과의 관계를 따지는 규칙, 일·횟수 한도 규칙)의 한도가 합에 들어가면 한도가 이미 찼는데도 "남아 있다"고 안내한다.
+        // 한도 사유는 현재 계산기에 포함되는 규칙만 사용한다. 월 전체 한도 안내는 참고 정보다.
         OptionalLong limit = CardPerformanceAnalyzer.monthlyLimit(
             cardRules.stream().filter(ManualRecommendationService::countedByCalculator).toList(),
             spending.previousOf(card.cardId()));
         if (limit.isPresent()) {
-            reasons.add(best.result().totalBenefit() >= limit.getAsLong() ? REASON_LIMIT_REACHED : REASON_LIMIT_LEFT);
+            reasons.add(best.monthBenefitAfter() >= limit.getAsLong() ? REASON_LIMIT_REACHED : REASON_LIMIT_LEFT);
         }
 
         Performance performance = null;
@@ -251,7 +246,7 @@ public class ManualRecommendationService {
         return new Card(card.cardId(), card.cardProductId(), card.cardCompany(), card.cardName(), card.imageUrl(),
             best.gain(), ratePercent(best.gain(), amount), performance, reasons, best.result().confirmedOnly(),
             best.result().notes(), planImpact(userId, month, card, category, amount, spending),
-            evidence.find(card.cardProductId(), best.before().benefitByRule(), best.result().benefitByRule()));
+            evidence.find(card.cardProductId(), best.beforeByRule(), best.result().benefitByRule()));
     }
 
     /**
@@ -271,8 +266,7 @@ public class ManualRecommendationService {
     }
 
     /**
-     * 혜택 계산기가 이 규칙을 혜택 계산에 넣는지. {@code BenefitMath.skipReason}과 {@code SimpleBenefitCalculator}가 규칙을 빼는
-     * 기준(전월실적 조건은 제외)과 같다. 계산기를 바꾸면 이 기준도 함께 봐야 한다.
+     * 거래별 혜택 계산에 포함되는 규칙인지. 전월실적 조건은 별도로 확인한다.
      */
     static boolean countedByCalculator(CalculationRule rule) {
         String mode = rule.ruleMode();
@@ -280,7 +274,7 @@ public class ManualRecommendationService {
             && rule.ratePercent() != null
             && !"MILE".equals(rule.rewardUnit())
             && !("REPLACES_BASE".equals(mode) || "PREFER_HIGHER".equals(mode) || "ANNUAL_BONUS".equals(mode))
-            && !BenefitRuleSupport.hasUnmodelledLimits(rule);
+            && rule.annualCountLimit() == null;
     }
 
     /**

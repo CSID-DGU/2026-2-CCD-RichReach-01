@@ -285,17 +285,22 @@ class PlanGenerationApiTest {
         assertThat(profileAmounts).containsOnly(
             org.assertj.core.api.Assertions.entry("DINING", 300_000L), org.assertj.core.api.Assertions.entry("CAFE", 100_000L));
 
-        // 성공한 전략(임시 균등 배분)의 플랜 하나. 구현되지 않은 CP_SAT는 저장되지 않는다.
+        // 거래별 CP-SAT과 비교용 균등 배분의 플랜이 각각 저장된다.
         List<Map<String, Object>> plans = jdbc.queryForList(
             "select id, strategy, version, total_spend, plan_month from monthly_plans where user_id = ?", user.getId());
-        assertThat(plans).hasSize(1);
-        assertThat(plans.get(0)).containsEntry("strategy", "EVEN_SPLIT").containsEntry("version", 1)
+        assertThat(plans).hasSize(2);
+        assertThat(plans).extracting(plan -> plan.get("strategy"))
+            .containsExactlyInAnyOrder("CP_SAT", "EVEN_SPLIT");
+        Map<String, Object> evenSplit = plans.stream().filter(plan -> "EVEN_SPLIT".equals(plan.get("strategy")))
+            .findFirst().orElseThrow();
+        assertThat(evenSplit).containsEntry("version", 1)
             .containsEntry("total_spend", 400_000L).containsEntry("plan_month", MONTH);
-        long planId = ((Number) plans.get(0).get("id")).longValue();
+        long planId = ((Number) evenSplit.get("id")).longValue();
 
-        // 완료된 작업은 그 플랜을 가리킨다.
-        assertThat(jdbc.queryForObject("select plan_id from plan_jobs where user_id = ?", Long.class, user.getId()))
-            .isEqualTo(planId);
+        // 완료된 작업은 생성된 전략 플랜 중 선택된 하나를 가리킨다.
+        Long selectedPlanId = jdbc.queryForObject("select plan_id from plan_jobs where user_id = ?", Long.class,
+            user.getId());
+        assertThat(plans).extracting(plan -> ((Number) plan.get("id")).longValue()).contains(selectedPlanId);
 
         // 총소비 불변: 업종마다 카드별 배분 합이 예산과 같다. 카드 두 장이 똑같이 나눠 갖는다.
         Map<String, Long> allocated = new java.util.HashMap<>();
@@ -352,7 +357,7 @@ class PlanGenerationApiTest {
         assertThat(jdbc.queryForObject("select count(*) from plan_jobs", Long.class)).isEqualTo(1);
 
         runQueued();
-        assertThat(jdbc.queryForObject("select count(*) from monthly_plans", Long.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from monthly_plans", Long.class)).isEqualTo(2);
     }
 
     @Test

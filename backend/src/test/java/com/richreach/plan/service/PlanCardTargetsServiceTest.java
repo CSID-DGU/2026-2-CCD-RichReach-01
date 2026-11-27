@@ -28,6 +28,7 @@ import com.richreach.plan.entity.PlanStrategy;
 import com.richreach.plan.repository.MonthlyPlanRepository;
 import com.richreach.plan.repository.PlanCardAllocationRepository;
 import com.richreach.transaction.service.TransactionSummaryService;
+import com.richreach.transaction.service.TransactionBenefitService;
 import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.List;
@@ -53,7 +54,7 @@ class PlanCardTargetsServiceTest {
     private TransactionSummaryService transactions;
     private BenefitRuleQueryService rules;
     private CardPerformanceQueryService notes;
-    private BenefitCalculator calculator;
+    private TransactionBenefitService transactionBenefits;
     private PlanCardTargetsService service;
 
     @BeforeEach
@@ -64,8 +65,9 @@ class PlanCardTargetsServiceTest {
         transactions = mock(TransactionSummaryService.class);
         rules = mock(BenefitRuleQueryService.class);
         notes = mock(CardPerformanceQueryService.class);
-        calculator = mock(BenefitCalculator.class);
-        service = new PlanCardTargetsService(plans, allocations, ownedCards, transactions, rules, notes, calculator);
+        transactionBenefits = mock(TransactionBenefitService.class);
+        service = new PlanCardTargetsService(plans, allocations, ownedCards, transactions, rules, notes,
+            transactionBenefits);
 
         MonthlyPlan plan = MonthlyPlan.create(USER, 1L, MONTH, PlanStrategy.CP_SAT, 1, 500_000, 9_000);
         ReflectionTestUtils.setField(plan, "id", PLAN);
@@ -74,7 +76,7 @@ class PlanCardTargetsServiceTest {
         when(transactions.cardSpend(USER, MONTH.minusMonths(1))).thenReturn(Map.of());
         when(rules.findForCalculation(anyLong())).thenReturn(List.of());
         when(notes.performanceExclusionNotes(anyLong())).thenReturn(List.of());
-        when(calculator.calculate(any())).thenReturn(BenefitResult.none(true, List.of()));
+        when(transactionBenefits.monthTotal(anyLong(), any(), any())).thenReturn(0L);
     }
 
     private static PlanCardAllocation allocation(long card, SpendingCategory category, long target, long benefit) {
@@ -141,16 +143,11 @@ class PlanCardTargetsServiceTest {
         when(transactions.cardCategorySpend(USER, MONTH)).thenReturn(Map.of(10L, Map.of(SpendingCategory.DINING, 120_000L)));
         when(transactions.cardSpend(USER, MONTH.minusMonths(1))).thenReturn(Map.of(10L, 700_000L));
         when(rules.findForCalculation(100L)).thenReturn(List.of(rule(5_000L, null)));
-        when(calculator.calculate(any())).thenReturn(new BenefitResult(2_400, Map.of(SpendingCategory.DINING, 2_400L),
-            true, List.of()));
+        when(transactionBenefits.monthTotal(USER, MONTH, List.of(10L))).thenReturn(2_400L);
 
         CardDetail card = onlyCard();
 
-        ArgumentCaptor<BenefitQuery> query = ArgumentCaptor.forClass(BenefitQuery.class);
-        verify(calculator).calculate(query.capture());
-        assertThat(query.getValue().cardProductId()).isEqualTo(100L);
-        assertThat(query.getValue().monthlySpend()).containsEntry(SpendingCategory.DINING, 120_000L);
-        assertThat(query.getValue().previousMonthSpend()).isEqualTo(700_000L);
+        verify(transactionBenefits).monthTotal(USER, MONTH, List.of(10L));
         assertThat(card.currentBenefit()).isEqualTo(2_400L);
         assertThat(card.benefitLimit().usedAmount()).isEqualTo(2_400L);
     }
@@ -186,8 +183,7 @@ class PlanCardTargetsServiceTest {
         when(transactions.cardSpend(USER, MONTH.minusMonths(1))).thenReturn(Map.of(10L, 310_000L));
         when(rules.findForCalculation(100L)).thenReturn(List.of(rule(5_000L, null), rule(10_000L, 300_000L),
             rule(20_000L, 700_000L)));
-        when(calculator.calculate(any())).thenReturn(new BenefitResult(4_000, Map.of(SpendingCategory.DINING, 4_000L),
-            true, List.of()));
+        when(transactionBenefits.monthTotal(USER, MONTH, List.of(10L))).thenReturn(4_000L);
 
         PlanCardTargetsResponse.BenefitLimit limit = onlyCard().benefitLimit();
 
@@ -202,8 +198,7 @@ class PlanCardTargetsServiceTest {
         when(allocations.findByPlanId(PLAN)).thenReturn(List.of(allocation(10, SpendingCategory.DINING, 300_000, 0)));
         when(ownedCards.list(USER)).thenReturn(List.of(card(10, 100L, "카드A")));
         when(rules.findForCalculation(100L)).thenReturn(List.of(rule(1_000L, null)));
-        when(calculator.calculate(any())).thenReturn(new BenefitResult(3_000, Map.of(SpendingCategory.DINING, 3_000L),
-            true, List.of()));
+        when(transactionBenefits.monthTotal(USER, MONTH, List.of(10L))).thenReturn(3_000L);
 
         assertThat(onlyCard().benefitLimit().remainingAmount()).isZero();
     }
@@ -222,7 +217,7 @@ class PlanCardTargetsServiceTest {
         assertThat(card.benefitLimit().usedAmount()).isNull();
         assertThat(card.benefitLimit().monthlyLimit()).isNull();
         assertThat(card.benefitLimit().remainingAmount()).isNull();
-        verify(calculator, never()).calculate(any());
+        verify(transactionBenefits, never()).monthTotal(anyLong(), any(), any());
     }
 
     @Test
@@ -238,7 +233,7 @@ class PlanCardTargetsServiceTest {
         assertThat(card.benefitLimit().remainingAmount()).isNull();
         assertThat(card.performance().tiers()).isEmpty();
         assertThat(card.performance().exclusionNotes()).isEmpty();
-        verify(calculator, never()).calculate(any());
+        verify(transactionBenefits, never()).monthTotal(anyLong(), any(), any());
         verify(rules, never()).findForCalculation(anyLong());
     }
 

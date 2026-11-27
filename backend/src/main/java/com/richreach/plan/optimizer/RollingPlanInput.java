@@ -1,5 +1,6 @@
 package com.richreach.plan.optimizer;
 
+import com.richreach.benefit.dto.BenefitPurchase;
 import com.richreach.global.category.SpendingCategory;
 import java.time.Duration;
 import java.time.YearMonth;
@@ -13,7 +14,15 @@ import java.util.Map;
  */
 public record RollingPlanInput(long userId, YearMonth month,
                                Map<SpendingCategory, Long> confirmedBudgetByCategory,
-                               List<CardState> cards, Duration timeLimit) {
+                               List<CardState> cards, Duration timeLimit,
+                               List<BenefitPurchase> forecastPurchases,
+                               Map<Long, List<BenefitPurchase>> approvedPurchasesByCard) {
+
+    public RollingPlanInput(long userId, YearMonth month,
+                            Map<SpendingCategory, Long> confirmedBudgetByCategory,
+                            List<CardState> cards, Duration timeLimit) {
+        this(userId, month, confirmedBudgetByCategory, cards, timeLimit, List.of(), Map.of());
+    }
 
     public RollingPlanInput {
         if (userId <= 0 || month == null || timeLimit == null || timeLimit.isNegative()
@@ -22,6 +31,10 @@ public record RollingPlanInput(long userId, YearMonth month,
         }
         confirmedBudgetByCategory = Map.copyOf(confirmedBudgetByCategory);
         cards = List.copyOf(cards);
+        forecastPurchases = forecastPurchases == null ? List.of() : List.copyOf(forecastPurchases);
+        approvedPurchasesByCard = approvedPurchasesByCard == null ? Map.of() : approvedPurchasesByCard.entrySet()
+            .stream().collect(java.util.stream.Collectors.toUnmodifiableMap(Map.Entry::getKey,
+                entry -> List.copyOf(entry.getValue())));
         confirmedBudgetByCategory.forEach((category, amount) -> {
             if (category == null || amount == null || amount < 0) {
                 throw new IllegalArgumentException("업종 예산은 0 이상이어야 합니다.");

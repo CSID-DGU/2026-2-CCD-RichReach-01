@@ -140,6 +140,10 @@ class BenefitMathTest {
             false, "KRW", true);
 
         assertThat(compute(0, all).totalBenefit()).isEqualTo(6_000);
+        BenefitResult withEtc = BenefitMath.compute(List.of(all), Map.of(
+            SpendingCategory.DINING, 10_000L, SpendingCategory.ETC, 50_000L), 0, true);
+        assertThat(withEtc.totalBenefit()).isEqualTo(100);
+        assertThat(withEtc.benefitByCategory()).doesNotContainKey(SpendingCategory.ETC);
     }
 
     @Test
