@@ -37,7 +37,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalLong;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,6 +69,7 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  * 금액은 소비 정보라서 로그에 남기지 않는다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ManualRecommendationService {
@@ -107,9 +111,14 @@ public class ManualRecommendationService {
      * @param thisMonth      이번 달 카드·업종별 사용액. 혜택 계산에 쓴다. 순사용액이 0 이하인 업종은 빠져 있다.
      * @param thisMonthTotal 이번 달 카드별 순사용액. 실적 구간 계산에 쓴다. 환불로 음수가 된 업종도 합계에 반영돼 있다.
      * @param previousMonth  지난달 카드별 순사용액(전월 실적)
+     * @param cardRules      카드 상품별 혜택 규칙. 요청마다 상품당 한 번만 읽어 모든 계산에서 같이 쓴다.
      */
     private record Spending(Map<Long, Map<SpendingCategory, Long>> thisMonth, Map<Long, Long> thisMonthTotal,
-                            Map<Long, Long> previousMonth) {
+                            Map<Long, Long> previousMonth, Map<Long, List<CalculationRule>> cardRules) {
+
+        List<CalculationRule> rulesOf(long cardProductId) {
+            return cardRules.get(cardProductId);
+        }
 
         Map<SpendingCategory, Long> of(long cardId) {
             return thisMonth.getOrDefault(cardId, Map.of());
@@ -134,6 +143,7 @@ public class ManualRecommendationService {
     public ManualRecommendationResponse recommend(long userId, ManualRecommendationRequest request) {
         SpendingCategory category = parseCategory(request);
         Long amount = parseAmount(request);
+        long startedAt = System.nanoTime();
 
         List<OwnedCardResponse> candidates = ownedCards.list(userId).stream()
             .filter(card -> card.selected() && card.cardProductId() != null).toList();
@@ -143,12 +153,26 @@ public class ManualRecommendationService {
         }
 
         YearMonth month = YearMonth.now(clock);
+        // 서버 전체 캐시는 두지 않는다. 규칙을 다시 적재하면 다음 요청부터 바로 반영돼야 한다.
+        Map<Long, List<CalculationRule>> cardRules = candidates.stream().map(OwnedCardResponse::cardProductId).distinct()
+            .collect(Collectors.toMap(Function.identity(), rules::findForCalculation));
         Spending spending = new Spending(transactions.cardCategorySpend(userId, month),
-            transactions.cardSpend(userId, month), transactions.cardSpend(userId, month.minusMonths(1)));
+            transactions.cardSpend(userId, month), transactions.cardSpend(userId, month.minusMonths(1)), cardRules);
 
-        return amount == null
+        long loadedAt = System.nanoTime();
+
+        ManualRecommendationResponse response = amount == null
             ? ranges(userId, candidates, category, spending)
             : single(userId, month, candidates, category, amount, spending);
+        // 구간별 소요 시간만 남긴다. 금액과 업종은 남기지 않는다.
+        long finishedAt = System.nanoTime();
+        log.info("recommend.manual type={} cards={} loadMs={} calcMs={} totalMs={}", response.type(), candidates.size(),
+            millis(startedAt, loadedAt), millis(loadedAt, finishedAt), millis(startedAt, finishedAt));
+        return response;
+    }
+
+    private static long millis(long fromNanos, long toNanos) {
+        return (toNanos - fromNanos) / 1_000_000;
     }
 
     /** 금액을 알 때: 가장 유리한 카드 한 장과 나머지 카드의 예상 혜택. */
@@ -196,7 +220,7 @@ public class ManualRecommendationService {
                               Spending spending) {
         List<Scored> scored = new ArrayList<>();
         for (OwnedCardResponse card : candidates) {
-            scored.add(score(card, category, amount, spending.of(card.cardId()), spending.previousOf(card.cardId())));
+            scored.add(score(card, category, amount, spending));
         }
         scored.sort(Comparator.comparingLong(Scored::gain).reversed()
             .thenComparingLong(entry -> entry.card().cardId()));
@@ -204,14 +228,18 @@ public class ManualRecommendationService {
     }
 
     /** 이번 결제를 그 카드로 하기 전과 후의 혜택 계산 결과를 비교해 늘어나는 혜택을 구한다. */
-    private Scored score(OwnedCardResponse card, SpendingCategory category, long amount,
-                         Map<SpendingCategory, Long> spentByCategory, long previousMonthSpend) {
+    private Scored score(OwnedCardResponse card, SpendingCategory category, long amount, Spending spending) {
         long productId = card.cardProductId();
-        BenefitResult before = calculator.calculate(new BenefitQuery(productId, spentByCategory, previousMonthSpend));
+        Map<SpendingCategory, Long> spentByCategory = spending.of(card.cardId());
+        long previousMonthSpend = spending.previousOf(card.cardId());
+        List<CalculationRule> productRules = spending.rulesOf(productId);
+        BenefitResult before = calculator.calculate(new BenefitQuery(productId, spentByCategory, previousMonthSpend),
+            productRules);
         Map<SpendingCategory, Long> afterSpend = new EnumMap<>(SpendingCategory.class);
         afterSpend.putAll(spentByCategory);
         afterSpend.merge(category, amount, Math::addExact);
-        BenefitResult after = calculator.calculate(new BenefitQuery(productId, afterSpend, previousMonthSpend));
+        BenefitResult after = calculator.calculate(new BenefitQuery(productId, afterSpend, previousMonthSpend),
+            productRules);
         return new Scored(card, after.totalBenefit() - before.totalBenefit(), before, after);
     }
 
@@ -219,7 +247,7 @@ public class ManualRecommendationService {
     private Card detail(Scored best, long userId, YearMonth month, SpendingCategory category, long amount,
                         Spending spending) {
         OwnedCardResponse card = best.card();
-        List<CalculationRule> cardRules = rules.findForCalculation(card.cardProductId());
+        List<CalculationRule> cardRules = spending.rulesOf(card.cardProductId());
         // 실적은 카드별 순사용액으로 센다. 업종별 합계는 순사용액이 0 이하인 업종을 버려서, 환불이 있으면 실제보다 커진다.
         long monthSpendAfter = Math.addExact(spending.totalOf(card.cardId()), amount);
 

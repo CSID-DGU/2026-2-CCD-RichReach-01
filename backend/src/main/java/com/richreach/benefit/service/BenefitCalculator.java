@@ -2,6 +2,8 @@ package com.richreach.benefit.service;
 
 import com.richreach.benefit.dto.BenefitQuery;
 import com.richreach.benefit.dto.BenefitResult;
+import com.richreach.card.dto.CalculationRule;
+import java.util.List;
 
 /**
  * 혜택 계산기. 카드 한 장에 한 달 동안 업종별로 이만큼 쓰면 예상 혜택이 얼마인지를 계산한다.
@@ -22,5 +24,16 @@ import com.richreach.benefit.dto.BenefitResult;
 public interface BenefitCalculator {
 
     BenefitResult calculate(BenefitQuery query);
+
+    /**
+     * 호출자가 이미 읽어 둔 카드 규칙으로 계산한다. 한 요청에서 같은 카드를 여러 번 계산할 때 규칙을 반복해서 읽지 않기 위한 것이다.
+     * 결과는 {@link #calculate(BenefitQuery)}와 같아야 한다.
+     *
+     * @param rules 그 카드 상품의 규칙 전체. 승인 여부 등으로 거르지 않고 조회한 그대로 넘긴다.
+     *              이 값을 쓰지 않는 구현은 기본 동작대로 스스로 계산한다.
+     */
+    default BenefitResult calculate(BenefitQuery query, List<CalculationRule> rules) {
+        return calculate(query);
+    }
 
 }

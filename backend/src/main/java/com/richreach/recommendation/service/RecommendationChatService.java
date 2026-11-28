@@ -15,9 +15,11 @@ import com.richreach.transaction.service.MerchantCategoryClassifier;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /** 질문 해석과 검증 뒤 기존 수동 추천을 호출한다. 모델은 금액과 카드를 결정하지 않는다. */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecommendationChatService {
@@ -34,10 +36,14 @@ public class RecommendationChatService {
     public RecommendationChatResponse recommend(long userId, RecommendationChatRequest request) {
         List<Turn> history = validate(request);
         ParsedQuestion parsed;
+        long parseStartedAt = System.nanoTime();
         try {
             parsed = ai.parse(request.message().strip(), history);
         } catch (OpenAiException | IllegalArgumentException e) {
             return clarify(AI_UNAVAILABLE, null, "BEST_CARD");
+        } finally {
+            // 질문 내용은 남기지 않고 걸린 시간만 남긴다. (실패한 호출 포함)
+            log.info("recommend.chat parseMs={}", millisSince(parseStartedAt));
         }
         if ("OUT_OF_SCOPE".equals(parsed.intent())) {
             return new RecommendationChatResponse(OUT_OF_SCOPE, false, parsed.answerMode(), null, null);
@@ -81,13 +87,20 @@ public class RecommendationChatService {
                 : "다른 카드도 아래에서 비교해 보세요.";
         } else if (result.type() == ManualRecommendationResponse.Type.CARD && result.card().confirmedOnly()
             && "BEST_CARD".equals(parsed.answerMode())) {
+            long explainStartedAt = System.nanoTime();
             try {
                 reply = ai.explain(result);
             } catch (OpenAiException | IllegalArgumentException e) {
                 // 설명은 선택 기능이다. 계산된 카드·금액·순위와 고정 안내는 그대로 돌려준다.
+            } finally {
+                log.info("recommend.chat explainMs={}", millisSince(explainStartedAt));
             }
         }
         return new RecommendationChatResponse(reply, false, parsed.answerMode(), merchant, result);
+    }
+
+    private static long millisSince(long startedAtNanos) {
+        return (System.nanoTime() - startedAtNanos) / 1_000_000;
     }
 
     private static RecommendationChatResponse clarify(String message, String merchant, String mode) {
