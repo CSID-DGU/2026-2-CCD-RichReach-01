@@ -9,24 +9,32 @@ import static org.mockito.Mockito.times;
 
 import com.richreach.TestcontainersConfiguration;
 import com.richreach.card.dto.CollectedCard;
+import com.richreach.card.dto.OwnedCardResponse;
 import com.richreach.card.service.BenefitRuleQueryService;
+import com.richreach.card.service.OwnedCardQueryService;
 import com.richreach.card.service.OwnedCardService;
 import com.richreach.codef.entity.CardCompany;
 import com.richreach.codef.entity.CodefConnection;
 import com.richreach.codef.entity.CodefOrgAccount;
 import com.richreach.codef.repository.CodefConnectionRepository;
 import com.richreach.codef.repository.CodefOrgAccountRepository;
+import com.richreach.global.category.SpendingCategory;
 import com.richreach.recommendation.dto.ManualRecommendationRequest;
 import com.richreach.recommendation.dto.ManualRecommendationResponse;
 import com.richreach.recommendation.service.ManualRecommendationService;
+import com.richreach.transaction.dto.CollectedTransaction;
+import com.richreach.transaction.service.TransactionStoreService;
 import com.richreach.user.entity.User;
 import com.richreach.user.repository.UserRepository;
 import jakarta.persistence.EntityManagerFactory;
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
@@ -76,11 +84,18 @@ class RecommendationQueryCountTest {
     @Autowired
     private OwnedCardService ownedCardService;
     @Autowired
+    private OwnedCardQueryService ownedCards;
+    @Autowired
+    private TransactionStoreService transactionStore;
+    @Autowired
+    private Clock clock;
+    @Autowired
     private EntityManagerFactory entityManagerFactory;
     @Autowired
     private JdbcTemplate jdbc;
 
     private User user;
+    private CodefOrgAccount account;
 
     @BeforeEach
     void setUp() {
@@ -89,7 +104,7 @@ class RecommendationQueryCountTest {
         LocalDateTime now = LocalDateTime.now().withNano(0);
         CodefConnection connection = connections.save(
             new CodefConnection(user, "test-connected-id-" + user.getId(), "DEMO", now, now, now, now));
-        CodefOrgAccount account = orgAccounts.save(CodefOrgAccount.connected(connection, "0301", now));
+        account = orgAccounts.save(CodefOrgAccount.connected(connection, "0301", now));
 
         List<CollectedCard> collected = new ArrayList<>();
         for (int i = 0; i < CARD_NAMES.length; i++) {
@@ -102,6 +117,7 @@ class RecommendationQueryCountTest {
 
     @AfterEach
     void cleanUp() {
+        jdbc.update("delete from card_transactions");
         jdbc.update("delete from user_cards");
         orgAccounts.deleteAll();
         connections.deleteAll();
@@ -156,6 +172,33 @@ class RecommendationQueryCountTest {
 
         System.out.printf("QUERY_COUNT range ruleReads=%d statements=%d%n", ruleReads(), statements);
         verify(ruleQuery, times(5)).findForCalculation(anyLong());
+    }
+
+    @Test
+    @DisplayName("같은 상품의 카드 두 장: 규칙은 한 번만 읽고, 사용액과 월 한도는 카드마다 따로 계산한다")
+    void sharesRulesButNotSpendingBetweenCardsOfTheSameProduct() {
+        // 동기화는 받은 목록이 그 계정의 전체 카드다. 첫 번째 상품의 카드 두 장만 남긴다.
+        ownedCardService.saveSynced(user.getId(), account.getId(), CardCompany.KB, List.of(
+            new CollectedCard("KB국민카드 " + CARD_NAMES[0], "2222333344440000", "신용"),
+            new CollectedCard("KB국민카드 " + CARD_NAMES[0], "2222333344449999", "신용")));
+        List<OwnedCardResponse> cards = ownedCards.list(user.getId()).stream()
+            .filter(card -> card.selected() && card.cardProductId() != null)
+            .sorted(Comparator.comparingLong(OwnedCardResponse::cardId)).toList();
+        assertThat(cards).hasSize(2);
+        assertThat(cards.get(0).cardProductId()).isEqualTo(cards.get(1).cardProductId());
+        // ID가 작은 카드의 월 한도(10%, 5,000원)를 다 쓴다. 동점이면 이 카드가 앞서므로, 사용액이 섞이면 결과가 달라진다.
+        long usedUp = cards.get(0).cardId();
+        long unused = cards.get(1).cardId();
+        transactionStore.saveCollected(user.getId(), usedUp, List.of(new CollectedTransaction("AP-RQC-1",
+            YearMonth.now(clock).atDay(1).atStartOfDay(), "카페", 60_000, 0, 0, false, SpendingCategory.CAFE.name())));
+        clearInvocations(ruleQuery);
+
+        ManualRecommendationResponse response = recommend(10_000L);
+
+        verify(ruleQuery, times(1)).findForCalculation(anyLong());
+        assertThat(response.card().cardId()).isEqualTo(unused);
+        assertThat(response.card().expectedBenefit()).isEqualTo(1_000);
+        assertThat(response.alternatives()).isEmpty();
     }
 
     private long ruleReads() {
